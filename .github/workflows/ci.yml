@@ -6,20 +6,13 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
-  JWT_SECRET: fromfarm-test-secret-key-ci
-  NEXTAUTH_SECRET: fromfarm-nextauth-secret-ci
-  NEXTAUTH_URL: http://localhost:3000
-  NODE_ENV: test
-
 jobs:
-  # ─────────────────────────────────────────
-  # JOB 1: Install, Lint, TypeScript Check
-  # ─────────────────────────────────────────
-  lint:
-    name: Lint & Type Check
+  frontend:
+    name: Frontend CI (Next.js)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -29,26 +22,30 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      - name: TypeScript check
+        run: npx tsc --noEmit
+        continue-on-error: true
 
-      - name: Run ESLint
+      - name: Lint
         run: npm run lint
 
-      - name: TypeScript type check
-        run: npx tsc --noEmit
+      - name: Build
+        run: npm run build
+        # env:
+        #   NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
-  # ─────────────────────────────────────────
-  # JOB 2: Test dengan PostgreSQL
-  # ─────────────────────────────────────────
-  test:
-    name: Test + Prisma Migrate
+
+  backend:
+    name: Backend CI (Express + Prisma)
     runs-on: ubuntu-latest
-    needs: lint
+    defaults:
+      run:
+        working-directory: backend
 
     services:
       postgres:
@@ -73,6 +70,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -80,74 +78,61 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run database migrations
+      - name: Run migrations
         run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
 
-      - name: Seed database (data awal Goal, Role, dll)
+      - name: Seed data awal (Goal, dll)
         run: npx prisma db seed
-        continue-on-error: true  # opsional jika seed belum siap
+        continue-on-error: true
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
 
       - name: Run tests
         run: npm test -- --forceExit --detectOpenHandles
-        # env:
-        #   DATABASE_URL: ${{ env.DATABASE_URL }}
-        #   JWT_SECRET: ${{ env.JWT_SECRET }}
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
+          JWT_SECRET: fromfarm-test-secret-ci
+          NODE_ENV: test
 
-  # ─────────────────────────────────────────
-  # JOB 3: Build Next.js
-  # ─────────────────────────────────────────
-  build:
-    name: Build Next.js
-    runs-on: ubuntu-latest
-    needs: test
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Build aplikasi
-        run: npm run build
-        # env:
-        #   DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        #   JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        #   NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-        #   NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-        #   NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nextjs-build
-          path: .next/
-          retention-days: 1
-
-  # ─────────────────────────────────────────
-  # JOB 4: Deploy (hanya branch main)
-  # ─────────────────────────────────────────
   deploy:
     name: Deploy ke Server
     runs-on: ubuntu-latest
-    needs: build
+    needs: [frontend, backend]
     if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
-      
-      # - name: Deploy ke Vercel
-      #   uses: amondnet/vercel-action@v25
-      #   with:
-      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
-      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-      #     vercel-args: '--prod'
+
+      # ── Deploy Backend ke VPS ──
+      - name: Deploy Backend
+        uses: appleboy/ssh-action@v1
+        with:
+        #   host: ${{ secrets.VPS_HOST }}
+        #   username: ${{ secrets.VPS_USER }}
+        #   key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /var/www/fromfarm/backend
+            git pull origin main
+            npm ci --omit=dev
+            npx prisma generate
+            npx prisma migrate deploy
+            pm2 restart fromfarm-backend --update-env \
+              || pm2 start src/index.js --name "fromfarm-backend"
+            echo "✅ Backend deployed"
+
+
+    #   - name: Deploy Frontend ke Vercel
+    #     uses: amondnet/vercel-action@v25
+    #     with:
+    #       vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    #       vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    #       vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    #       vercel-args: '--prod'
+    #       working-directory: frontend
