@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { userID: user.id },
+      where: { userId: user.id },
     });
 
     if (!subscription) {

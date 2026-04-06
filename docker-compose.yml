@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fromfram_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fromfram
+      POSTGRES_PASSWORD: fromfram
+      POSTGRES_DB: fromfram
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fromfram"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: fromfarm-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://fromfram:fromfram@db:5432/fromfram
+      JWT_SECRET: fromfarm-secret-key-dev
+      NEXTAUTH_SECRET: fromfarm-nextauth-secret
+      NEXTAUTH_URL: http://localhost:3000
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  pgdata:

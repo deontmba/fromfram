@@ -27,13 +27,12 @@ export async function POST(req: NextRequest) {
 
     const newSubscription = await prisma.subscription.create({
       data: {
-        userId: user.id,
-        goalId,
-        planType,
-        servings,
-        status: "ACTIVE",
-        startDate: new Date(),
-      },
+      userId: user.id,
+      goalId: goalId,
+      planType,
+      servings,
+      status: "ACTIVE",
+    },
     });
 
     return NextResponse.json(newSubscription, { status: 201 });
