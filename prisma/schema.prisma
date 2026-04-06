@@ -1,13 +1,236 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// --- ENUMS ---
+
+enum Role {
+  USER
+  ADMIN
+  NUTRITIONIST // ← tambah sesuai dokumen
+}
+
+enum PlanType {
+  MINGGUAN
+  BULANAN
+  TAHUNAN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum BoxStatus {
+  PENDING_SELECTION
+  LOCKED           // ← fix: dokumen pakai LOCKED, bukan SELECTION_LOCKED
+  COMPLETED
+  SKIPPED
+}
+
+enum DeliveryStatus {
+  PREPARING
+  SHIPPED
+  DELIVERED
+}
+
+enum DayOfWeek {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+// --- MODELS ---
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  password           String
+  name               String
+  role               Role                @default(USER)
+  createdAt          DateTime            @default(now())
+
+  // Relations
+  nutritionalProfile NutritionalProfile?
+  addresses          Address[]
+  subscriptions      Subscription[]
+  transactions       Transaction[]
+  weeklyBoxes        WeeklyBox[]
+  deliveries         Delivery[]
+  recipes            Recipe[]            // relasi untuk nutritionist
+}
+
+// ← BARU: profil gizi pengguna, relasi 1:1 dengan User
+model NutritionalProfile {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  weight           Float   // berat badan (kg)
+  height           Float   // tinggi badan (cm)
+  dailyCalorieNeed Int
+  allergies        String?
+  medicalNotes     String? @db.Text
+
+  user             User    @relation(fields: [userId], references: [id])
+}
+
+model Address {
+  id         String     @id @default(cuid())
+  userId     String
+  label      String
+  street     String
+  city       String
+  province   String
+  postalCode String
+  notes      String?
+  isDefault  Boolean    @default(false)
+
+  user       User       @relation(fields: [userId], references: [id])
+  deliveries Delivery[]
+}
+
+// ← BARU: tujuan kesehatan pengguna (Atlet, Diet, Gizi Buruk, dll)
+model Goal {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  description   String         @db.Text
+  minCalories   Int
+  maxCalories   Int
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  goalId      String             // ← tambah: relasi ke Goal
+  planType    PlanType
+  servings    Int
+  status      SubscriptionStatus @default(ACTIVE)
+  startDate   DateTime           @default(now())
+  endDate     DateTime?
+  pausedUntil DateTime?
+
+  user        User               @relation(fields: [userId], references: [id])
+  goal        Goal               @relation(fields: [goalId], references: [id]) // ← tambah
+}
+
+model Transaction {
+  id        String            @id @default(cuid())
+  userId    String
+  amount    Float
+  status    TransactionStatus @default(PENDING)
+  qrisCode  String
+  paidAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  user      User              @relation(fields: [userId], references: [id])
+}
+
+model Recipe {
+  id             String              @id @default(cuid())
+  nutritionistId String              // ← tambah: resep dibuat oleh nutritionist
+  name           String              @unique
+  description    String              @db.Text
+  calories       Int                 // ← tambah: kalori per porsi
+  protein        Float               // ← tambah: protein dalam gram
+  servings       Int
+  imageUrl       String?             // ← tambah: foto resep
+
+  nutritionist   User                @relation(fields: [nutritionistId], references: [id])
+  ingredients    RecipeIngredient[]  // ← tambah: relasi ke bahan baku
+  mealSelections MealSelection[]
+  weeklyMenus    WeeklyMenu[]
+}
+
+// ← BARU: bahan baku dengan traceability (asal & pemasok)
+model Ingredient {
+  id           String             @id @default(cuid())
+  name         String             @unique
+  origin       String             // asal bahan baku
+  supplierName String             // nama pemasok
+  isAllergen   Boolean            @default(false)
+
+  recipes      RecipeIngredient[]
+}
+
+// ← BARU: tabel junction Recipe <-> Ingredient (many-to-many)
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     String     // e.g., "2 siung", "100gr"
+
+  recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([recipeId, ingredientId])
+}
+
+model WeeklyMenu {
+  id            String   @id @default(cuid())
+  recipeId      String
+  weekStartDate DateTime
+
+  recipe        Recipe   @relation(fields: [recipeId], references: [id])
+
+  @@unique([recipeId, weekStartDate]) // ← tambah: satu resep sekali per minggu
+}
+
+model WeeklyBox {
+  id                String          @id @default(cuid())
+  userId            String
+  weekStartDate     DateTime
+  weekEndDate       DateTime
+  selectionDeadline DateTime
+  isAutoSelected    Boolean         @default(false)
+  status            BoxStatus       @default(PENDING_SELECTION)
+
+  user              User            @relation(fields: [userId], references: [id])
+  mealSelections    MealSelection[]
+  deliveries        Delivery[]
+
+  @@unique([userId, weekStartDate]) // ← tambah: satu box per user per minggu
+}
+
+model MealSelection {
+  id          String    @id @default(cuid())
+  weeklyBoxId String
+  recipeId    String
+  dayOfWeek   DayOfWeek
+
+  weeklyBox   WeeklyBox @relation(fields: [weeklyBoxId], references: [id])
+  recipe      Recipe    @relation(fields: [recipeId], references: [id])
+
+  @@unique([weeklyBoxId, dayOfWeek]) // ← tambah: satu menu per hari per box
+}
+
+model Delivery {
+  id           String         @id @default(cuid())
+  userId       String
+  weeklyBoxId  String
+  addressId    String         // snapshot alamat saat box dikunci
+  deliveryDate DateTime
+  status       DeliveryStatus @default(PREPARING)
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+
+  user         User           @relation(fields: [userId], references: [id])
+  weeklyBox    WeeklyBox      @relation(fields: [weeklyBoxId], references: [id])
+  address      Address        @relation(fields: [addressId], references: [id])
 }
