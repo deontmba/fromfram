@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { userID: user.id },
+      where: { userId: user.id },
     });
 
     if (!subscription) {
@@ -33,11 +33,11 @@ export async function PATCH(req: NextRequest) {
     // Jika planType YEARLY -> +1 tahun
     // Di sini kita gunakan startDate + 1 minggu sebagai misal siklus jalan (bisa disesuaikan logic sesuai planType)
     let cycleEndDate = new Date(subscription.startDate);
-    if (subscription.planType === "WEEKLY") {
+    if (subscription.planType === "MINGGUAN") {
        cycleEndDate.setDate(cycleEndDate.getDate() + 7);
-    } else if (subscription.planType === "MONTHLY") {
+    } else if (subscription.planType === "BULANAN") {
        cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
-    } else if (subscription.planType === "YEARLY") {
+    } else if (subscription.planType === "TAHUNAN") {
        cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
     } else {
        cycleEndDate.setDate(cycleEndDate.getDate() + 7);

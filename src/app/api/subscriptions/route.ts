@@ -10,15 +10,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { goalID, planType, servings } = body;
+    const { goalId, planType, servings } = body;
 
-    if (!goalID || !planType || !servings || servings < 1 || servings > 6) {
+    if (!goalId || !planType || !servings || servings < 1 || servings > 6) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
     // Cek apakah user sudah punya subscription aktif
     const existingSub = await prisma.subscription.findFirst({
-      where: { userID: user.id, status: { not: "CANCELLED" } }
+      where: { userId: user.id, status: { not: "CANCELLED" } }
     });
 
     if (existingSub) {
@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
 
     const newSubscription = await prisma.subscription.create({
       data: {
-        userID: user.id,
-        goalID,
+        userId: user.id,
+        goalId,
         planType,
         servings,
         status: "ACTIVE",
