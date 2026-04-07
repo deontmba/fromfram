@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma  from "@/lib/prisma";
 import bcrypt from "bcrypt";
+
+/**
+ * API Documentation
+ * Endpoint   : POST /api/auth/register
+ * Deskripsi  : Registrasi pengguna baru.
+ * Method     : POST
+ * Input      : JSON body { name: string, email: string, password: string }
+ * Proses     :
+ * 1) Validasi seluruh field wajib terisi.
+ * 2) Cek apakah email sudah digunakan.
+ * 3) Hash password dengan bcrypt.
+ * 4) Simpan user ke database (Prisma).
+ * 5) Kembalikan data user terpilih tanpa password.
+ */
  
 export async function POST(req: NextRequest) {
   try {

@@ -1,13 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/session";
 import { setCache } from "@/lib/cache";
+
+function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
+  if (error === 'CONFIG_MISSING') {
+    return NextResponse.json(
+      { error: 'Server auth configuration missing.' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+}
+
+/**
+ * API Documentation
+ * Endpoint   : PATCH /api/subscriptions/me/pause
+ * Deskripsi  : Menjeda subscription aktif sampai tanggal resume tertentu.
+ * Method     : PATCH
+ * Input      :
+ * - Header auth sesuai helper `getAuthenticatedUser`
+ * - JSON body { resumeDate: string (ISO date) }
+ * Proses     :
+ * 1) Validasi user login.
+ * 2) Validasi `resumeDate` wajib ada dan maksimal 4 minggu dari hari ini.
+ * 3) Pastikan subscription user ada dan status saat ini ACTIVE.
+ * 4) Simpan resumeDate sementara ke cache.
+ * 5) Update status subscription menjadi PAUSED.
+ */
 
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await getSessionUserId(req);
+    if ('error' in session) {
+      return getAuthErrorResponse(session.error);
     }
 
     const body = await req.json();
@@ -27,7 +54,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { userId: user.id },
+      where: { userId: session.userId },
     });
 
     if (!subscription) {
@@ -52,7 +79,6 @@ export async function PATCH(req: NextRequest) {
       message: "Subscription paused successfully",
       subscription: updatedSub,
       resumeDate: parsedResumeDate.toISOString(),
-      note: "Ideally we need a Cron job reading the cache to resume or we add `resumeDate` in DB schema.",
     }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
