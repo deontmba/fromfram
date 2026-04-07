@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
-import { deleteCache } from "@/lib/cache"; // Fungsi yang kita import jika dari redis/cache layer
+import { SubscriptionStatus } from "@/generated/prisma/client";
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
+    const subscription = await prisma.subscription.findUnique({
       where: { userId: user.id },
     });
 
@@ -18,23 +18,23 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
     }
 
-    if (subscription.status !== "PAUSED") {
+    if (subscription.status !== SubscriptionStatus.PAUSED) {
       return NextResponse.json({ error: "Current status MUST be PAUSED to resume" }, { status: 400 });
     }
 
-    // Hapus data resume date yang sementara 
-    deleteCache(`pause_resume_${subscription.id}`);
-
     const updatedSub = await prisma.subscription.update({
       where: { id: subscription.id },
-      data: { status: "ACTIVE" },
+      data: {
+        status: SubscriptionStatus.ACTIVE,
+        pausedUntil: null,
+      },
     });
 
     return NextResponse.json({
       message: "Subscription resumed successfully",
       subscription: updatedSub,
     }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

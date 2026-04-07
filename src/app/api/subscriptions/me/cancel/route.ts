@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { PlanType, SubscriptionStatus } from "@/generated/prisma/client";
+
+function calculateCycleEndDate(startDate: Date, planType: PlanType): Date {
+  const cycleEndDate = new Date(startDate);
+
+  switch (planType) {
+    case PlanType.MINGGUAN:
+      cycleEndDate.setDate(cycleEndDate.getDate() + 7);
+      break;
+    case PlanType.BULANAN:
+      cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
+      break;
+    case PlanType.TAHUNAN:
+      cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
+      break;
+    default:
+      cycleEndDate.setDate(cycleEndDate.getDate() + 7);
+      break;
+  }
+
+  return cycleEndDate;
+}
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -9,7 +31,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
+    const subscription = await prisma.subscription.findUnique({
       where: { userId: user.id },
     });
 
@@ -18,37 +40,24 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Hanya ACTIVE atau PAUSED yang bisa dicancel
-    if (subscription.status !== "ACTIVE" && subscription.status !== "PAUSED") {
+    if (
+      subscription.status !== SubscriptionStatus.ACTIVE &&
+      subscription.status !== SubscriptionStatus.PAUSED
+    ) {
       return NextResponse.json({ error: "Cannot cancel a subscription that is not ACTIVE or PAUSED" }, { status: 400 });
     }
 
-    // Set endDate ke akhir siklus langganan berjalan.
-    // Misalnya siklus langganan 1 minggu dari startDate
-    const currentEnd = new Date(subscription.startDate);
-    currentEnd.setDate(currentEnd.getDate() + 7); // Asumsi sederhana 7 hari, tapi harusnya tergantung planType.
-    
-    // Asumsi: 
-    // Jika planType WEEKLY -> +1 minggu
-    // Jika planType MONTHLY -> +1 bulan
-    // Jika planType YEARLY -> +1 tahun
-    // Di sini kita gunakan startDate + 1 minggu sebagai misal siklus jalan (bisa disesuaikan logic sesuai planType)
-    let cycleEndDate = new Date(subscription.startDate);
-    if (subscription.planType === "MINGGUAN") {
-       cycleEndDate.setDate(cycleEndDate.getDate() + 7);
-    } else if (subscription.planType === "BULANAN") {
-       cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
-    } else if (subscription.planType === "TAHUNAN") {
-       cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
-    } else {
-       cycleEndDate.setDate(cycleEndDate.getDate() + 7);
-    }
+    const cycleEndDate = calculateCycleEndDate(
+      subscription.startDate,
+      subscription.planType,
+    );
 
 
     const updatedSub = await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        status: "ACTIVE", // Biarkan aktif (atau kembaikan ke aktif kalau tadi PAUSED) karena kiriman tetap jalan
         endDate: cycleEndDate,
+        pausedUntil: null,
       },
     });
 
@@ -61,7 +70,7 @@ export async function PATCH(req: NextRequest) {
       subscription: updatedSub,
       note: "Cron job is needed to update status to CANCELLED once endDate passes",
     }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

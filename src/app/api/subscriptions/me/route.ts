@@ -9,8 +9,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
-      where: { userID: user.id },
+    const subscription = await prisma.subscription.findUnique({
+      where: { userId: user.id },
+      include: {
+        goal: true,
+      },
     });
 
     if (!subscription) {
@@ -18,7 +21,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(subscription, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
