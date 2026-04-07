@@ -1,16 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getSessionUserId } from "@/lib/session";
+
+function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
+  if (error === 'CONFIG_MISSING') {
+    return NextResponse.json(
+      { error: 'Server auth configuration missing.' },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+}
+
+/**
+ * API Documentation
+ * Endpoint   : PATCH /api/subscriptions/me/cancel
+ * Deskripsi  : Menjadwalkan pembatalan subscription di akhir siklus berjalan.
+ * Method     : PATCH
+ * Input      : Header auth sesuai helper `getAuthenticatedUser`.
+ * Proses     :
+ * 1) Validasi user login.
+ * 2) Pastikan subscription user ada.
+ * 3) Pastikan status saat ini ACTIVE atau PAUSED.
+ * 4) Hitung `endDate` berdasarkan planType (mingguan/bulanan/tahunan).
+ * 5) Simpan `endDate` pembatalan dan pertahankan status aktif hingga siklus selesai.
+ */
 
 export async function PATCH(req: NextRequest) {
   try {
-    const user = await getAuthenticatedUser(req);
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await getSessionUserId(req);
+    if ('error' in session) {
+      return getAuthErrorResponse(session.error);
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { userId: user.id },
+      where: { userId: session.userId },
     });
 
     if (!subscription) {
@@ -22,16 +47,6 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Cannot cancel a subscription that is not ACTIVE or PAUSED" }, { status: 400 });
     }
 
-    // Set endDate ke akhir siklus langganan berjalan.
-    // Misalnya siklus langganan 1 minggu dari startDate
-    const currentEnd = new Date(subscription.startDate);
-    currentEnd.setDate(currentEnd.getDate() + 7); // Asumsi sederhana 7 hari, tapi harusnya tergantung planType.
-    
-    // Asumsi: 
-    // Jika planType WEEKLY -> +1 minggu
-    // Jika planType MONTHLY -> +1 bulan
-    // Jika planType YEARLY -> +1 tahun
-    // Di sini kita gunakan startDate + 1 minggu sebagai misal siklus jalan (bisa disesuaikan logic sesuai planType)
     let cycleEndDate = new Date(subscription.startDate);
     if (subscription.planType === "MINGGUAN") {
        cycleEndDate.setDate(cycleEndDate.getDate() + 7);
@@ -47,7 +62,6 @@ export async function PATCH(req: NextRequest) {
     const updatedSub = await prisma.subscription.update({
       where: { id: subscription.id },
       data: {
-        status: "ACTIVE", // Biarkan aktif (atau kembaikan ke aktif kalau tadi PAUSED) karena kiriman tetap jalan
         endDate: cycleEndDate,
       },
     });
@@ -59,7 +73,6 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({
       message: "Subscription set for cancellation at the end of cycle",
       subscription: updatedSub,
-      note: "Cron job is needed to update status to CANCELLED once endDate passes",
     }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

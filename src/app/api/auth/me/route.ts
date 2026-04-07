@@ -4,6 +4,19 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 
+/**
+ * API Documentation
+ * Endpoint   : GET /api/auth/me
+ * Deskripsi  : Mengambil data profil user yang sedang login berdasarkan cookie token.
+ * Method     : GET
+ * Input      : Cookie `token` (JWT) pada request.
+ * Proses     :
+ * 1) Ambil token dari cookie.
+ * 2) Verifikasi JWT.
+ * 3) Ambil data user dari database berdasarkan `payload.id`.
+ * 4) Kembalikan data user terpilih.
+ */
+
 export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get("token")?.value;

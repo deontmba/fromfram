@@ -5,6 +5,20 @@ import { SignJWT } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 
+/**
+ * API Documentation
+ * Endpoint   : POST /api/auth/login
+ * Deskripsi  : Autentikasi pengguna dan membuat sesi login berbasis cookie JWT.
+ * Method     : POST
+ * Input      : JSON body { email: string, password: string }
+ * Proses     :
+ * 1) Validasi email dan password.
+ * 2) Cari user berdasarkan email.
+ * 3) Verifikasi password dengan bcrypt.
+ * 4) Buat JWT berisi id dan email user.
+ * 5) Set cookie httpOnly `token` dan kirim data user.
+ */
+
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
