@@ -47,15 +47,15 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Cannot cancel a subscription that is not ACTIVE or PAUSED" }, { status: 400 });
     }
 
-    let cycleEndDate = new Date(subscription.startDate);
+     const cycleEndDate = new Date(subscription.startDate);
     if (subscription.planType === "MINGGUAN") {
-       cycleEndDate.setDate(cycleEndDate.getDate() + 7);
+      cycleEndDate.setDate(cycleEndDate.getDate() + 7);
     } else if (subscription.planType === "BULANAN") {
-       cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
+      cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
     } else if (subscription.planType === "TAHUNAN") {
-       cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
+      cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
     } else {
-       cycleEndDate.setDate(cycleEndDate.getDate() + 7);
+      cycleEndDate.setDate(cycleEndDate.getDate() + 7);
     }
 
 
@@ -74,7 +74,7 @@ export async function PATCH(req: NextRequest) {
       message: "Subscription set for cancellation at the end of cycle",
       subscription: updatedSub,
     }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

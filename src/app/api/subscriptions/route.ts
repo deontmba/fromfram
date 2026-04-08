@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ status: "success", data: subscriptions }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(newSubscription, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
