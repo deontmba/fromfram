@@ -1,8 +1,8 @@
-name: FromFarm CI/CD
+name: FromFarm CI
 
 on:
   push:
-    branches: [main, develop, 'feature/**']
+    branches: [main, develop, 'feature/**', 'hotfix/**']
   pull_request:
     branches: [main, develop]
 
@@ -10,6 +10,11 @@ jobs:
   ci:
     name: Build & Test (Next.js + Prisma)
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
+      JWT_SECRET: fromfarm-test-secret-ci
+      NEXTAUTH_SECRET: fromfarm-nextauth-secret-ci
+      NEXTAUTH_URL: http://localhost:3000
 
     services:
       postgres:
@@ -38,22 +43,29 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('next.config.ts', 'tsconfig.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+
       - name: Generate Prisma Client
         run: npx prisma generate
 
       - name: Run database migrations
         run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
+
+      - name: Seed database
+        run: npm run seed
 
       - name: Lint
         run: npm run lint
 
       - name: Build Next.js
         run: npm run build
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/fromfarm_test
-          JWT_SECRET: fromfarm-test-secret-ci
-          NEXTAUTH_SECRET: fromfarm-nextauth-secret-ci
-          NEXTAUTH_URL: http://localhost:3000
-          NODE_ENV: production
+
+      - name: Smoke test authenticated API
+        run: npm run smoke:ci

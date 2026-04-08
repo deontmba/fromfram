@@ -1,21 +1,26 @@
 import { NextRequest } from 'next/server'
-import { sign, verify, JwtPayload } from 'jsonwebtoken'
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose'
 import prisma from '@/lib/prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret'
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'secret')
 
-interface TokenPayload extends JwtPayload {
+interface TokenPayload extends JWTPayload {
   id: string
   email: string
   role: string
 }
 
-export function signToken(payload: object) {
-  return sign(payload, JWT_SECRET, { expiresIn: '7d' })
+export async function signToken(payload: object) {
+  return new SignJWT(payload as JWTPayload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(JWT_SECRET)
 }
 
-export function verifyToken(token: string): TokenPayload {
-  return verify(token, JWT_SECRET) as TokenPayload
+export async function verifyToken(token: string): Promise<TokenPayload> {
+  const { payload } = await jwtVerify(token, JWT_SECRET)
+  return payload as TokenPayload
 }
 
 export async function getAuthenticatedUser(req: NextRequest) {
@@ -26,7 +31,7 @@ export async function getAuthenticatedUser(req: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    const decoded = verifyToken(token)
+    const decoded = await verifyToken(token)
 
     if (!decoded.id) return null
 
