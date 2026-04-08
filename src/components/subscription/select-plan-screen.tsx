@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type MealPlan = {
   id: "basic" | "fitness" | "diet";
@@ -84,12 +84,6 @@ function CheckIcon() {
 export function SelectPlanScreen() {
   const [selectedMeal, setSelectedMeal] = useState<MealPlan["id"]>("basic");
   const [selectedDuration, setSelectedDuration] = useState<DurationPlan["id"]>("monthly");
-
-  const selectedLabel = useMemo(() => {
-    const meal = mealPlans.find((item) => item.id === selectedMeal)?.name;
-    const duration = durationPlans.find((item) => item.id === selectedDuration)?.name;
-    return `${meal} - ${duration}`;
-  }, [selectedMeal, selectedDuration]);
 
   return (
     <main className="min-h-screen bg-[#ececec] px-5 py-8 sm:py-10">
@@ -208,6 +202,10 @@ export function SelectPlanScreen() {
         </div>
 
         <footer className="mt-9 flex items-center justify-between">
+          <p className="text-sm text-neutral-500">
+            Pilihan aktif: {mealPlans.find((item) => item.id === selectedMeal)?.name} · {durationPlans.find((item) => item.id === selectedDuration)?.name}
+          </p>
+
           <button
             type="button"
             className="rounded-2xl border border-[#cfcfcf] bg-[#f8f8f8] px-6 py-2.5 text-[1rem] font-semibold text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"

@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest) {
       subscription: updatedSub,
       resumeDate: parsedResumeDate.toISOString(),
     }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

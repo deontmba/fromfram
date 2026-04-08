@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest) {
       message: "Subscription resumed successfully",
       subscription: updatedSub,
     }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

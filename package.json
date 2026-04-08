@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "smoke:ci": "node scripts/ci-smoke-test.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.6.0",
