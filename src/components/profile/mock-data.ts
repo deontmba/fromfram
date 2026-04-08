@@ -18,8 +18,6 @@ export type HealthProfile = {
 export type Address = {
   id: string;
   label: string;
-  recipientName: string;
-  phoneNumber: string;
   street: string;
   city: string;
   province: string;
@@ -51,8 +49,6 @@ export const addressMockData: Address[] = [
   {
     id: "home-address",
     label: "Rumah",
-    recipientName: "Aisha Rahman",
-    phoneNumber: "+62 812 3456 7890",
     street: "Jl. Sudirman No. 123, Lt. 2",
     city: "Jakarta Selatan",
     province: "DKI Jakarta",
@@ -63,8 +59,6 @@ export const addressMockData: Address[] = [
   {
     id: "office-address",
     label: "Kantor",
-    recipientName: "Aisha Rahman",
-    phoneNumber: "+62 812 3456 7890",
     street: "Gedung Karya Lt. 5, Jl. MH Thamrin",
     city: "Jakarta Pusat",
     province: "DKI Jakarta",
@@ -74,11 +68,9 @@ export const addressMockData: Address[] = [
   },
 ];
 
-export function getEmptyAddressDraft(profile = profileMockData): AddressDraft {
+export function getEmptyAddressDraft(): AddressDraft {
   return {
     label: "",
-    recipientName: profile.fullName,
-    phoneNumber: profile.phoneNumber,
     street: "",
     city: "",
     province: "",

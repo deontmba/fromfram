@@ -1,13 +1,54 @@
-import {
-  DEFAULT_PREVIEW_PLAN,
-  DEFAULT_PREVIEW_SERVINGS,
-  PLAN_OPTIONS,
-} from "@/components/subscription/subscription-constants";
-import {
-  ManageSubscriptionViewModel,
-  SubscriptionPlanKey,
-  SubscriptionStatusKey,
-} from "@/components/subscription/subscription-types";
+export type SubscriptionPlanKey = "weekly" | "monthly" | "yearly";
+
+export type SubscriptionStatusKey = "active" | "paused" | "cancelled" | "unknown";
+
+export type FeedbackState = {
+  tone: "success" | "error" | "info";
+  message: string;
+  note?: string;
+};
+
+export type ManageSubscriptionViewModel = {
+  id: string | null;
+  planKey: SubscriptionPlanKey;
+  planLabel: string;
+  priceLabel: string;
+  billingLabel: string;
+  status: SubscriptionStatusKey;
+  statusLabel: string;
+  servingCount: number;
+  servingLabel: string;
+  startDateLabel: string;
+  nextBillingLabel: string;
+  shippingAddressLabel: string;
+  shippingAddressMissing: boolean;
+  pausedUntilLabel: string | null;
+  skippableWeeklyBoxId: string | null;
+  isPreview: boolean;
+};
+
+const DEFAULT_PREVIEW_PLAN: SubscriptionPlanKey = "monthly";
+const DEFAULT_PREVIEW_SERVINGS = 2;
+const PLAN_OPTIONS = [
+  {
+    key: "weekly" as const,
+    title: "Mingguan",
+    priceLabel: "Rp 350.000",
+    billingLabel: "/minggu",
+  },
+  {
+    key: "monthly" as const,
+    title: "Bulanan",
+    priceLabel: "Rp 1.200.000",
+    billingLabel: "/bulan",
+  },
+  {
+    key: "yearly" as const,
+    title: "Tahunan",
+    priceLabel: "Rp 12.000.000",
+    billingLabel: "/tahun",
+  },
+];
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   day: "numeric",
@@ -202,12 +243,16 @@ function unwrapSubscriptionPayload(payload: unknown) {
 }
 
 function extractAddressLabel(record: Record<string, unknown>) {
+  const nestedAddresses = getNestedValue(record, ["user", "addresses"]);
+  const defaultAddressFromList =
+    Array.isArray(nestedAddresses) && nestedAddresses.length > 0 ? nestedAddresses[0] : null;
   const addressCandidates = [
     record.shippingAddress,
     record.address,
     record.deliveryAddress,
     getNestedValue(record, ["user", "defaultAddress"]),
     getNestedValue(record, ["user", "address"]),
+    defaultAddressFromList,
   ];
 
   for (const candidate of addressCandidates) {
@@ -262,7 +307,11 @@ function extractSkippableWeeklyBoxId(record: Record<string, unknown>) {
     return directId;
   }
 
-  const weeklyBoxes = Array.isArray(record.weeklyBoxes) ? record.weeklyBoxes : [];
+  const weeklyBoxes = Array.isArray(record.weeklyBoxes)
+    ? record.weeklyBoxes
+    : Array.isArray(getNestedValue(record, ["user", "weeklyBoxes"]))
+      ? (getNestedValue(record, ["user", "weeklyBoxes"]) as unknown[])
+      : [];
 
   for (const weeklyBox of weeklyBoxes) {
     const weeklyBoxRecord = toRecord(weeklyBox);

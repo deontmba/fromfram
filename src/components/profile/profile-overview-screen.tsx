@@ -1,35 +1,87 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { profileMockData } from "@/components/profile/mock-data";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
 import {
-  BellIcon,
-  BoxIcon,
-  CalendarIcon,
-  Field,
-  HeartIcon,
-  HeartPulseIcon,
-  HelpCircleIcon,
-  IconActionButton,
-  MailIcon,
-  MapPinIcon,
-  PencilIcon,
-  PhoneIcon,
-  ProfilePageShell,
-  ProfileRow,
-  SectionHeading,
-  ShieldIcon,
-  StatItem,
-  SurfaceCard,
-  UserIcon,
-  inputClassName,
-} from "@/components/profile/profile-ui";
+  profileMockData,
+  type ProfileDetails,
+} from "@/components/profile/mock-data";
+
+type ProfileResponse = {
+  user?: {
+    name?: string;
+    email?: string;
+    createdAt?: string;
+  };
+  data?: {
+    name?: string;
+    email?: string;
+    createdAt?: string;
+  };
+  error?: string;
+  message?: string;
+};
+
+type StatusMessage =
+  | {
+      tone: "success" | "error";
+      text: string;
+    }
+  | null;
+
+const inputClassName =
+  "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
+const panelClassName =
+  "rounded-[18px] border border-black/5 bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.05)]";
 
 export function ProfileOverviewScreen() {
-  const [profile, setProfile] = useState(profileMockData);
-  const [draft, setDraft] = useState(profileMockData);
+  const router = useRouter();
+  const [profile, setProfile] = useState<ProfileDetails>(profileMockData);
+  const [draft, setDraft] = useState<ProfileDetails>(profileMockData);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<StatusMessage>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profile", { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as ProfileResponse | null;
+        const user = data?.user ?? data?.data;
+
+        if (!response.ok || !isMounted || !user) {
+          return;
+        }
+
+        const mappedProfile = {
+          fullName: user.name ?? profileMockData.fullName,
+          email: user.email ?? profileMockData.email,
+          phoneNumber: profileMockData.phoneNumber,
+          memberLabel: "Active Member",
+          joinedAt: user.createdAt
+            ? `Joined ${new Intl.DateTimeFormat("en", {
+                month: "short",
+                year: "numeric",
+              }).format(new Date(user.createdAt))}`
+            : profileMockData.joinedAt,
+        };
+
+        setProfile(mappedProfile);
+        setDraft(mappedProfile);
+      } catch {
+        // Fallback ke data lokal jika request profil gagal.
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const openEditDialog = () => {
     setDraft(profile);
@@ -40,141 +92,275 @@ export function ProfileOverviewScreen() {
     setIsEditOpen(false);
   };
 
-  const handleSave = (event: FormEvent<HTMLFormElement>) => {
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setProfile(draft);
-    setMessage("Profile details saved locally.");
-    setIsEditOpen(false);
+    setIsSaving(true);
+    setMessage(null);
+
+    const nextProfile = {
+      ...profile,
+      fullName: draft.fullName.trim() || profile.fullName,
+      email: draft.email.trim() || profile.email,
+    };
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: draft.fullName,
+          email: draft.email,
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as ProfileResponse | null;
+      const user = data?.user ?? data?.data;
+
+      if (!response.ok) {
+        setMessage({
+          tone: "error",
+          text: data?.error ?? data?.message ?? "Gagal menyimpan profile.",
+        });
+        return;
+      }
+
+      const nextProfile = {
+        ...profile,
+        fullName: user?.name ?? draft.fullName,
+        email: user?.email ?? draft.email,
+      };
+      setProfile(nextProfile);
+      setDraft(nextProfile);
+      setMessage({
+        tone: "success",
+        text: "Profile berhasil diperbarui.",
+      });
+      setIsEditOpen(false);
+    } catch {
+      setProfile(nextProfile);
+      setDraft(nextProfile);
+      setMessage({
+        tone: "success",
+        text: "Backend belum tersedia. Perubahan disimpan sementara di halaman ini.",
+      });
+      setIsEditOpen(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      router.push("/");
+    }
   };
 
   return (
     <>
-      <ProfilePageShell
-        title="Profile"
-        backHref="/"
-        rightAction={
-          <IconActionButton label="Edit profile" onClick={openEditDialog}>
-            <PencilIcon className="size-5" />
-          </IconActionButton>
-        }
-      >
-        <div className="space-y-6">
-          <SurfaceCard className="relative overflow-visible px-6 pb-6 pt-24 md:pt-28 text-center">
-            <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[56%]">
-              <div className="relative flex size-28 items-center justify-center rounded-full border-4 border-white bg-emerald-50 shadow-[0_18px_40px_rgba(16,185,129,0.18)]">
-                <div className="flex size-22 items-center justify-center rounded-full bg-gradient-to-br from-emerald-200 to-emerald-100 text-3xl font-semibold text-emerald-700">
-                  AR
+      <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]"
+        />
+
+        <section className="relative mx-auto w-full max-w-[880px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50"
+            >
+              Kembali
+            </Link>
+            <button
+              type="button"
+              onClick={openEditDialog}
+              className="inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
+            >
+              Edit profile
+            </button>
+          </div>
+
+          <div className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-7 text-center shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#dff7ee] text-[1.8rem] font-bold text-[#109f78]">
+              {getInitials(profile.fullName)}
+            </div>
+            <h1 className="mt-4 text-[1.9rem] font-bold tracking-[-0.02em] text-neutral-900">
+              {profile.fullName}
+            </h1>
+            <div className="mt-3 inline-flex rounded-full bg-[#dff7ee] px-4 py-1 text-sm font-semibold text-[#109f78]">
+              {profile.memberLabel}
+            </div>
+            <p className="mt-3 text-[0.98rem] text-neutral-500">{profile.joinedAt}</p>
+
+            <div className="mt-7 grid gap-3 border-t border-neutral-200 pt-5 sm:grid-cols-3">
+              <div>
+                <p className="text-[1.35rem] font-bold text-neutral-900">24</p>
+                <p className="text-sm text-neutral-500">Boxes received</p>
+              </div>
+              <div>
+                <p className="text-[1.35rem] font-bold text-neutral-900">Weekly</p>
+                <p className="text-sm text-neutral-500">Active plan</p>
+              </div>
+              <div>
+                <p className="text-[1.35rem] font-bold text-neutral-900">12</p>
+                <p className="text-sm text-neutral-500">Favorite meals</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <div className={panelClassName}>
+              <p className="text-sm font-semibold text-[#11af82]">Profile</p>
+              <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
+                Main profile
+              </h2>
+
+              <div className="mt-5 space-y-3">
+                <button
+                  type="button"
+                  onClick={openEditDialog}
+                  className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 text-left transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">
+                      Edit profile details
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      Update nama dan email akun
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </button>
+
+                <Link
+                  href="/profile/health"
+                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">Profil kesehatan</p>
+                    <p className="mt-1 text-sm text-neutral-500">Goals, BMI, alergi</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </Link>
+
+                <Link
+                  href="/profile/address"
+                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">Kelola alamat</p>
+                    <p className="mt-1 text-sm text-neutral-500">Tambah, ubah, pilih utama</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </Link>
+              </div>
+
+              <div className="mt-5 space-y-3 border-t border-neutral-200 pt-5">
+                <div className="rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4">
+                  <p className="text-sm font-semibold text-neutral-500">Email</p>
+                  <p className="mt-1 text-[1rem] text-neutral-900">{profile.email}</p>
                 </div>
-                <span className="absolute bottom-2 right-2 size-4 rounded-full border-2 border-white bg-emerald-500" />
+                <div className="rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4">
+                  <p className="text-sm font-semibold text-neutral-500">Phone number</p>
+                  <p className="mt-1 text-[1rem] text-neutral-900">{profile.phoneNumber}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 min-h-6">
+                {message ? (
+                  <p
+                    className={`text-sm font-medium ${
+                      message.tone === "error" ? "text-red-500" : "text-[#11af82]"
+                    }`}
+                  >
+                    {message.text}
+                  </p>
+                ) : null}
               </div>
             </div>
 
-            <div className="mx-auto mt-2 max-w-xl md:mt-3">
-              <h2 className="text-[1.9rem] font-semibold text-zinc-900">{profile.fullName}</h2>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                  {profile.memberLabel}
-                </span>
+            <div className={panelClassName}>
+              <p className="text-sm font-semibold text-[#11af82]">Settings</p>
+              <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
+                Account settings
+              </h2>
+
+              <div className="mt-5 space-y-3">
+                <Link
+                  href="/profile/notifications"
+                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">Notifications</p>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      Atur pengingat dan update akun
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </Link>
+
+                <Link
+                  href="/profile/security"
+                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">
+                      Privacy & security
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-500">Kelola keamanan akun</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </Link>
+
+                <Link
+                  href="/profile/help"
+                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                >
+                  <div>
+                    <p className="text-[1rem] font-semibold text-neutral-900">Help & support</p>
+                    <p className="mt-1 text-sm text-neutral-500">Butuh bantuan lebih lanjut</p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                </Link>
               </div>
-              <p className="mt-3 text-sm text-zinc-400">{profile.joinedAt}</p>
             </div>
-
-            <div className="mt-8 grid grid-cols-3 gap-4 border-t border-zinc-100 pt-6">
-              <StatItem icon={<BoxIcon className="size-5" />} value="24" label="Boxes Rcvd" />
-              <StatItem icon={<CalendarIcon className="size-5" />} value="Weekly" label="Active Plan" />
-              <StatItem icon={<HeartIcon className="size-5" />} value="12" label="Fav Meals" />
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <SectionHeading eyebrow="Akun" title="Main profile" />
-            <div className="mt-4 space-y-1">
-              <ProfileRow
-                icon={<UserIcon className="size-4" />}
-                title="Edit profile details"
-                subtitle="Update nama, email, dan nomor telepon"
-                onClick={openEditDialog}
-              />
-              <ProfileRow
-                icon={<HeartPulseIcon className="size-4" />}
-                title="Profil Kesehatan"
-                subtitle="Goals, BMI, alergi"
-                href="/profile/health"
-              />
-              <ProfileRow
-                icon={<MapPinIcon className="size-4" />}
-                title="Kelola Alamat"
-                subtitle="Tambah, ubah, pilih utama"
-                href="/profile/address"
-              />
-
-              <div className="my-2 border-t border-zinc-100" />
-
-              <ProfileRow
-                icon={<MailIcon className="size-4" />}
-                title="Email"
-                subtitle={profile.email}
-              />
-              <ProfileRow
-                icon={<PhoneIcon className="size-4" />}
-                title="Phone Number"
-                subtitle={profile.phoneNumber}
-              />
-            </div>
-            <p className="mt-3 min-h-6 text-sm text-emerald-600">{message}</p>
-          </SurfaceCard>
-
-          <SurfaceCard>
-            <SectionHeading eyebrow="Pengaturan" title="Settings" />
-            <div className="mt-4 space-y-1">
-              <ProfileRow
-                icon={<BellIcon className="size-4" />}
-                title="Notifications"
-                subtitle="Atur pengingat dan update akun"
-              />
-              <ProfileRow
-                icon={<ShieldIcon className="size-4" />}
-                title="Privacy & Security"
-                subtitle="Kelola keamanan akun"
-              />
-              <ProfileRow
-                icon={<HelpCircleIcon className="size-4" />}
-                title="Help & Support"
-                subtitle="Butuh bantuan lebih lanjut"
-              />
-            </div>
-          </SurfaceCard>
+          </div>
 
           <button
             type="button"
-            className="flex w-full items-center justify-center rounded-2xl bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-500 transition hover:bg-rose-100"
+            onClick={handleLogout}
+            className="mt-5 h-14 w-full rounded-2xl bg-[#fff1f2] text-[1rem] font-semibold text-[#e11d48] transition hover:bg-[#ffe4e8]"
           >
-            Log Out
+            Log out
           </button>
-        </div>
-      </ProfilePageShell>
+        </section>
+      </main>
 
       {isEditOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-6 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-400">
-                  Akun
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-zinc-900">Edit profile details</h3>
+                <p className="text-sm font-semibold text-[#11af82]">Profile</p>
+                <h3 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
+                  Edit profile details
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={closeEditDialog}
-                className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50"
+                className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
               >
-                Close
+                Tutup
               </button>
             </div>
 
             <form className="mt-6 space-y-4" onSubmit={handleSave}>
-              <Field label="Full name">
+              <label className="block">
+                <span className="block text-[1rem] font-semibold text-neutral-800">
+                  Full name
+                </span>
                 <input
                   className={inputClassName}
                   value={draft.fullName}
@@ -185,9 +371,10 @@ export function ProfileOverviewScreen() {
                     }))
                   }
                 />
-              </Field>
+              </label>
 
-              <Field label="Email">
+              <label className="block">
+                <span className="block text-[1rem] font-semibold text-neutral-800">Email</span>
                 <input
                   type="email"
                   className={inputClassName}
@@ -199,33 +386,36 @@ export function ProfileOverviewScreen() {
                     }))
                   }
                 />
-              </Field>
+              </label>
 
-              <Field label="Phone number">
-                <input
-                  className={inputClassName}
-                  value={draft.phoneNumber}
-                  onChange={(event) =>
-                    setDraft((currentDraft) => ({
-                      ...currentDraft,
-                      phoneNumber: event.target.value,
-                    }))
-                  }
-                />
-              </Field>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
-                >
-                  Save changes
-                </button>
+              <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-4">
+                <p className="text-[1rem] font-semibold text-neutral-800">Phone number</p>
+                <p className="mt-2 text-sm text-neutral-500">
+                  Nomor telepon belum disimpan di backend saat ini.
+                </p>
               </div>
+
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="h-14 w-full rounded-2xl bg-[#1abb89] text-[1.05rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] disabled:opacity-60"
+              >
+                {isSaving ? "Menyimpan..." : "Save changes"}
+              </button>
             </form>
           </div>
         </div>
       ) : null}
     </>
   );
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+
+  if (parts.length === 0) {
+    return "FF";
+  }
+
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
 }

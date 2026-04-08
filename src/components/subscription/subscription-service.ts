@@ -1,9 +1,21 @@
-import {
-  ApiActionResponse,
-  ApiRequestErrorPayload,
-} from "@/components/subscription/subscription-types";
-
 const SUBSCRIPTION_BASE_PATH = "/api/subscriptions/me";
+const SUBSCRIPTION_COLLECTION_PATH = "/api/subscriptions";
+
+type ApiActionResponse = {
+  message?: string;
+  error?: string;
+  note?: string;
+  subscription?: unknown;
+  resumeDate?: string;
+  [key: string]: unknown;
+};
+
+type ApiRequestErrorPayload = {
+  error?: string;
+  message?: string;
+  note?: string;
+  [key: string]: unknown;
+};
 
 class ApiRequestError extends Error {
   status: number;
@@ -70,12 +82,33 @@ export async function getMySubscription(signal?: AbortSignal) {
   });
 }
 
+export async function createMySubscription(payload: {
+  mealCategory: "basic" | "fitness" | "diet";
+  planType: "MINGGUAN" | "BULANAN" | "TAHUNAN";
+  servings: number;
+}) {
+  return requestJson<unknown>(SUBSCRIPTION_COLLECTION_PATH, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function pauseMySubscription(weeks: number) {
   return requestJson<ApiActionResponse>(`${SUBSCRIPTION_BASE_PATH}/pause`, {
     method: "PATCH",
     body: JSON.stringify({
       resumeDate: buildResumeDate(weeks),
     }),
+  });
+}
+
+export async function updateMySubscription(payload: {
+  planType: "MINGGUAN" | "BULANAN" | "TAHUNAN";
+  servings: number;
+}) {
+  return requestJson<ApiActionResponse>(SUBSCRIPTION_BASE_PATH, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }
 
