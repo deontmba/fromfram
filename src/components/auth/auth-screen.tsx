@@ -126,7 +126,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         return;
       }
 
-      router.push(isSignup ? "/login" : "/dashboard");
+      router.push(isSignup ? "/login" : "/");
     } catch {
       setGlobalError("Network error, please try again.");
     } finally {
