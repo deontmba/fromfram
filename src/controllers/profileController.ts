@@ -62,11 +62,11 @@ export const getProfile = async (req: NextRequest, userId: string) => {
       select: profileSelect,
     });
 
-    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
-    return NextResponse.json({ status: "success", data: user });
+    if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    return NextResponse.json({ status: 'success', data: user });
   } catch (error) {
     console.error('[PROFILE GET ERROR]', error);
-    return NextResponse.json({ message: "Error fetching profile" }, { status: 500 });
+    return NextResponse.json({ message: 'Error fetching profile' }, { status: 500 });
   }
 };
 
@@ -126,10 +126,10 @@ export const updateProfile = async (req: NextRequest, userId: string) => {
       data: updateData,
       select: profileSelect,
     });
-    return NextResponse.json({ status: "success", data: updated });
+    return NextResponse.json({ status: 'success', data: updated });
   } catch (error) {
     console.error('[PROFILE UPDATE ERROR]', error);
-    return NextResponse.json({ message: "Error updating profile" }, { status: 500 });
+    return NextResponse.json({ message: 'Error updating profile' }, { status: 500 });
   }
 };
 
@@ -188,10 +188,10 @@ export const manageAddress = {
         });
       }
 
-      return NextResponse.json({ status: "success", data: address });
+      return NextResponse.json({ status: 'success', data: address });
     } catch (error) {
       console.error('[ADDRESS ADD ERROR]', error);
-      return NextResponse.json({ message: "Gagal menambah alamat" }, { status: 500 });
+      return NextResponse.json({ message: 'Gagal menambah alamat' }, { status: 500 });
     }
   },
 
@@ -248,10 +248,10 @@ export const manageAddress = {
         });
       }
 
-      return NextResponse.json({ status: "success", data: updated });
+      return NextResponse.json({ status: 'success', data: updated });
     } catch (error) {
       console.error('[ADDRESS UPDATE ERROR]', error);
-      return NextResponse.json({ message: "Gagal update alamat" }, { status: 500 });
+      return NextResponse.json({ message: 'Gagal update alamat' }, { status: 500 });
     }
   },
 
@@ -267,24 +267,74 @@ export const manageAddress = {
       }
 
       const [, updatedAddress] = await prisma.$transaction([
-        prisma.address.updateMany({ 
-          where: { userId }, 
-          data: { isDefault: false } 
+        prisma.address.updateMany({
+          where: { userId },
+          data: { isDefault: false },
         }),
-        prisma.address.update({ 
-          where: { id: addressId }, 
+        prisma.address.update({
+          where: { id: addressId },
           data: { isDefault: true },
           select: addressSelect,
-        })
+        }),
       ]);
+
       return NextResponse.json({
-        status: "success",
-        message: "Alamat utama diperbarui",
+        status: 'success',
+        message: 'Alamat utama diperbarui',
         data: updatedAddress,
       });
     } catch (error) {
       console.error('[ADDRESS DEFAULT ERROR]', error);
-      return NextResponse.json({ message: "Gagal set alamat utama" }, { status: 500 });
+      return NextResponse.json({ message: 'Gagal set alamat utama' }, { status: 500 });
     }
-  }
+  },
+
+  /**
+   * DELETE /api/profile/address?id={addressId}
+   * Menghapus alamat pengiriman milik user.
+   * Jika alamat yang dihapus adalah default dan masih ada alamat lain,
+   * otomatis set alamat pertama (label asc) sebagai default baru.
+   */
+  delete: async (req: NextRequest, userId: string, addressId: string) => {
+    try {
+      // Cek alamat milik user yang bersangkutan
+      const existing = await prisma.address.findFirst({
+        where: { id: addressId, userId },
+        select: { id: true, isDefault: true },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ message: 'Alamat tidak ditemukan' }, { status: 404 });
+      }
+
+      const wasDefault = existing.isDefault;
+
+      // Hapus alamat
+      await prisma.address.delete({ where: { id: addressId } });
+
+      // Jika yang dihapus adalah default, otomatis assign default ke alamat berikutnya
+      if (wasDefault) {
+        const nextAddress = await prisma.address.findFirst({
+          where: { userId },
+          orderBy: { label: 'asc' },
+          select: { id: true },
+        });
+
+        if (nextAddress) {
+          await prisma.address.update({
+            where: { id: nextAddress.id },
+            data: { isDefault: true },
+          });
+        }
+      }
+
+      return NextResponse.json({
+        status: 'success',
+        message: 'Alamat berhasil dihapus',
+      });
+    } catch (error) {
+      console.error('[ADDRESS DELETE ERROR]', error);
+      return NextResponse.json({ message: 'Gagal menghapus alamat' }, { status: 500 });
+    }
+  },
 };
