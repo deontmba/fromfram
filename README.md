@@ -20,6 +20,36 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database seed
+
+Seed dummy data tersedia di `prisma/seed.js`.
+
+### Menjalankan seed
+
+Pastikan `.env` sudah memiliki `DATABASE_URL`, lalu jalankan:
+
+```bash
+npm run seed
+```
+
+Perintah di atas akan membersihkan data lama lalu mengisi ulang data dummy dengan relasi yang saling terhubung.
+
+### Akun dummy
+
+Semua akun dummy memakai password:
+
+```text
+Password123!
+```
+
+Daftar akun:
+
+- `admin@fromfram.test` — Admin
+- `sari@fromfram.test` — Nutritionist
+- `budi@fromfram.test` — Customer bulking
+- `rina@fromfram.test` — Customer penurunan berat badan
+- `doni@fromfram.test` — Customer maintain
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

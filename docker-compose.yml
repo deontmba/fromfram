@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: fromfram_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: fromfram
+      POSTGRES_PASSWORD: fromfram
+      POSTGRES_DB: fromfram
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+ 
+volumes:
+  pgdata:
+ 
