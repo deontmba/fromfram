@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 type MealPlan = {
@@ -213,12 +214,12 @@ export function SelectPlanScreen() {
             Kembali
           </button>
 
-          <button
-            type="button"
+          <Link
+            href="/subscription/delivery-address"
             className="rounded-2xl bg-[#1db788] px-8 py-2.5 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
           >
             Lanjutkan
-          </button>
+          </Link>
         </footer>
       </section>
     </main>
