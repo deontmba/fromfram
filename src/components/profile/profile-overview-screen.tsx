@@ -230,7 +230,7 @@ export function ProfileOverviewScreen() {
                       Update nama dan email akun
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </button>
 
                 <Link
@@ -241,7 +241,7 @@ export function ProfileOverviewScreen() {
                     <p className="text-[1rem] font-semibold text-neutral-900">Profil kesehatan</p>
                     <p className="mt-1 text-sm text-neutral-500">Goals, BMI, alergi</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </Link>
 
                 <Link
@@ -252,7 +252,7 @@ export function ProfileOverviewScreen() {
                     <p className="text-[1rem] font-semibold text-neutral-900">Kelola alamat</p>
                     <p className="mt-1 text-sm text-neutral-500">Tambah, ubah, pilih utama</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </Link>
               </div>
 
@@ -297,7 +297,7 @@ export function ProfileOverviewScreen() {
                       Atur pengingat dan update akun
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </Link>
 
                 <Link
@@ -310,7 +310,7 @@ export function ProfileOverviewScreen() {
                     </p>
                     <p className="mt-1 text-sm text-neutral-500">Kelola keamanan akun</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </Link>
 
                 <Link
@@ -321,7 +321,7 @@ export function ProfileOverviewScreen() {
                     <p className="text-[1rem] font-semibold text-neutral-900">Help & support</p>
                     <p className="mt-1 text-sm text-neutral-500">Butuh bantuan lebih lanjut</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]">Buka</span>
+                  <span className="text-sm font-semibold text-[#11af82]"></span>
                 </Link>
               </div>
             </div>
