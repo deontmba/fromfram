@@ -123,25 +123,25 @@ const footerGroups = [
   {
     title: "Produk",
     links: [
-      { href: "#features", label: "Menu" },
-      { href: "/register", label: "Harga" },
-      { href: "#features", label: "Kategori" },
+      { label: "Menu" },
+      { label: "Harga" },
+      { label: "Kategori" },
     ],
   },
   {
     title: "Perusahaan",
     links: [
-      { href: "#hero", label: "Tentang Kami" },
-      { href: "#testimonials", label: "Blog" },
-      { href: "/register", label: "Karir" },
+      { label: "Tentang Kami" },
+      { label: "Blog" },
+      { label: "Karir" },
     ],
   },
   {
     title: "Bantuan",
     links: [
-      { href: "#how-it-works", label: "FAQ" },
-      { href: "/login", label: "Kontak" },
-      { href: "/register", label: "Syarat & Ketentuan" },
+      { label: "FAQ" },
+      { label: "Kontak" },
+      { label: "Syarat & Ketentuan" },
     ],
   },
 ];
@@ -399,7 +399,7 @@ export default function Home() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register"
+              href="/subscription/select-plan"
               className="inline-flex min-w-[240px] items-center justify-center rounded-[1.2rem] bg-[#1abb89] px-8 py-4 text-lg font-semibold text-white shadow-[0_12px_24px_rgba(18,168,123,0.24)] transition hover:-translate-y-0.5 hover:bg-[#15a97b]"
             >
               Mulai Berlangganan
@@ -542,7 +542,7 @@ export default function Home() {
           </p>
           <div className="mt-10">
             <Link
-              href="/register"
+              href="/subscription/select-plan"
               className="inline-flex items-center justify-center rounded-[1.2rem] bg-white px-8 py-4 text-lg font-semibold text-[#14ae86] shadow-[0_12px_24px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 hover:bg-[#f7fffb]"
             >
               Daftar Sekarang - Gratis 7 Hari
@@ -567,13 +567,12 @@ export default function Home() {
               </h3>
               <div className="mt-5 space-y-3">
                 {group.links.map((link) => (
-                  <Link
+                  <span
                     key={link.label}
-                    href={link.href}
                     className="block text-lg text-neutral-500 transition hover:text-[#13a981]"
                   >
                     {link.label}
-                  </Link>
+                  </span>
                 ))}
               </div>
             </div>
