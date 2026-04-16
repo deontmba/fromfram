@@ -22,17 +22,31 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
  *   "data": [{ "weeklyMenuId": "...", "recipe": { ... } }]
  * }
  */
+
+// Define the runtime shape of your parameters
+type DynamicRouteParams = {
+  weekStart: string; // The dynamic segment for the week start date
+};
+
+// Define the RouteContext as the build system expects it (with Promise in params)
+interface RouteContext {
+  params: Promise<DynamicRouteParams>; // <--- Crucial change here
+}
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: { weekStart: string } }
+  context: RouteContext // <--- Change argument name and type here
 ) {
+  // Await context.params to satisfy the TypeScript compiler and correctly access params
+  const { weekStart: weekStartParam } = await context.params; // <--- FIX: Add 'await' and destructure from context.params, renamed to avoid clash with local 'weekStart' variable
+
   const session = await getSessionUserId(req);
   if ('error' in session) {
     return getAuthErrorResponse(session.error);
   }
 
   try {
-    const weekStart = new Date(params.weekStart);
+    const weekStart = new Date(weekStartParam); // <--- FIX: Use weekStartParam here
     if (isNaN(weekStart.getTime())) {
       return NextResponse.json(
         { error: 'Invalid weekStart format. Use YYYY-MM-DD.' },
@@ -40,6 +54,9 @@ export async function GET(
       );
     }
 
+    // You might also want to filter by userId if the weekly menu is user-specific
+    // For a general menu, it might not need userId, depends on your business logic.
+    // If it's general for *all* users, remove the userId filter if it was there.
     const weeklyMenus = await prisma.weeklyMenu.findMany({
       where: { weekStartDate: weekStart },
       include: {

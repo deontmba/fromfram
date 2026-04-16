@@ -17,10 +17,24 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
  * Auth       : Cookie `token`
  * Params     : id — ID dari WeeklyBox
  */
+
+// Define the runtime shape of your parameters
+type DynamicRouteParams = {
+  id: string; // The dynamic segment for the weekly box ID
+};
+
+// Define the RouteContext as the build system expects it (with Promise in params)
+interface RouteContext {
+  params: Promise<DynamicRouteParams>; // <--- Crucial change here
+}
+
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteContext // <--- Change argument name and type here
 ) {
+  // Await context.params to satisfy the TypeScript compiler and correctly access params
+  const { id } = await context.params; // <--- FIX: Add 'await' here and destructure from context.params
+
   const session = await getSessionUserId(req);
   if ('error' in session) {
     return getAuthErrorResponse(session.error);
@@ -28,7 +42,7 @@ export async function PATCH(
 
   try {
     const box = await prisma.weeklyBox.findUnique({
-      where: { id: params.id },
+      where: { id: id }, // <--- FIX: Use the 'id' variable
     });
 
     if (!box) {
@@ -47,7 +61,7 @@ export async function PATCH(
     }
 
     const updatedBox = await prisma.weeklyBox.update({
-      where: { id: params.id },
+      where: { id: id }, // <--- FIX: Use the 'id' variable
       data: { status: 'SKIPPED' },
     });
 

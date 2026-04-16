@@ -9,17 +9,24 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-interface RouteContext { // Changed to RouteContext for clarity
-  params: {
-    weeklyBoxId: string;
-  };
+// Define the runtime shape of your parameters
+type DynamicRouteParams = {
+  weeklyBoxId: string;
+};
+
+// Define the RouteContext as the build system expects it (with Promise in params)
+// This is the workaround for the specific type error you're getting.
+interface RouteContext {
+  params: Promise<DynamicRouteParams>; // <--- Crucial change here
 }
 
 export async function GET(
   req: NextRequest,
-  context: RouteContext // Using the new interface
+  context: RouteContext
 ) {
-  const { weeklyBoxId } = context.params; // Correctly extracted weeklyBoxId
+  // Await context.params to satisfy the TypeScript compiler and correctly access params
+  const { weeklyBoxId } = await context.params; // <--- FIX: Add 'await' here
+  
   const session = await getSessionUserId(req);
   if ('error' in session) {
     return getAuthErrorResponse(session.error);
@@ -27,7 +34,7 @@ export async function GET(
 
   try {
     const box = await prisma.weeklyBox.findUnique({
-      where: { id: weeklyBoxId }, // <--- FIX: Use weeklyBoxId
+      where: { id: weeklyBoxId },
     });
 
     if (!box) {
@@ -45,7 +52,7 @@ export async function GET(
     }
 
     const selections = await prisma.mealSelection.findMany({
-      where: { weeklyBoxId: weeklyBoxId }, // <--- FIX: Use weeklyBoxId
+      where: { weeklyBoxId: weeklyBoxId },
       include: {
         recipe: {
           select: {
@@ -75,7 +82,7 @@ export async function GET(
     });
 
     return NextResponse.json({
-      weeklyBoxId: weeklyBoxId, // <--- FIX: Use weeklyBoxId
+      weeklyBoxId: weeklyBoxId,
       weekStartDate: box.weekStartDate,
       status: box.status,
       selectionDeadline: box.selectionDeadline,
