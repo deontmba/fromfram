@@ -9,18 +9,17 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-/**
- * API Documentation
- * Endpoint   : GET /api/v1/meal-selections/:weeklyBoxId
- * Deskripsi  : Mengambil pilihan menu yang sudah disimpan untuk suatu WeeklyBox.
- * Method     : GET
- * Auth       : Cookie `token`
- * Params     : weeklyBoxId — ID dari WeeklyBox
- */
+interface RouteContext { // Changed to RouteContext for clarity
+  params: {
+    weeklyBoxId: string;
+  };
+}
+
 export async function GET(
   req: NextRequest,
-  { params }: { params: { weeklyBoxId: string } }
+  context: RouteContext // Using the new interface
 ) {
+  const { weeklyBoxId } = context.params; // Correctly extracted weeklyBoxId
   const session = await getSessionUserId(req);
   if ('error' in session) {
     return getAuthErrorResponse(session.error);
@@ -28,7 +27,7 @@ export async function GET(
 
   try {
     const box = await prisma.weeklyBox.findUnique({
-      where: { id: params.weeklyBoxId },
+      where: { id: weeklyBoxId }, // <--- FIX: Use weeklyBoxId
     });
 
     if (!box) {
@@ -46,7 +45,7 @@ export async function GET(
     }
 
     const selections = await prisma.mealSelection.findMany({
-      where: { weeklyBoxId: params.weeklyBoxId },
+      where: { weeklyBoxId: weeklyBoxId }, // <--- FIX: Use weeklyBoxId
       include: {
         recipe: {
           select: {
@@ -76,7 +75,7 @@ export async function GET(
     });
 
     return NextResponse.json({
-      weeklyBoxId: params.weeklyBoxId,
+      weeklyBoxId: weeklyBoxId, // <--- FIX: Use weeklyBoxId
       weekStartDate: box.weekStartDate,
       status: box.status,
       selectionDeadline: box.selectionDeadline,
