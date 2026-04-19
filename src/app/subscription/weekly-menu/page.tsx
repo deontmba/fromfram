@@ -150,10 +150,15 @@ export default function WeeklyMenuPage() {
   }, [activeDay]);
 
   const handleContinue = useCallback(async () => {
-    if (!canContinue) return;
+  if (!canContinue) return;
 
-    // POST meal selections ke API
-    try {
+  // POST meal selections ke API
+  try {
+    /* TEMPORARY DEMO WORKAROUND:
+      Skip saving meal selections for now because
+      POST /api/subscriptions/weekly-menu can fail when
+      no matching PENDING_SELECTION WeeklyBox exists.
+
       const mealSelections = daysOfWeek
         .map(({ key }) => ({
           day: key,
@@ -172,14 +177,15 @@ export default function WeeklyMenuPage() {
 
       if (!response.ok) {
         throw new Error("Failed to save meal selections");
-      }
+      } 
+    */
 
       // Redirect ke payment
-      window.location.href = "/subscription/payment";
-    } catch (err) {
-      console.error("[save meal selections error]", err);
-      setError(err instanceof Error ? err.message : "Failed to save selections");
-    }
+    window.location.href = "/subscription/payment"; 
+  } catch (err) {
+    console.error("[save meal selections error]", err); 
+    setError(err instanceof Error ? err.message : "Failed to save selections"); 
+  }
   }, [canContinue, selectedByDay, weeklyMenu]);
 
   if (isLoading) {
