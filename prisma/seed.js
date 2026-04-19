@@ -11,12 +11,12 @@ const prisma = new PrismaClient({
 });
 
 const COMMON_PASSWORD = "Password123!";
-const WEEK_START = new Date("2026-04-06T00:00:00.000Z");
-const WEEK_END = new Date("2026-04-12T23:59:59.999Z");
-const SELECTION_DEADLINE = new Date("2026-04-05T18:00:00.000Z");
-const DELIVERY_SLOT = new Date("2026-04-07T07:30:00.000Z");
-const DELIVERY_COMPLETED = new Date("2026-04-07T08:45:00.000Z");
-const DELIVERY_SHIPPED = new Date("2026-04-06T21:00:00.000Z");
+const WEEK_START = new Date("2026-04-21T00:00:00.000Z");
+const WEEK_END   = new Date("2026-04-27T23:59:59.999Z");
+const SELECTION_DEADLINE = new Date("2026-04-20T18:00:00.000Z");
+const DELIVERY_SLOT      = new Date("2026-04-22T07:30:00.000Z");
+const DELIVERY_COMPLETED = new Date("2026-04-22T08:45:00.000Z");
+const DELIVERY_SHIPPED   = new Date("2026-04-21T21:00:00.000Z");
 
 const goalSeeds = [
   {

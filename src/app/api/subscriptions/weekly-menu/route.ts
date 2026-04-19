@@ -14,22 +14,6 @@ const DAYS_OF_WEEK = [
 
 type DayKey = (typeof DAYS_OF_WEEK)[number];
 
-/**
- * Returns the Monday of NEXT week (relative to now, Jakarta time).
- * The frontend onboarding flow is selecting meals for the upcoming week.
- */
-function getNextMonday(): Date {
-  // Use Jakarta timezone offset (UTC+7)
-  const now = new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
-  );
-  const day = now.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const daysUntilNextMonday = day === 0 ? 1 : 8 - day;
-  const nextMonday = new Date(now);
-  nextMonday.setDate(now.getDate() + daysUntilNextMonday);
-  nextMonday.setHours(0, 0, 0, 0);
-  return nextMonday;
-}
 
 /**
  * GET /api/subscriptions/weekly-menu
@@ -62,8 +46,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const weekStart = getNextMonday();
+    // Find the most recent/upcoming weekStartDate in WeeklyMenu
+    const latestMenu = await prisma.weeklyMenu.findFirst({
+    orderBy: { weekStartDate: 'desc' },
+    select: { weekStartDate: true },
+    });
 
+    if (!latestMenu) {
+    return NextResponse.json({
+        weekStartDate: null,
+        weekEndDate: null,
+        menu: DAYS_OF_WEEK.map((day, idx) => ({ day, date: null, recipes: [] })),
+    });
+    }
+
+    const weekStart = latestMenu.weekStartDate;
+    
     // Fetch all recipes available for next week from WeeklyMenu table
     const weeklyMenus = await prisma.weeklyMenu.findMany({
       where: { weekStartDate: weekStart },
