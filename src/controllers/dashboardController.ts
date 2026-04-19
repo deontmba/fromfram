@@ -21,8 +21,15 @@ export const getDashboard = async (userId: string) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Ambil semua data secara paralel untuk efisiensi
-    const [user, subscription, currentWeeklyBox, todayDelivery, recentDeliveries] =
-      await Promise.all([
+    const [
+      user,
+      subscription,
+      currentWeeklyBox,
+      nextWeeklyBox,
+      latestWeeklyBox,
+      todayDelivery,
+      recentDeliveries,
+    ] = await Promise.all([
         // 1. Data user dasar
         prisma.user.findUnique({
           where: { id: userId },
@@ -72,6 +79,71 @@ export const getDashboard = async (userId: string) => {
             weekStartDate: { lte: today },
             weekEndDate: { gte: today },
           },
+          select: {
+            id: true,
+            weekStartDate: true,
+            weekEndDate: true,
+            selectionDeadline: true,
+            isAutoSelected: true,
+            status: true,
+            mealSelections: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    calories: true,
+                    protein: true,
+                    imageUrl: true,
+                  },
+                },
+              },
+              orderBy: { dayOfWeek: 'asc' },
+            },
+          },
+        }),
+
+        // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
+        prisma.weeklyBox.findFirst({
+          where: {
+            userId,
+            weekStartDate: { gt: today },
+          },
+          orderBy: { weekStartDate: 'asc' },
+          select: {
+            id: true,
+            weekStartDate: true,
+            weekEndDate: true,
+            selectionDeadline: true,
+            isAutoSelected: true,
+            status: true,
+            mealSelections: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    calories: true,
+                    protein: true,
+                    imageUrl: true,
+                  },
+                },
+              },
+              orderBy: { dayOfWeek: 'asc' },
+            },
+          },
+        }),
+
+        // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
+        prisma.weeklyBox.findFirst({
+          where: { userId },
+          orderBy: { weekStartDate: 'desc' },
           select: {
             id: true,
             weekStartDate: true,
@@ -165,16 +237,18 @@ export const getDashboard = async (userId: string) => {
     }
 
     // Hitung summary meal selections minggu ini
+    const selectedWeeklyBox = currentWeeklyBox ?? nextWeeklyBox ?? latestWeeklyBox ?? null;
+
     const totalDays = 7;
-    const selectedDays = currentWeeklyBox?.mealSelections?.length ?? 0;
+    const selectedDays = selectedWeeklyBox?.mealSelections?.length ?? 0;
     const remainingDays = Math.max(0, totalDays - selectedDays);
 
     // Cek apakah deadline pemilihan menu masih bisa dilakukan
-    const selectionDeadline = currentWeeklyBox?.selectionDeadline
-      ? new Date(currentWeeklyBox.selectionDeadline)
+    const selectionDeadline = selectedWeeklyBox?.selectionDeadline
+      ? new Date(selectedWeeklyBox.selectionDeadline)
       : null;
     const canSelectMenu =
-      currentWeeklyBox?.status === 'PENDING_SELECTION' &&
+      selectedWeeklyBox?.status === 'PENDING_SELECTION' &&
       selectionDeadline !== null &&
       selectionDeadline > new Date();
 
@@ -183,9 +257,9 @@ export const getDashboard = async (userId: string) => {
       data: {
         user,
         subscription,
-        weeklyBox: currentWeeklyBox
+        weeklyBox: selectedWeeklyBox
           ? {
-              ...currentWeeklyBox,
+              ...selectedWeeklyBox,
               summary: {
                 totalDays,
                 selectedDays,

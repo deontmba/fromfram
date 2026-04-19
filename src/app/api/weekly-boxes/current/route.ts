@@ -24,42 +24,82 @@ export async function GET(req: NextRequest) {
 
   try {
     const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
-    const currentBox = await prisma.weeklyBox.findFirst({
-      where: {
-        userId: session.userId,
-        weekStartDate: { lte: now },
-        weekEndDate: { gte: now },
-      },
-      include: {
-        mealSelections: {
-          include: {
-            recipe: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                calories: true,
-                protein: true,
-                servings: true,
-                imageUrl: true,
+    const [currentBoxResult, nextBoxResult] = await Promise.all([
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId: session.userId,
+          weekStartDate: { lte: now },
+          weekEndDate: { gte: now },
+        },
+        include: {
+          mealSelections: {
+            include: {
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  servings: true,
+                  imageUrl: true,
+                },
               },
             },
+            orderBy: { dayOfWeek: 'asc' },
           },
-          orderBy: { dayOfWeek: 'asc' },
-        },
-        deliveries: {
-          select: {
-            id: true,
-            deliveryDate: true,
-            status: true,
-            shippedAt: true,
-            deliveredAt: true,
+          deliveries: {
+            select: {
+              id: true,
+              deliveryDate: true,
+              status: true,
+              shippedAt: true,
+              deliveredAt: true,
+            },
+            orderBy: { deliveryDate: 'asc' },
           },
-          orderBy: { deliveryDate: 'asc' },
         },
-      },
-    });
+      }),
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId: session.userId,
+          weekStartDate: { gt: now },
+        },
+        orderBy: { weekStartDate: 'asc' },
+        include: {
+          mealSelections: {
+            include: {
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  servings: true,
+                  imageUrl: true,
+                },
+              },
+            },
+            orderBy: { dayOfWeek: 'asc' },
+          },
+          deliveries: {
+            select: {
+              id: true,
+              deliveryDate: true,
+              status: true,
+              shippedAt: true,
+              deliveredAt: true,
+            },
+            orderBy: { deliveryDate: 'asc' },
+          },
+        },
+      }),
+    ]);
+
+    const currentBox = currentBoxResult ?? nextBoxResult;
 
     if (!currentBox) {
       return NextResponse.json(

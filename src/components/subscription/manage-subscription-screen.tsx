@@ -15,7 +15,6 @@ import {
   pauseMySubscription,
   resumeMySubscription,
   skipWeeklyBox,
-  updateMySubscription,
 } from "@/components/subscription/subscription-service";
 
 const PAUSE_OPTIONS = [
@@ -116,11 +115,21 @@ export function ManageSubscriptionScreen() {
   }, []);
 
   const handlePlanChange = (planKey: typeof selectedPlan) => {
-    void handleSubscriptionUpdate(planKey, selectedServing);
+    setSelectedPlan(planKey);
+    setFeedback({
+      tone: "info",
+      message: "Update plan lewat API belum tersedia saat ini.",
+      note: "Gunakan flow select-plan untuk setup subscription baru.",
+    });
   };
 
   const handleServingChange = (serving: number) => {
-    void handleSubscriptionUpdate(selectedPlan, serving);
+    setSelectedServing(serving);
+    setFeedback({
+      tone: "info",
+      message: "Update serving lewat API belum tersedia saat ini.",
+      note: "Gunakan flow select-plan untuk setup subscription baru.",
+    });
   };
 
   const refreshAfterAction = async () => {
@@ -129,46 +138,6 @@ export function ManageSubscriptionScreen() {
     setSubscription(mappedSubscription);
     setSelectedPlan(mappedSubscription.planKey);
     setSelectedServing(mappedSubscription.servingCount);
-  };
-
-  const handleSubscriptionUpdate = async (
-    nextPlan: typeof selectedPlan,
-    nextServing: number,
-  ) => {
-    const previousPlan = selectedPlan;
-    const previousServing = selectedServing;
-
-    setPendingAction("update");
-    setSelectedPlan(nextPlan);
-    setSelectedServing(nextServing);
-    setFeedback(null);
-
-    try {
-      await updateMySubscription({
-        planType:
-          nextPlan === "weekly"
-            ? "MINGGUAN"
-            : nextPlan === "monthly"
-              ? "BULANAN"
-              : "TAHUNAN",
-        servings: nextServing,
-      });
-
-      await refreshAfterAction();
-      setFeedback({
-        tone: "success",
-        message: "Plan dan serving berhasil diperbarui.",
-      });
-    } catch (error) {
-      setSelectedPlan(previousPlan);
-      setSelectedServing(previousServing);
-      setFeedback({
-        tone: "error",
-        message: getErrorMessage(error),
-      });
-    } finally {
-      setPendingAction(null);
-    }
   };
 
   const handleSkip = async () => {
@@ -269,7 +238,7 @@ export function ManageSubscriptionScreen() {
     }
   };
 
-  const disableUpdate = subscription.isPreview || pendingAction === "update";
+  const disableUpdate = true;
   const disableActions = subscription.isPreview || pendingAction !== null;
 
   return (
@@ -328,7 +297,7 @@ export function ManageSubscriptionScreen() {
                 Change plan
               </h2>
               <p className="mt-2 text-[1rem] text-neutral-500">
-                Pilih plan baru. Saat dipilih, perubahan langsung dikirim ke backend subscription.
+                Endpoint update plan belum tersedia saat ini pada API existing.
               </p>
 
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -376,7 +345,7 @@ export function ManageSubscriptionScreen() {
                 Serving size
               </h2>
               <p className="mt-2 text-[1rem] text-neutral-500">
-                Serving size tersimpan ke subscription aktif saat dipilih.
+                Endpoint update serving belum tersedia saat ini pada API existing.
               </p>
 
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

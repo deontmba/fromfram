@@ -2,7 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+  ensureMySubscription,
+  type ApiPlanType,
+} from "@/components/subscription/subscription-service";
 
 type MealPlan = {
   id: "basic" | "fitness" | "diet";
@@ -83,8 +88,64 @@ function CheckIcon() {
 }
 
 export function SelectPlanScreen() {
+  const router = useRouter();
   const [selectedMeal, setSelectedMeal] = useState<MealPlan["id"]>("basic");
   const [selectedDuration, setSelectedDuration] = useState<DurationPlan["id"]>("monthly");
+  const [selectedServing, setSelectedServing] = useState<number>(2);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const selectedDurationLabel = useMemo(
+    () => durationPlans.find((item) => item.id === selectedDuration)?.name,
+    [selectedDuration],
+  );
+
+  function mapDurationToPlanType(duration: DurationPlan["id"]): ApiPlanType {
+    if (duration === "weekly") {
+      return "MINGGUAN";
+    }
+
+    if (duration === "yearly") {
+      return "TAHUNAN";
+    }
+
+    return "BULANAN";
+  }
+
+  const handleContinue = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const draft = {
+        mealCategory: selectedMeal,
+        duration: selectedDuration,
+        servings: selectedServing,
+        savedAt: new Date().toISOString(),
+      };
+      sessionStorage.setItem("fromfram_subscription_draft", JSON.stringify(draft));
+
+      await ensureMySubscription({
+        mealCategory: selectedMeal,
+        planType: mapDurationToPlanType(selectedDuration),
+        servings: selectedServing,
+      });
+
+      router.push("/subscription/delivery-address");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Gagal menyambungkan plan ke subscription. Coba lagi.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#ececec] px-5 py-8 sm:py-10">
@@ -202,25 +263,61 @@ export function SelectPlanScreen() {
           </section>
         </div>
 
+        <section aria-labelledby="serving-title" className="mt-9">
+          <h2 id="serving-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
+            Pilih Porsi
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((serving) => {
+              const active = serving === selectedServing;
+
+              return (
+                <button
+                  key={serving}
+                  type="button"
+                  onClick={() => setSelectedServing(serving)}
+                  aria-pressed={active}
+                  className={`rounded-2xl border px-5 py-4 text-left shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] ${
+                    active
+                      ? "border-[#1db788] bg-[#eaf8f1] ring-1 ring-[#1db788] shadow-[0_10px_20px_rgba(29,183,136,0.16)]"
+                      : "border-[#d7d7d7] bg-[#f8f8f8] hover:-translate-y-0.5 hover:border-[#9ed8c4] hover:shadow-[0_8px_18px_rgba(0,0,0,0.09)]"
+                  }`}
+                >
+                  <p className="text-[1.1rem] font-semibold text-neutral-900">{serving} orang</p>
+                  <p className="mt-1 text-sm text-neutral-500">Jumlah porsi subscription</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <footer className="mt-9 flex items-center justify-between">
           <p className="text-sm text-neutral-500">
-            Pilihan aktif: {mealPlans.find((item) => item.id === selectedMeal)?.name} · {durationPlans.find((item) => item.id === selectedDuration)?.name}
+            Pilihan aktif: {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang
           </p>
 
-          <button
-            type="button"
+          <Link
+            href="/subscription"
             className="rounded-2xl border border-[#cfcfcf] bg-[#f8f8f8] px-6 py-2.5 text-[1rem] font-semibold text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
           >
             Kembali
-          </button>
-
-          <Link
-            href="/subscription/delivery-address"
-            className="rounded-2xl bg-[#1db788] px-8 py-2.5 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
-          >
-            Lanjutkan
           </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              void handleContinue();
+            }}
+            disabled={isSubmitting}
+            className="rounded-2xl bg-[#1db788] px-8 py-2.5 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? "Menyambungkan..." : "Lanjutkan"}
+          </button>
         </footer>
+
+        {errorMessage ? (
+          <p className="mt-4 text-center text-sm font-medium text-red-600">{errorMessage}</p>
+        ) : null}
       </section>
     </main>
   );

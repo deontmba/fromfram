@@ -14,6 +14,21 @@ const DAYS_OF_WEEK = [
 
 type DayKey = (typeof DAYS_OF_WEEK)[number];
 
+function buildWeeklyBoxDates(weekStart: Date) {
+  const weekEndDate = new Date(weekStart);
+  weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6);
+  weekEndDate.setUTCHours(23, 59, 59, 999);
+
+  const selectionDeadline = new Date(weekStart);
+  selectionDeadline.setUTCDate(selectionDeadline.getUTCDate() - 1);
+  selectionDeadline.setUTCHours(18, 0, 0, 0);
+
+  return {
+    weekEndDate,
+    selectionDeadline,
+  };
+}
+
 
 /**
  * GET /api/subscriptions/weekly-menu
@@ -56,7 +71,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
         weekStartDate: null,
         weekEndDate: null,
-        menu: DAYS_OF_WEEK.map((day, idx) => ({ day, date: null, recipes: [] })),
+      menu: DAYS_OF_WEEK.map((day) => ({ day, date: null, recipes: [] })),
     });
     }
 
@@ -160,22 +175,111 @@ export async function POST(req: NextRequest) {
 
     const userId = session.userId;
 
-    // Find the user's current WeeklyBox for this week
-    const weeklyBox = await prisma.weeklyBox.findFirst({
+    const weeklyMenuRecipes = await prisma.weeklyMenu.findMany({
+      where: { weekStartDate: weekStart },
+      select: { recipeId: true },
+    });
+    const availableRecipeIds = new Set(weeklyMenuRecipes.map((menu) => menu.recipeId));
+
+    if (availableRecipeIds.size === 0) {
+      return NextResponse.json(
+        { error: 'Weekly menu belum tersedia untuk minggu ini.' },
+        { status: 404 }
+      );
+    }
+
+    for (const selection of mealSelections) {
+      if (!availableRecipeIds.has(selection.recipeId)) {
+        return NextResponse.json(
+          {
+            error: `Resep ${selection.recipeId} tidak tersedia di weekly menu minggu ini.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    const existingWeeklyBox = await prisma.weeklyBox.findUnique({
       where: {
-        userId,
-        weekStartDate: weekStart,
-        status: 'PENDING_SELECTION',
+        userId_weekStartDate: {
+          userId,
+          weekStartDate: weekStart,
+        },
+      },
+      select: {
+        id: true,
+        status: true,
       },
     });
 
-    if (!weeklyBox) {
+    let weeklyBoxId = existingWeeklyBox?.id;
+
+    if (existingWeeklyBox && existingWeeklyBox.status !== 'PENDING_SELECTION') {
       return NextResponse.json(
         {
-          error:
-            'No active WeeklyBox found for this week. Make sure your subscription is active.',
+          error: `WeeklyBox untuk minggu ini sudah berstatus ${existingWeeklyBox.status}. Pilihan menu tidak bisa diubah.`,
         },
-        { status: 404 }
+        { status: 400 }
+      );
+    }
+
+    if (!weeklyBoxId) {
+      const subscription = await prisma.subscription.findFirst({
+        where: { userId },
+        select: {
+          id: true,
+          status: true,
+          pausedUntil: true,
+        },
+      });
+
+      if (!subscription) {
+        return NextResponse.json(
+          { error: 'Subscription tidak ditemukan. Silakan pilih plan terlebih dahulu.' },
+          { status: 404 }
+        );
+      }
+
+      if (subscription.status === 'CANCELLED') {
+        return NextResponse.json(
+          { error: 'Subscription kamu sudah CANCELLED. Aktifkan subscription untuk memilih menu.' },
+          { status: 400 }
+        );
+      }
+
+      if (subscription.status === 'PAUSED') {
+        const pausedUntil = subscription.pausedUntil ? new Date(subscription.pausedUntil) : null;
+        if (!pausedUntil || pausedUntil >= weekStart) {
+          return NextResponse.json(
+            { error: 'Subscription sedang PAUSED untuk minggu ini, sehingga belum bisa pilih menu.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      const { weekEndDate, selectionDeadline } = buildWeeklyBoxDates(weekStart);
+
+      const createdWeeklyBox = await prisma.weeklyBox.create({
+        data: {
+          userId,
+          weekStartDate: weekStart,
+          weekEndDate,
+          selectionDeadline,
+          status: 'PENDING_SELECTION',
+          isAutoSelected: false,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      weeklyBoxId = createdWeeklyBox.id;
+    }
+
+    if (!weeklyBoxId) {
+      return NextResponse.json(
+        { error: 'WeeklyBox gagal dipersiapkan untuk penyimpanan menu.' },
+        { status: 500 }
       );
     }
 
@@ -186,13 +290,13 @@ export async function POST(req: NextRequest) {
         where: {
           // Composite unique key: weeklyBoxId + dayOfWeek
           weeklyBoxId_dayOfWeek: {
-            weeklyBoxId: weeklyBox.id,
+            weeklyBoxId,
             dayOfWeek: day,
           },
         },
         update: { recipeId },
         create: {
-          weeklyBoxId: weeklyBox.id,
+          weeklyBoxId,
           recipeId,
           dayOfWeek: day,
         },

@@ -22,6 +22,7 @@ type TransactionViewModel = {
   amount: number | null;
   status: string | null;
   qrisCode: string | null;
+  qrImageDataUrl: string | null;
 };
 
 const FALLBACK_SUMMARY: PaymentSummary = {
@@ -191,6 +192,7 @@ function unwrapTransactionRecord(payload: unknown) {
 }
 
 function mapTransaction(payload: unknown): TransactionViewModel | null {
+  const rootRecord = toRecord(payload);
   const record = unwrapTransactionRecord(payload);
 
   if (!record) {
@@ -207,7 +209,41 @@ function mapTransaction(payload: unknown): TransactionViewModel | null {
       record.paymentCode,
       toRecord(record.payment)?.qrisCode,
     ),
+    qrImageDataUrl: pickString(rootRecord?.qrImageDataUrl, record.qrImageDataUrl),
   };
+}
+
+function getSummaryFromDraft() {
+  if (typeof window === "undefined") {
+    return {} as Partial<PaymentSummary>;
+  }
+
+  try {
+    const rawDraft = sessionStorage.getItem("fromfram_subscription_draft");
+    if (!rawDraft) {
+      return {} as Partial<PaymentSummary>;
+    }
+
+    const parsedDraft = JSON.parse(rawDraft) as {
+      duration?: PlanKey;
+      servings?: number;
+    };
+
+    const duration = parsedDraft.duration;
+    if (!duration || !(duration in PLAN_CONFIG)) {
+      return {} as Partial<PaymentSummary>;
+    }
+
+    return {
+      ...PLAN_CONFIG[duration],
+      servingLabel:
+        typeof parsedDraft.servings === "number" && Number.isFinite(parsedDraft.servings)
+          ? `${parsedDraft.servings} orang`
+          : undefined,
+    };
+  } catch {
+    return {} as Partial<PaymentSummary>;
+  }
 }
 
 function getAddressCandidates(payload: unknown) {
@@ -240,6 +276,26 @@ function getDefaultAddressLabel(payload: unknown) {
     addresses.find((address) => address.isDefault === true) ?? addresses[0];
 
   return pickString(defaultAddress?.label);
+}
+
+async function lockCurrentWeeklyBox() {
+  const response = await fetch('/api/weekly-boxes/current/lock', {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      isRecord(payload) && typeof payload.error === 'string'
+        ? payload.error
+        : 'Gagal mengunci weekly box.'
+    );
+  }
+
+  return payload;
 }
 
 function QrisIcon({ className = "h-5 w-5" }: { className?: string }) {
@@ -278,18 +334,6 @@ function QrisPlaceholder() {
         <rect x="36" y="36" width="34" height="34" rx="4" fill="currentColor" />
         <rect x="110" y="36" width="34" height="34" rx="4" fill="currentColor" />
         <rect x="36" y="110" width="34" height="34" rx="4" fill="currentColor" />
-        <rect x="46" y="46" width="14" height="14" rx="2" fill="white" />
-        <rect x="120" y="46" width="14" height="14" rx="2" fill="white" />
-        <rect x="46" y="120" width="14" height="14" rx="2" fill="white" />
-        <rect x="84" y="40" width="10" height="10" rx="5" fill="currentColor" />
-        <rect x="84" y="68" width="10" height="10" rx="5" fill="currentColor" />
-        <rect x="84" y="96" width="10" height="10" rx="5" fill="currentColor" />
-        <rect x="106" y="88" width="38" height="10" rx="5" fill="currentColor" />
-        <rect x="106" y="108" width="10" height="38" rx="5" fill="currentColor" />
-        <rect x="132" y="132" width="12" height="12" rx="6" fill="currentColor" />
-        <rect x="70" y="84" width="10" height="10" rx="5" fill="currentColor" />
-        <rect x="40" y="84" width="10" height="10" rx="5" fill="currentColor" />
-        <rect x="58" y="92" width="18" height="8" rx="4" fill="currentColor" />
       </svg>
     </div>
   );
@@ -303,6 +347,7 @@ export function PaymentScreen() {
     amount: null,
     status: null,
     qrisCode: null,
+    qrImageDataUrl: null,
   });
   const [isPreparing, setIsPreparing] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
@@ -312,7 +357,10 @@ export function PaymentScreen() {
     let isMounted = true;
 
     async function loadPaymentContext() {
-      const nextSummary: PaymentSummary = { ...FALLBACK_SUMMARY };
+      const nextSummary: PaymentSummary = {
+        ...FALLBACK_SUMMARY,
+        ...getSummaryFromDraft(),
+      };
 
       try {
         const [subscriptionResult, addressResult] = await Promise.allSettled([
@@ -330,7 +378,7 @@ export function PaymentScreen() {
           nextSummary.addressLabel = getDefaultAddressLabel(addressPayload) ?? nextSummary.addressLabel;
         }
       } catch {
-        // Fallback ringkasan tetap cukup untuk demo pembayaran.
+        // fallback summary
       }
 
       if (!isMounted) {
@@ -340,14 +388,11 @@ export function PaymentScreen() {
       setSummary(nextSummary);
 
       try {
-        const response = await fetch("/api/transactions", {
+        const response = await fetch("/api/transactions/generate", {
           method: "POST",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: nextSummary.total,
-            paymentMethod: "QRIS",
-          }),
+          body: JSON.stringify({ amount: nextSummary.total }),
         });
 
         const payload = await response.json().catch(() => null);
@@ -359,13 +404,27 @@ export function PaymentScreen() {
 
         if (nextTransaction) {
           setTransaction(nextTransaction);
-          setStatusMessage("Kode pembayaran siap digunakan.");
+          const normalizedStatus = nextTransaction.status?.toUpperCase();
+          if (normalizedStatus === "COMPLETED") {
+            setStatusMessage("Pembayaran sudah selesai.");
+            await lockCurrentWeeklyBox().catch((error) => {
+              console.error("[lock weekly box after completed payment]", error);
+            });
+          } else if (normalizedStatus === "PENDING") {
+            setStatusMessage("Kode pembayaran siap digunakan.");
+          } else {
+            setStatusMessage("Kode pembayaran siap digunakan.");
+          }
         } else {
-          setStatusMessage("Mode demo aktif. Pembayaran tetap bisa dilanjutkan.");
+          const errorMessage =
+            isRecord(payload) && typeof payload.error === "string"
+              ? payload.error
+              : "Gagal membuat transaksi pembayaran.";
+          setStatusMessage(errorMessage);
         }
       } catch {
         if (isMounted) {
-          setStatusMessage("Mode demo aktif. Pembayaran tetap bisa dilanjutkan.");
+          setStatusMessage("Gagal menghubungkan ke layanan transaksi.");
         }
       } finally {
         if (isMounted) {
@@ -392,28 +451,60 @@ export function PaymentScreen() {
     [summary],
   );
 
-  const handlePayment = useCallback(async () => {
-    if (isPaying) {
+  const handleCheckStatus = useCallback(async () => {
+    if (isPaying || !transaction.id) {
       return;
     }
 
     setIsPaying(true);
-    setStatusMessage("Memproses pembayaran...");
+    setStatusMessage("Mengecek status pembayaran...");
 
     try {
-      if (transaction.id) {
-        await fetch(`/api/transactions/${encodeURIComponent(transaction.id)}/pay`, {
-          method: "PATCH",
+      const response = await fetch(
+        `/api/transactions/status/${encodeURIComponent(transaction.id)}`,
+        {
+          method: "GET",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
-        });
-      }
-    } catch {
-      // Flow demo tetap lanjut ke dashboard meskipun API pembayaran belum tersedia.
-    }
+        },
+      );
 
-    router.push("/dashboard");
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const errorMessage =
+          isRecord(payload) && typeof payload.error === "string"
+            ? payload.error
+            : "Gagal mengecek status pembayaran.";
+        setStatusMessage(errorMessage);
+        return;
+      }
+
+      const latestTransaction = mapTransaction(payload);
+      if (latestTransaction) {
+        setTransaction((prev) => ({
+          ...prev,
+          ...latestTransaction,
+          qrImageDataUrl: prev.qrImageDataUrl,
+        }));
+        if (latestTransaction.status?.toUpperCase() === "COMPLETED") {
+          setStatusMessage("Pembayaran terverifikasi. Mengarahkan ke dashboard...");
+          await lockCurrentWeeklyBox().catch((error) => {
+            console.error("[lock weekly box after payment status check]", error);
+          });
+          router.push("/dashboard");
+          return;
+        }
+      }
+
+      setStatusMessage("Status transaksi masih PENDING. Selesaikan pembayaran lalu cek lagi.");
+    } catch {
+      setStatusMessage("Gagal mengecek status pembayaran.");
+    } finally {
+      setIsPaying(false);
+    }
   }, [isPaying, router, transaction.id]);
+
+  const canCheckStatus = !isPreparing && Boolean(transaction.id);
 
   return (
     <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10">
@@ -427,7 +518,7 @@ export function PaymentScreen() {
             Pembayaran
           </h1>
           <p className="mt-2 text-[0.98rem] text-neutral-500 sm:text-[1rem]">
-            Scan QRIS atau simulasi pembayaran
+            Scan QRIS lalu cek status pembayaran
           </p>
         </header>
 
@@ -496,20 +587,37 @@ export function PaymentScreen() {
               </p>
 
               <div className="mt-5">
-                <QrisPlaceholder />
+                {transaction.qrImageDataUrl ? (
+                  <div className="grid h-full min-h-[230px] place-items-center rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] px-6 py-8">
+                    <Image
+                      src={transaction.qrImageDataUrl}
+                      alt="Kode QR pembayaran"
+                      width={260}
+                      height={260}
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <QrisPlaceholder />
+                )}
               </div>
 
               <p className="mt-4 text-[0.82rem] text-neutral-500">Kode berlaku selama 24 jam</p>
               {transaction.qrisCode ? (
                 <p className="mt-1 text-[0.78rem] font-medium text-neutral-400">
-                  Kode demo: {transaction.qrisCode}
+                  Kode transaksi: {transaction.qrisCode}
+                </p>
+              ) : null}
+              {transaction.status ? (
+                <p className="mt-1 text-[0.78rem] font-semibold text-neutral-500">
+                  Status: {transaction.status}
                 </p>
               ) : null}
             </div>
 
             <div className="mt-5 border-t border-[#d8d8d8] pt-5">
               <p className="text-[0.9rem] text-neutral-500">
-                Untuk demo: klik tombol di bawah untuk simulasi pembayaran.
+                Setelah transfer via QRIS, klik tombol di bawah untuk cek status transaksi.
               </p>
               <p className="mt-2 min-h-5 text-[0.84rem] font-medium text-neutral-500">
                 {isPreparing ? "Menghubungkan ke layanan transaksi..." : statusMessage}
@@ -517,11 +625,11 @@ export function PaymentScreen() {
 
               <button
                 type="button"
-                disabled={isPaying}
-                onClick={handlePayment}
+                disabled={!canCheckStatus || isPaying}
+                onClick={handleCheckStatus}
                 className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPaying ? "Memproses..." : "Bayar"}
+                {isPaying ? "Mengecek..." : "Cek Status Pembayaran"}
               </button>
             </div>
           </section>
