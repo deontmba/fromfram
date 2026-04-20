@@ -39,6 +39,11 @@ type SubscriptionCollectionItem = {
   };
 };
 
+type GoalCollectionItem = {
+  id?: string;
+  name?: string;
+};
+
 type EnsureSubscriptionPayload = {
   mealCategory: MealCategory;
   planType: ApiPlanType;
@@ -119,6 +124,7 @@ export async function pauseMySubscription(weeks: number) {
 }
 
 export async function updateMySubscription(payload: {
+  goalId: string;
   planType: ApiPlanType;
   servings: number;
 }) {
@@ -158,8 +164,17 @@ function extractGoalsFromSubscriptions(payload: unknown) {
   const candidates = Array.isArray(payload.data)
     ? (payload.data as SubscriptionCollectionItem[])
     : [];
+  const directGoals = Array.isArray(payload.goals)
+    ? (payload.goals as GoalCollectionItem[])
+    : [];
 
   const goalsMap = new Map<string, string>();
+
+  for (const goal of directGoals) {
+    if (typeof goal.id === "string" && goal.id.length > 0 && typeof goal.name === "string") {
+      goalsMap.set(goal.id, goal.name);
+    }
+  }
 
   for (const candidate of candidates) {
     const goalId = candidate?.goal?.id;
@@ -213,20 +228,27 @@ async function resolveGoalIdForCategory(mealCategory: MealCategory) {
 }
 
 export async function ensureMySubscription(payload: EnsureSubscriptionPayload) {
+  const goalId = await resolveGoalIdForCategory(payload.mealCategory);
+  if (!goalId) {
+    throw new Error("Goal belum tersedia. Hubungi admin untuk menyiapkan goal subscription.");
+  }
+
   try {
     await getMySubscription();
+    await updateMySubscription({
+      goalId,
+      planType: payload.planType,
+      servings: payload.servings,
+    });
+
     return {
       created: false,
+      updated: true,
     };
   } catch (error) {
     if (!(error instanceof ApiRequestError) || error.status !== 404) {
       throw error;
     }
-  }
-
-  const goalId = await resolveGoalIdForCategory(payload.mealCategory);
-  if (!goalId) {
-    throw new Error("Goal belum tersedia. Hubungi admin untuk menyiapkan goal subscription.");
   }
 
   await createMySubscription({

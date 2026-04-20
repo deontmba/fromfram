@@ -299,6 +299,108 @@ function ProfileIcon() {
   );
 }
 
+function HeroFoodVisual() {
+  return (
+    <div className="mx-auto mt-14 w-full max-w-3xl">
+      <div className="grid gap-4 rounded-[1.7rem] border border-white/80 bg-white/78 p-4 text-left shadow-[0_18px_40px_rgba(15,23,42,0.08)] backdrop-blur sm:grid-cols-[1.05fr_0.95fr] sm:p-5">
+        <div className="rounded-[1.2rem] bg-[#f7fbf8] p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[#12a47c]">Fresh box</p>
+              <h2 className="mt-1 text-[1.55rem] font-bold tracking-[-0.04em] text-neutral-950">
+                Menu siap masak
+              </h2>
+            </div>
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#1abb89] shadow-[0_10px_18px_rgba(18,168,123,0.22)]">
+              <Image src="/icons/basic.svg" alt="" width={28} height={28} aria-hidden="true" />
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            {[
+              { label: "Sayur", tone: "bg-[#dff4ea] text-[#128463]" },
+              { label: "Protein", tone: "bg-[#e4f7f4] text-[#147d78]" },
+              { label: "Saus", tone: "bg-[#ffe7e4] text-[#c9564e]" },
+            ].map((item) => (
+              <div key={item.label} className={`rounded-2xl px-3 py-4 text-center ${item.tone}`}>
+                <p className="text-sm font-bold">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="flex items-center gap-3 rounded-[1.1rem] border border-neutral-100 bg-white px-4 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e7f7f1]">
+              <Image src="/icons/diet.svg" alt="" width={24} height={24} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-neutral-950">Diet seimbang</p>
+              <p className="text-sm text-neutral-500">Kalori terukur</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 rounded-[1.1rem] border border-neutral-100 bg-white px-4 py-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e3f5f3]">
+              <Image src="/icons/fitness.svg" alt="" width={24} height={24} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-neutral-950">Fitness meal</p>
+              <p className="text-sm text-neutral-500">Protein harian</p>
+            </div>
+          </div>
+
+          <div className="rounded-[1.1rem] bg-[#13a981] px-4 py-4 text-white shadow-[0_10px_22px_rgba(18,168,123,0.2)]">
+            <p className="text-sm font-semibold text-white/80">Dikirim fresh</p>
+            <p className="mt-1 text-[1.45rem] font-bold leading-none tracking-[-0.04em]">
+              15 menit siap
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HeroFoodDecorations() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0 hidden md:block" aria-hidden="true">
+      <Image
+        src="/images/brocolli.png"
+        alt=""
+        width={680}
+        height={680}
+        sizes="(min-width: 1280px) 680px, (min-width: 1024px) 520px, 260px"
+        className="absolute left-[-22%] top-10 h-auto w-[260px] rotate-[-30deg] drop-shadow-[0_18px_24px_rgba(18,168,123,0.16)] lg:left-[-24%] lg:top-12 lg:w-[520px] xl:left-[-18%] xl:w-[680px]"
+      />
+      <Image
+        src="/images/milk.png"
+        alt=""
+        width={528}
+        height={528}
+        sizes="(min-width: 1280px) 528px, (min-width: 1024px) 400px, 220px"
+        className="absolute right-[-8%] top-24 h-auto w-[220px] rotate-[10deg] drop-shadow-[0_18px_24px_rgba(15,23,42,0.12)] lg:right-[-10%] lg:top-24 lg:w-[400px] xl:right-[-6%] xl:w-[528px]"
+      />
+      <Image
+        src="/images/cheese.png"
+        alt=""
+        width={464}
+        height={464}
+        sizes="464px"
+        className="absolute bottom-[-8rem] left-[-7%] hidden h-auto w-[464px] rotate-[12deg] drop-shadow-[0_18px_24px_rgba(255,124,107,0.15)] lg:block xl:left-[-3%]"
+      />
+      <Image
+        src="/images/salmon.png"
+        alt=""
+        width={760}
+        height={760}
+        sizes="760px"
+        className="absolute bottom-12 right-[-22%] hidden h-auto w-[760px] rotate-[-10deg] drop-shadow-[0_18px_24px_rgba(255,124,107,0.14)] lg:block xl:right-[-17%]"
+      />
+    </div>
+  );
+}
+
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -338,16 +440,10 @@ export default function Home() {
           {isAuthenticated ? (
             <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
               <Link
-                href="/subscription/select-plan"
+                href="/dashboard"
                 className="rounded-full px-4 py-2 text-sm font-semibold text-neutral-800 transition hover:text-[#13a981]"
               >
-                Buat Subscription
-              </Link>
-              <Link
-                href="/subscription"
-                className="rounded-full px-4 py-2 text-sm font-semibold text-neutral-800 transition hover:text-[#13a981]"
-              >
-                Kelola Subscription
+                Dashboard
               </Link>
               <Link
                 href="/profile"
@@ -378,9 +474,11 @@ export default function Home() {
 
       <section
         id="hero"
-        className="overflow-hidden bg-[radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.95),transparent_30%),linear-gradient(135deg,#ecf7f1_0%,#f6f5f1_58%,#ffffff_100%)]"
+        className="relative overflow-hidden bg-[radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.95),transparent_30%),linear-gradient(135deg,#ecf7f1_0%,#f6f5f1_58%,#ffffff_100%)]"
       >
-        <div className="mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-24 lg:px-8 lg:py-28">
+        <HeroFoodDecorations />
+
+        <div className="relative z-10 mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <span className="inline-flex items-center rounded-full bg-[#dff4ea] px-4 py-2 text-sm font-semibold text-[#12a47c]">
             Fresh & Healthy Meal Subscription
           </span>
@@ -411,6 +509,8 @@ export default function Home() {
               Pelajari Lebih Lanjut
             </Link>
           </div>
+
+          <HeroFoodVisual />
 
           <div className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-8 sm:grid-cols-3">
             <div>
