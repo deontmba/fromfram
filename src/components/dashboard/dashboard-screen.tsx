@@ -736,13 +736,21 @@ function DashboardShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-black/5 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <BrandMark />
-          <Link
-            href="/profile"
-            className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#12b886] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(18,184,134,0.18)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
-          >
-            <UserIcon />
-            Profil
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/subscription"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#e1f6ee] px-5 text-sm font-bold text-[#0f8f6d] shadow-[0_8px_18px_rgba(18,184,134,0.12)] transition hover:bg-[#d5f1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+            >
+              Kelola Subscription
+            </Link>
+            <Link
+              href="/profile"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#12b886] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(18,184,134,0.18)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+            >
+              <UserIcon />
+              Profil
+            </Link>
+          </div>
         </div>
       </header>
       {children}

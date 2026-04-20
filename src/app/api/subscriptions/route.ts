@@ -62,12 +62,21 @@ export async function GET(req: NextRequest) {
       return getAuthErrorResponse(session.error);
     }
 
-    const subscriptions = await prisma.subscription.findMany({
-      orderBy: [{ startDate: "desc" }],
-      select: subscriptionSelect,
-    });
+    const [subscriptions, goals] = await Promise.all([
+      prisma.subscription.findMany({
+        orderBy: [{ startDate: "desc" }],
+        select: subscriptionSelect,
+      }),
+      prisma.goal.findMany({
+        orderBy: [{ name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+    ]);
 
-    return NextResponse.json({ status: "success", data: subscriptions }, { status: 200 });
+    return NextResponse.json({ status: "success", data: subscriptions, goals }, { status: 200 });
   } catch {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

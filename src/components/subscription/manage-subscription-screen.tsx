@@ -70,6 +70,98 @@ const SERVING_OPTIONS = [1, 2, 3, 4, 5, 6];
 const panelClassName =
   "rounded-[18px] border border-black/5 bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.05)]";
 
+type ManagedAddress = {
+  label?: string | null;
+  street?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  isDefault?: boolean | null;
+};
+
+type AddressResponse = {
+  addresses?: ManagedAddress[];
+  address?: ManagedAddress;
+  data?: ManagedAddress[] | ManagedAddress;
+};
+
+function pickAddressText(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const trimmedValue = value?.trim();
+
+    if (trimmedValue) {
+      return trimmedValue;
+    }
+  }
+
+  return null;
+}
+
+function getAddressesFromResponse(data: AddressResponse | null) {
+  if (Array.isArray(data?.addresses)) {
+    return data.addresses;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+
+  if (data?.address) {
+    return [data.address];
+  }
+
+  if (data?.data) {
+    return [data.data];
+  }
+
+  return [];
+}
+
+function formatAddressLabel(address: ManagedAddress) {
+  return [
+    pickAddressText(address.label),
+    pickAddressText(address.street),
+    pickAddressText(address.city),
+    pickAddressText(address.province),
+    pickAddressText(address.postalCode),
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+async function getDefaultAddressLabel(signal?: AbortSignal) {
+  const response = await fetch("/api/profile/address", {
+    cache: "no-store",
+    signal,
+  });
+  const data = (await response.json().catch(() => null)) as AddressResponse | null;
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const addresses = getAddressesFromResponse(data);
+  const defaultAddress = addresses.find((address) => address.isDefault === true) ?? addresses[0];
+
+  return defaultAddress ? formatAddressLabel(defaultAddress) || null : null;
+}
+
+async function getSubscriptionViewModel(signal?: AbortSignal) {
+  const payload = await getMySubscription(signal);
+  const mappedSubscription = mapSubscriptionResponseToViewModel(payload);
+  const addressLabel = await getDefaultAddressLabel(signal).catch(() => null);
+
+  if (!addressLabel) {
+    return mappedSubscription;
+  }
+
+  return {
+    ...mappedSubscription,
+    shippingAddressLabel: addressLabel,
+    shippingAddressMissing: false,
+  };
+}
+
 export function ManageSubscriptionScreen() {
   const [subscription, setSubscription] = useState(createPreviewSubscriptionViewModel());
   const [selectedPlan, setSelectedPlan] = useState(subscription.planKey);
@@ -86,8 +178,7 @@ export function ManageSubscriptionScreen() {
 
     async function loadSubscription() {
       try {
-        const payload = await getMySubscription(abortController.signal);
-        const mappedSubscription = mapSubscriptionResponseToViewModel(payload);
+        const mappedSubscription = await getSubscriptionViewModel(abortController.signal);
         setSubscription(mappedSubscription);
         setSelectedPlan(mappedSubscription.planKey);
         setSelectedServing(mappedSubscription.servingCount);
@@ -133,8 +224,7 @@ export function ManageSubscriptionScreen() {
   };
 
   const refreshAfterAction = async () => {
-    const payload = await getMySubscription();
-    const mappedSubscription = mapSubscriptionResponseToViewModel(payload);
+    const mappedSubscription = await getSubscriptionViewModel();
     setSubscription(mappedSubscription);
     setSelectedPlan(mappedSubscription.planKey);
     setSelectedServing(mappedSubscription.servingCount);
@@ -483,7 +573,7 @@ function SummarySection({
   subscription: ManageSubscriptionViewModel;
 }) {
   return (
-    <div className="mt-6 rounded-[18px] bg-[linear-gradient(135deg,#18ba89_0%,#72d9b0_55%,#d9f6ea_100%)] px-6 py-6 text-white shadow-[0_14px_30px_rgba(18,168,123,0.22)]">
+    <div className="mt-6 rounded-[18px] bg-[#18ba89] px-6 py-6 text-white shadow-[0_14px_30px_rgba(18,168,123,0.22)]">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white/80">Current subscription</p>
