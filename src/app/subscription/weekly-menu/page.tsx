@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DayKey = "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU";
@@ -63,16 +64,8 @@ function ChefHatIcon() {
   );
 }
 
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M12 8v4l2.8 1.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export default function WeeklyMenuPage() {
+  const router = useRouter();
   const [weeklyMenu, setWeeklyMenu] = useState<MenuDay[]>([]);
   const [activeDay, setActiveDay] = useState<DayKey>("SENIN");
   const [selectedByDay, setSelectedByDay] = useState<Partial<Record<DayKey, string>>>({});
@@ -91,12 +84,20 @@ export default function WeeklyMenuPage() {
         setIsLoading(true);
         setError(null);
         const response = await fetch("/api/subscriptions/weekly-menu");
+        const payload = (await response.json().catch(() => null)) as
+          | WeeklyMenuResponse
+          | { error?: string }
+          | null;
 
         if (!response.ok) {
-          throw new Error("Failed to fetch weekly menu");
+          throw new Error(payload && "error" in payload && payload.error ? payload.error : "Failed to fetch weekly menu");
         }
 
-        const data = (await response.json()) as WeeklyMenuResponse;
+        if (!payload || !("menu" in payload) || !Array.isArray(payload.menu)) {
+          throw new Error("Weekly menu response tidak valid.");
+        }
+
+        const data = payload as WeeklyMenuResponse;
 
         // Parse dates
         const menuWithDates = data.menu.map((m) => ({
@@ -150,43 +151,42 @@ export default function WeeklyMenuPage() {
   }, [activeDay]);
 
   const handleContinue = useCallback(async () => {
-  if (!canContinue) return;
+    if (!canContinue) return;
 
-  // POST meal selections ke API
-  try {
-    /* TEMPORARY DEMO WORKAROUND:
-      Skip saving meal selections for now because
-      POST /api/subscriptions/weekly-menu can fail when
-      no matching PENDING_SELECTION WeeklyBox exists.
-
+    try {
       const mealSelections = daysOfWeek
         .map(({ key }) => ({
           day: key,
           recipeId: selectedByDay[key],
         }))
-        .filter((m) => m.recipeId);
+        .filter((m): m is { day: DayKey; recipeId: string } => Boolean(m.recipeId));
+
+      const weekStartDate = weeklyMenu[0]?.date;
+      if (!weekStartDate) {
+        throw new Error("Week start date tidak ditemukan.");
+      }
 
       const response = await fetch("/api/subscriptions/weekly-menu", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mealSelections,
-          weekStartDate: weeklyMenu[0]?.date,
+          weekStartDate: weekStartDate.toISOString(),
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to save meal selections");
-      } 
-    */
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
 
-      // Redirect ke payment
-    window.location.href = "/subscription/payment"; 
-  } catch (err) {
-    console.error("[save meal selections error]", err); 
-    setError(err instanceof Error ? err.message : "Failed to save selections"); 
-  }
-  }, [canContinue, selectedByDay, weeklyMenu]);
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to save meal selections");
+      }
+
+      router.push("/subscription/payment");
+    } catch (err) {
+      console.error("[save meal selections error]", err);
+      setError(err instanceof Error ? err.message : "Failed to save selections");
+    }
+  }, [canContinue, selectedByDay, weeklyMenu, router]);
 
   if (isLoading) {
     return (

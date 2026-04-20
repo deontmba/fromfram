@@ -43,6 +43,56 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const [currentSubscription, latestTransaction] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { userId: session.userId },
+        select: {
+          id: true,
+          startDate: true,
+          status: true,
+          planType: true,
+          servings: true,
+        },
+      }),
+      prisma.transaction.findFirst({
+        where: { userId: session.userId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const canReuseLatestTransaction =
+      currentSubscription &&
+      latestTransaction &&
+      latestTransaction.status !== 'FAILED' &&
+      latestTransaction.amount === amount &&
+      latestTransaction.createdAt >= currentSubscription.startDate;
+
+    if (canReuseLatestTransaction) {
+      const qrImageDataUrl = await QRCode.toDataURL(latestTransaction.qrisCode, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 320,
+      });
+
+      return NextResponse.json(
+        {
+          message: 'Transaction reused successfully.',
+          transaction: latestTransaction,
+          qrImageDataUrl,
+        },
+        { status: 200 }
+      );
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         userId: session.userId,

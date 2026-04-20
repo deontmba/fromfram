@@ -434,6 +434,9 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   const selectedDays = pickNumber(weeklyBox?.summary?.selectedDays) ?? 0;
   const totalDays = pickNumber(weeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
   const canSelectMenu = weeklyBox?.summary?.canSelectMenu === true;
+  const weeklyBoxStatus = pickString(weeklyBox?.status)?.toUpperCase() ?? null;
+  const isLockedWeeklyBox = weeklyBoxStatus === "LOCKED";
+  const isFinalizedWeeklyBox = isLockedWeeklyBox || weeklyBoxStatus === "COMPLETED";
 
   return {
     subscription: subscription
@@ -479,15 +482,25 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
       ? {
           title: "Minggu Depan",
           dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-          heading: canSelectMenu ? "Pilih Menu Sekarang" : "Menu belum bisa dipilih",
+          heading: canSelectMenu
+            ? "Pilih Menu Sekarang"
+            : isFinalizedWeeklyBox
+              ? "Menu sudah dikunci"
+              : "Menu belum bisa dipilih",
           deadline: formatDateLabel(weeklyBox.selectionDeadline),
           selectedMenu: `${selectedDays}/${totalDays} hari`,
           reminder: canSelectMenu
             ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
-            : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
+            : isFinalizedWeeklyBox
+              ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
+              : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
           timeLeft: getTimeLeftLabel(weeklyBox.selectionDeadline),
           canSelectMenu,
-          unavailableMessage: canSelectMenu ? null : "Pilih Menu Sekarang belum tersedia",
+          unavailableMessage: canSelectMenu
+            ? null
+            : isFinalizedWeeklyBox
+              ? null
+              : "Pilih Menu Sekarang belum tersedia",
         }
       : {
           title: "Minggu Depan",
