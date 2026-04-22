@@ -908,7 +908,7 @@ export function DashboardScreen() {
 
             {dashboard.currentWeek.trackingEnabled ? (
               <Link
-                href="/dashboard/tracking"
+                href="/delivery"
                 className="mt-7 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#12b886] px-4 text-sm font-bold text-white shadow-[0_8px_16px_rgba(18,184,134,0.25)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
               >
                 Lihat Detail Tracking
