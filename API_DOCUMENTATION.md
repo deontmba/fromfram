@@ -672,21 +672,24 @@ Project ini menggunakan pendekatan berikut:
 ## Contoh Alur Test Cepat
 
 ```
-1.  POST  /api/auth/register
-2.  POST  /api/auth/login
-3.  GET   /api/auth/me
-4.  GET   /api/profile
-5.  PUT   /api/profile
-6.  GET   /api/profile/health
-7.  PUT   /api/profile/health
-8.  GET   /api/profile/address
-9.  POST  /api/profile/address
-10. PUT   /api/profile/address?id={addressId}
-11. PATCH /api/profile/address?id={addressId}
+1.  POST   /api/auth/register
+2.  POST   /api/auth/login
+3.  GET    /api/auth/me
+4.  GET    /api/profile
+5.  PUT    /api/profile
+6.  GET    /api/profile/health
+7.  PUT    /api/profile/health
+8.  GET    /api/profile/address
+9.  POST   /api/profile/address
+10. PUT    /api/profile/address?id={addressId}
+11. PATCH  /api/profile/address?id={addressId}
 12. DELETE /api/profile/address?id={addressId}
-13. GET   /api/subscriptions/me
-14. PATCH /api/subscriptions/me/pause
-15. PATCH /api/subscriptions/me/resume
-16. PATCH /api/subscriptions/me/cancel
-17. GET   /api/dashboard
+13. GET    /api/subscriptions/me
+14. PATCH  /api/subscriptions/me/pause
+15. PATCH  /api/subscriptions/me/resume
+16. PATCH  /api/subscriptions/me/cancel
+17. GET    /api/dashboard
+18. GET    /api/deliveries
+19. GET    /api/deliveries/today
+20. GET    /api/deliveries/{id}
 ```
