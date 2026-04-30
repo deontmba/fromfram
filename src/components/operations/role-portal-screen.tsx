@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import styles from "./role-portal-screen.module.css";
 
@@ -33,20 +33,27 @@ type ActionItem = {
 type DeliveryRow = {
   id: string;
   user: string;
+  userId: string;
   menu: string;
   address: string;
+  deliveryDate: string;
   status: "PREPARING" | "SHIPPED" | "DELIVERED";
+  shippedAt: string | null;
+  deliveredAt: string | null;
 };
 
 type UserRow = {
+  id: string;
   name: string;
-  contact: string;
-  address: string;
-  plan: "Mingguan" | "Bulanan" | "Tahunan";
-  serving: string;
-  status: "ACTIVE" | "PAUSED" | "CANCELLED";
-  joined: string;
-  nextDelivery: string;
+  email: string;
+  phoneNumber: string | null;
+  address: string | null;
+  plan: string | null;
+  servings: number | null;
+  subscriptionStatus: string | null;
+  goal: string | null;
+  joinedAt: string;
+  nextDelivery: string | null;
 };
 
 type RecipeRow = {
@@ -81,70 +88,6 @@ type RoleConfig = {
   accentMid: string;
   accentSoft: string;
 };
-
-const adminDeliveries: DeliveryRow[] = [
-  { id: "DEL-001", user: "John Doe", menu: "Nasi Goreng Kampung", address: "Jakarta Selatan", status: "SHIPPED" },
-  { id: "DEL-002", user: "Jane Smith", menu: "Ayam Teriyaki Bowl", address: "Jakarta Pusat", status: "PREPARING" },
-  { id: "DEL-003", user: "Bob Wilson", menu: "Spaghetti Carbonara", address: "Tangerang", status: "DELIVERED" },
-  { id: "DEL-004", user: "Alice Brown", menu: "Nasi Hainan", address: "Bekasi", status: "SHIPPED" },
-  { id: "DEL-005", user: "Charlie Lee", menu: "Beef Bulgogi", address: "Jakarta Barat", status: "PREPARING" },
-  { id: "DEL-006", user: "Diana Chen", menu: "Tom Yum Seafood", address: "Jakarta Timur", status: "SHIPPED" },
-  { id: "DEL-007", user: "Evan Park", menu: "Rendang Sapi", address: "Depok", status: "DELIVERED" },
-  { id: "DEL-008", user: "Fiona Kim", menu: "Pad Thai", address: "Jakarta Selatan", status: "PREPARING" },
-];
-
-const adminUsers: UserRow[] = [
-  {
-    name: "John Doe",
-    contact: "john@email.com | +62 812-3456-7890",
-    address: "Jl. Sudirman No. 123, Jakarta",
-    plan: "Bulanan",
-    serving: "2 orang",
-    status: "ACTIVE",
-    joined: "1 Mar 2026",
-    nextDelivery: "6 Mar 2026",
-  },
-  {
-    name: "Jane Smith",
-    contact: "jane@email.com | +62 813-9876-5432",
-    address: "Jl. Gatot Subroto No. 45, Jakarta",
-    plan: "Tahunan",
-    serving: "4 orang",
-    status: "ACTIVE",
-    joined: "15 Feb 2026",
-    nextDelivery: "5 Mar 2026",
-  },
-  {
-    name: "Bob Wilson",
-    contact: "bob@email.com | +62 815-5555-1234",
-    address: "Jl. Thamrin No. 67, Jakarta",
-    plan: "Mingguan",
-    serving: "1 orang",
-    status: "ACTIVE",
-    joined: "20 Feb 2026",
-    nextDelivery: "4 Mar 2026",
-  },
-  {
-    name: "Alice Brown",
-    contact: "alice@email.com | +62 821-2222-3333",
-    address: "Jl. Rasuna Said No. 89, Jakarta",
-    plan: "Bulanan",
-    serving: "2 orang",
-    status: "PAUSED",
-    joined: "5 Feb 2026",
-    nextDelivery: "-",
-  },
-  {
-    name: "Charlie Lee",
-    contact: "charlie@email.com | +62 822-4444-5555",
-    address: "Jl. Kuningan No. 12, Jakarta",
-    plan: "Bulanan",
-    serving: "3 orang",
-    status: "ACTIVE",
-    joined: "10 Jan 2026",
-    nextDelivery: "8 Mar 2026",
-  },
-];
 
 const nutritionRecipes: RecipeRow[] = [
   { name: "Nasi Goreng Kampung", category: "Indonesian", calories: 450, protein: 18, difficulty: "Mudah", cookTime: "25 min", readiness: "OK" },
@@ -192,14 +135,14 @@ const adminConfig: RoleConfig = {
       { label: "Deliveries Today", value: "342", delta: "89%", icon: <BoxIcon /> },
     ],
     deliveries: [
-      { label: "Preparing", value: "3", delta: "Live", icon: <ClockIcon /> },
-      { label: "Shipped", value: "3", delta: "Live", icon: <TruckIcon /> },
-      { label: "Delivered", value: "2", delta: "Live", icon: <CheckCircleIcon /> },
+      { label: "Preparing", value: "0", delta: "Live", icon: <ClockIcon /> },
+      { label: "Shipped", value: "0", delta: "Live", icon: <TruckIcon /> },
+      { label: "Delivered", value: "0", delta: "Live", icon: <CheckCircleIcon /> },
     ],
     users: [
-      { label: "Total Users", value: "8", delta: "Realtime", icon: <PeopleIcon /> },
-      { label: "Active", value: "6", delta: "Healthy", icon: <CheckCircleIcon /> },
-      { label: "Paused/Cancelled", value: "2", delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Total Users", value: "0", delta: "Realtime", icon: <PeopleIcon /> },
+      { label: "Active", value: "0", delta: "Healthy", icon: <CheckCircleIcon /> },
+      { label: "Paused/Cancelled", value: "0", delta: "Needs Action", icon: <AlertIcon /> },
     ],
   },
   activities: {
@@ -315,23 +258,156 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const config = role === "admin" ? adminConfig : nutritionConfig;
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
 
+  // Real data states
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [advancingId, setAdvancingId] = useState<string | null>(null);
+
+  // Search/filter states
+  const [deliverySearch, setDeliverySearch] = useState("");
+  const [deliveryStatusFilter, setDeliveryStatusFilter] = useState("all");
+  const [deliveryAreaFilter, setDeliveryAreaFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState("");
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+
   const themeVars = {
     "--accent-strong": config.accentStrong,
     "--accent-mid": config.accentMid,
     "--accent-soft": config.accentSoft,
   } as CSSProperties;
 
+  // Fetch deliveries
+  async function fetchDeliveries() {
+    try {
+      const params = new URLSearchParams();
+      if (deliveryStatusFilter !== "all") params.set("status", deliveryStatusFilter.toUpperCase());
+      if (deliveryAreaFilter !== "all") params.set("area", deliveryAreaFilter);
+
+      const res = await fetch(`/api/admin/deliveries?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deliveries");
+      const data = await res.json();
+      setDeliveries(data.data || []);
+    } catch (err) {
+      console.error("[FETCH DELIVERIES]", err);
+      setError("Gagal memuat data deliveries");
+    }
+  }
+
+  // Fetch users
+  async function fetchUsers() {
+    try {
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      setUsers(data.data || []);
+    } catch (err) {
+      console.error("[FETCH USERS]", err);
+      setError("Gagal memuat data users");
+    }
+  }
+
+  // Load data when tab changes or filters change
+  useEffect(() => {
+    if (role !== "admin") return;
+    setLoading(true);
+    setError("");
+
+    const load = async () => {
+      if (activeTab === "deliveries") {
+        await fetchDeliveries();
+      } else if (activeTab === "users") {
+        await fetchUsers();
+      }
+      setLoading(false);
+    };
+
+    load();
+  }, [role, activeTab, deliveryStatusFilter, deliveryAreaFilter]);
+
+  // Advance delivery status
+  async function advanceDelivery(id: string) {
+    setAdvancingId(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/deliveries/${id}/advance`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to advance delivery");
+      }
+
+      // Refresh the list
+      await fetchDeliveries();
+    } catch (err: any) {
+      console.error("[ADVANCE DELIVERY]", err);
+      setError(err.message || "Gagal memajukan status delivery");
+    } finally {
+      setAdvancingId(null);
+    }
+  }
+
+  // Computed KPI values from real data
+  const deliveryKpis = useMemo(() => {
+    const preparing = deliveries.filter((d) => d.status === "PREPARING").length;
+    const shipped = deliveries.filter((d) => d.status === "SHIPPED").length;
+    const delivered = deliveries.filter((d) => d.status === "DELIVERED").length;
+    return [
+      { label: "Preparing", value: String(preparing), delta: "Live", icon: <ClockIcon /> },
+      { label: "Shipped", value: String(shipped), delta: "Live", icon: <TruckIcon /> },
+      { label: "Delivered", value: String(delivered), delta: "Live", icon: <CheckCircleIcon /> },
+    ];
+  }, [deliveries]);
+
+  const userKpis = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.subscriptionStatus === "ACTIVE").length;
+    const pausedCancelled = users.filter(
+      (u) => u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
+    ).length;
+    return [
+      { label: "Total Users", value: String(total), delta: "Realtime", icon: <PeopleIcon /> },
+      { label: "Active", value: String(active), delta: "Healthy", icon: <CheckCircleIcon /> },
+      { label: "Paused/Cancelled", value: String(pausedCancelled), delta: "Needs Action", icon: <AlertIcon /> },
+    ];
+  }, [users]);
+
+  // Filtered deliveries
   const filteredDeliveries = useMemo(() => {
-    return adminDeliveries;
-  }, []);
+    return deliveries.filter((d) => {
+      const matchesSearch =
+        deliverySearch === "" ||
+        d.id.toLowerCase().includes(deliverySearch.toLowerCase()) ||
+        d.user.toLowerCase().includes(deliverySearch.toLowerCase()) ||
+        d.menu.toLowerCase().includes(deliverySearch.toLowerCase());
+      return matchesSearch;
+    });
+  }, [deliveries, deliverySearch]);
 
+  // Filtered users
   const filteredUsers = useMemo(() => {
-    return adminUsers;
-  }, []);
+    return users.filter((u) => {
+      const matchesSearch =
+        userSearch === "" ||
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      const matchesPlan = userPlanFilter === "all" || u.plan?.toLowerCase() === userPlanFilter.toLowerCase();
+      const matchesStatus = userStatusFilter === "all" || u.subscriptionStatus?.toLowerCase() === userStatusFilter.toLowerCase();
+      return matchesSearch && matchesPlan && matchesStatus;
+    });
+  }, [users, userSearch, userPlanFilter, userStatusFilter]);
 
-  const filteredRecipes = useMemo(() => {
-    return nutritionRecipes;
-  }, []);
+  // Get KPIs based on active tab
+  const currentKpis = useMemo(() => {
+    if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
+    if (role === "admin" && activeTab === "users") return userKpis;
+    return config.kpis[activeTab];
+  }, [role, activeTab, config.kpis, deliveryKpis, userKpis]);
 
   return (
     <main className={styles.shell} style={themeVars}>
@@ -344,7 +420,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               <p className={styles.brandSub}>{config.subtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.logoutButton}>
+          <button type="button" className={styles.logoutButton} onClick={() => {
+            fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then(() => {
+              window.location.href = "/login";
+            });
+          }}>
             Logout
           </button>
         </header>
@@ -367,8 +447,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
             <h2 className={styles.sectionTitle}>{config.heroTitle[activeTab]}</h2>
             <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
 
+            {error && (
+              <div className={styles.notice} style={{ background: "#fee2e2", borderColor: "#ef4444" }}>
+                <p className={styles.noticeTitle} style={{ color: "#dc2626" }}>Error:</p>
+                <p style={{ color: "#dc2626" }}>{error}</p>
+              </div>
+            )}
+
             <div className={styles.kpiGrid}>
-              {config.kpis[activeTab].map((kpi, index) => (
+              {currentKpis.map((kpi, index) => (
                 <article key={kpi.label} className={styles.kpiCard} style={{ animationDelay: `${index * 80}ms` }}>
                   <div className={styles.kpiRow}>
                     <span className={styles.activityIcon}>{kpi.icon}</span>
@@ -380,14 +467,20 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               ))}
             </div>
 
-            {role === "admin" && activeTab === "deliveries" ? (
+            {loading && (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                Memuat data...
+              </div>
+            )}
+
+            {role === "admin" && activeTab === "deliveries" && !loading ? (
               <>
                 <div className={styles.metricRow}>
                   {[
-                    { label: "Preparing", value: "3" },
-                    { label: "Shipped", value: "3" },
-                    { label: "Delivered", value: "2" },
-                    { label: "Total Today", value: "8", hot: true },
+                    { label: "Preparing", value: String(deliveries.filter((d) => d.status === "PREPARING").length) },
+                    { label: "Shipped", value: String(deliveries.filter((d) => d.status === "SHIPPED").length) },
+                    { label: "Delivered", value: String(deliveries.filter((d) => d.status === "DELIVERED").length) },
+                    { label: "Total Today", value: String(deliveries.length), hot: true },
                   ].map((metric) => (
                     <article key={metric.label} className={clsx(styles.metric, metric.hot && styles.metricHot)}>
                       <p className={styles.metricLabel}>{metric.label}</p>
@@ -397,18 +490,32 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 </div>
 
                 <div className={styles.searchRow}>
-                  <input className={styles.input} placeholder="Cari delivery by ID, user, atau menu" />
-                  <select className={styles.select} defaultValue="all">
+                  <input
+                    className={styles.input}
+                    placeholder="Cari delivery by ID, user, atau menu"
+                    value={deliverySearch}
+                    onChange={(e) => setDeliverySearch(e.target.value)}
+                  />
+                  <select
+                    className={styles.select}
+                    value={deliveryStatusFilter}
+                    onChange={(e) => setDeliveryStatusFilter(e.target.value)}
+                  >
                     <option value="all">Semua status</option>
                     <option value="preparing">Preparing</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
                   </select>
-                  <select className={styles.select} defaultValue="all">
+                  <select
+                    className={styles.select}
+                    value={deliveryAreaFilter}
+                    onChange={(e) => setDeliveryAreaFilter(e.target.value)}
+                  >
                     <option value="all">Semua area</option>
                     <option value="jakarta">Jakarta</option>
                     <option value="tangerang">Tangerang</option>
                     <option value="bekasi">Bekasi</option>
+                    <option value="depok">Depok</option>
                   </select>
                 </div>
 
@@ -425,22 +532,40 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredDeliveries.map((row) => (
-                        <tr key={row.id}>
-                          <td className={styles.tableKey}>{row.id}</td>
-                          <td>{row.user}</td>
-                          <td>{row.menu}</td>
-                          <td>{row.address}</td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
-                          </td>
-                          <td>
-                            <button type="button" className={styles.actionCard} style={{ padding: "0.45rem 0.7rem" }}>
-                              Advance
-                            </button>
+                      {filteredDeliveries.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                            Tidak ada data delivery
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredDeliveries.map((row) => (
+                          <tr key={row.id}>
+                            <td className={styles.tableKey}>{row.id.slice(0, 8)}...</td>
+                            <td>{row.user}</td>
+                            <td>{row.menu}</td>
+                            <td>{row.address}</td>
+                            <td>
+                              <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className={styles.actionCard}
+                                style={{ padding: "0.45rem 0.7rem" }}
+                                onClick={() => advanceDelivery(row.id)}
+                                disabled={row.status === "DELIVERED" || advancingId === row.id}
+                              >
+                                {advancingId === row.id
+                                  ? "Memproses..."
+                                  : row.status === "DELIVERED"
+                                  ? "Selesai"
+                                  : "Advance"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -456,17 +581,30 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
-            {role === "admin" && activeTab === "users" ? (
+            {role === "admin" && activeTab === "users" && !loading ? (
               <>
                 <div className={styles.searchRow}>
-                  <input className={styles.input} placeholder="Cari user by nama atau email" />
-                  <select className={styles.select} defaultValue="all">
+                  <input
+                    className={styles.input}
+                    placeholder="Cari user by nama atau email"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                  <select
+                    className={styles.select}
+                    value={userPlanFilter}
+                    onChange={(e) => setUserPlanFilter(e.target.value)}
+                  >
                     <option value="all">Semua plan</option>
                     <option value="mingguan">Mingguan</option>
                     <option value="bulanan">Bulanan</option>
                     <option value="tahunan">Tahunan</option>
                   </select>
-                  <select className={styles.select} defaultValue="all">
+                  <select
+                    className={styles.select}
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                  >
                     <option value="all">Semua status</option>
                     <option value="active">Active</option>
                     <option value="paused">Paused</option>
@@ -489,22 +627,38 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((row) => (
-                        <tr key={row.name}>
-                          <td>{row.name}</td>
-                          <td>{row.contact}</td>
-                          <td>{row.address}</td>
-                          <td>
-                            <span className={clsx(styles.tag, styles.tagRed)}>{row.plan}</span>
+                      {filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                            Tidak ada data user
                           </td>
-                          <td>{row.serving}</td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
-                          </td>
-                          <td>{row.joined}</td>
-                          <td>{row.nextDelivery}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredUsers.map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.name}</td>
+                            <td>
+                              {row.email}
+                              {row.phoneNumber && <br />}
+                              {row.phoneNumber}
+                            </td>
+                            <td>{row.address || "-"}</td>
+                            <td>
+                              <span className={clsx(styles.tag, styles.tagRed)}>
+                                {row.plan || "-"}
+                              </span>
+                            </td>
+                            <td>{row.servings ? `${row.servings} orang` : "-"}</td>
+                            <td>
+                              <span className={clsx(styles.tag, statusClass[row.subscriptionStatus || ""])}>
+                                {row.subscriptionStatus || "-"}
+                              </span>
+                            </td>
+                            <td>{new Date(row.joinedAt).toLocaleDateString("id-ID")}</td>
+                            <td>{row.nextDelivery ? new Date(row.nextDelivery).toLocaleDateString("id-ID") : "-"}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -550,7 +704,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRecipes.map((row) => (
+                      {nutritionRecipes.map((row) => (
                         <tr key={row.name}>
                           <td>{row.name}</td>
                           <td>{row.category}</td>
@@ -617,7 +771,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
-            {(activeTab === "dashboard") ? (
+            {activeTab === "dashboard" ? (
               <>
                 <section className={styles.activityCard}>
                   <h3 className={styles.activityHeader}>Aktivitas Terkini</h3>
@@ -666,6 +820,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     </main>
   );
 }
+
+// --- Icons ---
 
 function PeopleIcon() {
   return (
