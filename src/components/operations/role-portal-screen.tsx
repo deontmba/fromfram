@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import styles from "./role-portal-screen.module.css";
 
@@ -280,7 +280,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   } as CSSProperties;
 
   // Fetch deliveries
-  async function fetchDeliveries() {
+  const fetchDeliveries = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (deliveryStatusFilter !== "all") params.set("status", deliveryStatusFilter.toUpperCase());
@@ -294,10 +294,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       console.error("[FETCH DELIVERIES]", err);
       setError("Gagal memuat data deliveries");
     }
-  }
+  }, [deliveryStatusFilter, deliveryAreaFilter]);
 
   // Fetch users
-  async function fetchUsers() {
+  const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/users", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch users");
@@ -307,7 +307,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       console.error("[FETCH USERS]", err);
       setError("Gagal memuat data users");
     }
-  }
+  }, []);
 
   // Load data when tab changes or filters change
   useEffect(() => {
@@ -325,7 +325,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     };
 
     load();
-  }, [role, activeTab, deliveryStatusFilter, deliveryAreaFilter]);
+  }, [role, activeTab, fetchDeliveries, fetchUsers]);
 
   // Advance delivery status
   async function advanceDelivery(id: string) {
@@ -344,9 +344,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
       // Refresh the list
       await fetchDeliveries();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[ADVANCE DELIVERY]", err);
-      setError(err.message || "Gagal memajukan status delivery");
+      const message = err instanceof Error ? err.message : "Gagal memajukan status delivery";
+      setError(message);
     } finally {
       setAdvancingId(null);
     }
