@@ -126,19 +126,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         return;
       }
 
-      // Role-based redirect after login
-      if (!isSignup) {
-        const role = data.user?.role;
-        if (role === "ADMIN") {
-          router.push("/admin");
-        } else if (role === "NUTRITIONIST") {
-          router.push("/nutritionist");
-        } else {
-          router.push("/dashboard");
-        }
-      } else {
-        router.push("/login");
-      }
+      router.push(isSignup ? "/login" : "/");
     } catch {
       setGlobalError("Network error, please try again.");
     } finally {

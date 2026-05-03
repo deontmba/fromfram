@@ -21,7 +21,6 @@ enum PlanType {
 }
 
 enum SubscriptionStatus {
-  UNPAID
   ACTIVE
   PAUSED
   CANCELLED

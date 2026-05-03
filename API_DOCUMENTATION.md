@@ -191,131 +191,6 @@ Menggunakan upsert — jika belum ada akan dibuat, jika sudah ada akan diupdate.
 
 ---
 
-## Transactions
-
-### `GET /api/transactions`
-Mengambil semua transaction milik user yang sedang login.
-
-**Auth**
-- Cookie `token`
-
-**Catatan**
-- Hanya mengembalikan transaction milik user yang login
-- Diurutkan dari yang terbaru (`createdAt desc`)
-
-**Response contoh**
-```json
-{
-  "data": [
-    {
-      "id": "txn_123",
-      "userId": "user_123",
-      "amount": 150000,
-      "status": "PENDING",
-      "qrisCode": "QRIS-DUMMY-1713500000000-ab12cd34",
-      "paidAt": null,
-      "createdAt": "2026-04-19T10:00:00.000Z",
-      "user": {
-        "id": "user_123",
-        "name": "Budi Santoso",
-        "email": "budi@example.com"
-      }
-    }
-  ]
-}
-```
-
-**Response error**
-- `401 Unauthorized` jika tidak login
-- `500 Internal Server Error` jika gagal mengambil data
-
----
-
-### `POST /api/transactions/generate`
-Membuat transaction baru dengan QR dummy untuk user yang sedang login, lalu mengembalikan transaction yang baru dibuat beserta QR image dalam bentuk data URL.
-
-**Auth**
-- Cookie `token`
-
-**Body**
-```json
-{
-  "amount": 150000
-}
-```
-
-**Rules**
-- `amount` wajib diisi
-- `amount` harus berupa angka lebih besar dari 0
-- `status` selalu dibuat sebagai `PENDING`
-- `qrisCode` dibuat otomatis sebagai string dummy unik
-
-**Response contoh**
-```json
-{
-  "message": "Transaction generated successfully.",
-  "transaction": {
-    "id": "txn_123",
-    "userId": "user_123",
-    "amount": 150000,
-    "status": "PENDING",
-    "qrisCode": "QRIS-DUMMY-1713500000000-ab12cd34",
-    "paidAt": null,
-    "createdAt": "2026-04-19T10:00:00.000Z",
-    "user": {
-      "id": "user_123",
-      "name": "Budi Santoso",
-      "email": "budi@example.com"
-    }
-  },
-  "qrImageDataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
-}
-```
-
-**Response error**
-- `400 Bad Request` jika `amount` tidak valid
-- `401 Unauthorized` jika tidak login
-- `500 Internal Server Error` jika gagal membuat transaction
-
----
-
-### `GET /api/transactions/status/:id`
-Mengambil status transaction berdasarkan `id`.
-
-**Auth**
-- Cookie `token`
-
-**Path parameter**
-- `id` wajib diisi
-
-**Rules**
-- Transaction harus milik user yang login
-- Jika transaction tidak ditemukan, sistem mengembalikan `404`
-- Jika transaction milik user lain, sistem mengembalikan `403`
-
-**Response contoh**
-```json
-{
-  "data": {
-    "id": "txn_123",
-    "userId": "user_123",
-    "amount": 150000,
-    "status": "PENDING",
-    "qrisCode": "QRIS-DUMMY-1713500000000-ab12cd34",
-    "paidAt": null,
-    "createdAt": "2026-04-19T10:00:00.000Z"
-  }
-}
-```
-
-**Response error**
-- `401 Unauthorized` jika tidak login
-- `403 Forbidden` jika transaction bukan milik user yang sedang login
-- `404 Not Found` jika transaction tidak ditemukan
-- `500 Internal Server Error` jika gagal mengambil status transaction
-
----
-
 ## Address
 
 ### `GET /api/profile/address`
@@ -672,24 +547,21 @@ Project ini menggunakan pendekatan berikut:
 ## Contoh Alur Test Cepat
 
 ```
-1.  POST   /api/auth/register
-2.  POST   /api/auth/login
-3.  GET    /api/auth/me
-4.  GET    /api/profile
-5.  PUT    /api/profile
-6.  GET    /api/profile/health
-7.  PUT    /api/profile/health
-8.  GET    /api/profile/address
-9.  POST   /api/profile/address
-10. PUT    /api/profile/address?id={addressId}
-11. PATCH  /api/profile/address?id={addressId}
+1.  POST  /api/auth/register
+2.  POST  /api/auth/login
+3.  GET   /api/auth/me
+4.  GET   /api/profile
+5.  PUT   /api/profile
+6.  GET   /api/profile/health
+7.  PUT   /api/profile/health
+8.  GET   /api/profile/address
+9.  POST  /api/profile/address
+10. PUT   /api/profile/address?id={addressId}
+11. PATCH /api/profile/address?id={addressId}
 12. DELETE /api/profile/address?id={addressId}
-13. GET    /api/subscriptions/me
-14. PATCH  /api/subscriptions/me/pause
-15. PATCH  /api/subscriptions/me/resume
-16. PATCH  /api/subscriptions/me/cancel
-17. GET    /api/dashboard
-18. GET    /api/deliveries
-19. GET    /api/deliveries/today
-20. GET    /api/deliveries/{id}
+13. GET   /api/subscriptions/me
+14. PATCH /api/subscriptions/me/pause
+15. PATCH /api/subscriptions/me/resume
+16. PATCH /api/subscriptions/me/cancel
+17. GET   /api/dashboard
 ```

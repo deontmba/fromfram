@@ -46,12 +46,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Include role in JWT so middleware can check it
-    const token = await new SignJWT({ 
-      id: user.id, 
-      email: user.email,
-      role: user.role
-    })
+    const token = await new SignJWT({ id: user.id, email: user.email })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("7d")
@@ -60,12 +55,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json(
       {
         message: "Login successful.",
-        user: { 
-          id: user.id, 
-          name: user.name, 
-          email: user.email,
-          role: user.role
-        },
+        user: { id: user.id, name: user.name, email: user.email },
       },
       { status: 200 }
     );
@@ -74,7 +64,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     });
 

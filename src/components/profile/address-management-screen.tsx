@@ -72,8 +72,6 @@ export function AddressManagementScreen() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [message, setMessage] = useState<StatusMessage>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
-  const [pendingDeleteAddress, setPendingDeleteAddress] = useState<ManagedAddress | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -224,7 +222,7 @@ export function AddressManagementScreen() {
 
       setMessage({
         tone: "success",
-        text: editingAddressId ? "Alamat berhasil diperbarui." : "Alamat baru berhasil ditambahkan.",
+        text: editingAddressId ? "Address berhasil diperbarui." : "Alamat baru berhasil ditambahkan.",
       });
       closeForm();
     } catch {
@@ -298,68 +296,6 @@ export function AddressManagementScreen() {
     }
   };
 
-  const handleDeleteAddress = async (address: ManagedAddress) => {
-    setDeletingAddressId(address.id);
-    setMessage(null);
-
-    try {
-      const response = await fetch(`/api/profile/address?id=${encodeURIComponent(address.id)}`, {
-        method: "DELETE",
-      });
-      const data = (await response.json().catch(() => null)) as AddressResponse | null;
-
-      if (!response.ok) {
-        setMessage({
-          tone: "error",
-          text: data?.error ?? data?.message ?? "Gagal menghapus alamat.",
-        });
-        return;
-      }
-
-      setAddresses((currentAddresses) => {
-        const nextAddresses = currentAddresses.filter((currentAddress) => currentAddress.id !== address.id);
-
-        if (!address.isDefault || nextAddresses.length === 0 || nextAddresses.some((nextAddress) => nextAddress.isDefault)) {
-          return nextAddresses;
-        }
-
-        const nextDefaultAddress = [...nextAddresses].sort((firstAddress, secondAddress) =>
-          firstAddress.label.localeCompare(secondAddress.label),
-        )[0];
-
-        return nextAddresses.map((nextAddress) => ({
-          ...nextAddress,
-          isDefault: nextAddress.id === nextDefaultAddress.id,
-        }));
-      });
-
-      if (editingAddressId === address.id) {
-        closeForm();
-      }
-
-      setPendingDeleteAddress(null);
-      setMessage({
-        tone: "success",
-        text: "Alamat berhasil dihapus.",
-      });
-    } catch {
-      setMessage({
-        tone: "error",
-        text: "Gagal menghapus alamat.",
-      });
-    } finally {
-      setDeletingAddressId(null);
-    }
-  };
-
-  const closeDeleteModal = () => {
-    if (deletingAddressId) {
-      return;
-    }
-
-    setPendingDeleteAddress(null);
-  };
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
       <div
@@ -380,12 +316,12 @@ export function AddressManagementScreen() {
             onClick={openAddForm}
             className="inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
           >
-            Tambah alamat
+            Add address
           </button>
         </div>
 
         <div className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-6 shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
-          <p className="text-sm font-semibold text-[#11af82]">Alamat</p>
+          <p className="text-sm font-semibold text-[#11af82]">Address</p>
           <h1 className="mt-2 text-[1.6rem] font-bold tracking-[-0.02em] text-neutral-900">
             Kelola alamat
           </h1>
@@ -420,25 +356,14 @@ export function AddressManagementScreen() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => openEditForm(address)}
-                    className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
-                    aria-label={`Ubah ${address.label}`}
-                  >
-                    Ubah
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingDeleteAddress(address)}
-                    disabled={deletingAddressId === address.id}
-                    className="rounded-2xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label={`Hapus ${address.label}`}
-                  >
-                    {deletingAddressId === address.id ? "Menghapus..." : "Hapus"}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => openEditForm(address)}
+                  className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                  aria-label={`Edit ${address.label}`}
+                >
+                  Edit
+                </button>
               </div>
 
               {!address.isDefault ? (
@@ -470,7 +395,7 @@ export function AddressManagementScreen() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-[1.35rem] font-bold tracking-[-0.02em] text-neutral-900">
-                    {editingAddressId ? "Ubah alamat" : "Tambah alamat"}
+                    {editingAddressId ? "Edit address" : "Add address"}
                   </h2>
                   <p className="mt-1 text-sm text-neutral-500">
                     Isi data alamat secara langsung tanpa langkah tambahan.
@@ -481,13 +406,13 @@ export function AddressManagementScreen() {
                   onClick={closeForm}
                   className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
                 >
-                  Batal
+                  Cancel
                 </button>
               </div>
 
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Label Alamat</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">Label</span>
                   <input
                     className={inputClassName}
                     value={addressDraft.label}
@@ -502,7 +427,7 @@ export function AddressManagementScreen() {
 
                 <label className="block">
                   <span className="block text-[1rem] font-semibold text-neutral-800">
-                    Kode Pos
+                    Postal code
                   </span>
                   <input
                     className={inputClassName}
@@ -517,7 +442,7 @@ export function AddressManagementScreen() {
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Alamat Lengkap</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">Street</span>
                   <input
                     className={inputClassName}
                     value={addressDraft.street}
@@ -531,7 +456,7 @@ export function AddressManagementScreen() {
                 </label>
 
                 <label className="block">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Kota</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">City</span>
                   <input
                     className={inputClassName}
                     value={addressDraft.city}
@@ -546,7 +471,7 @@ export function AddressManagementScreen() {
 
                 <label className="block">
                   <span className="block text-[1rem] font-semibold text-neutral-800">
-                    Provinsi
+                    Province
                   </span>
                   <input
                     className={inputClassName}
@@ -561,7 +486,7 @@ export function AddressManagementScreen() {
                 </label>
 
                 <label className="block sm:col-span-2">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Catatan (Opsional)</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">Notes</span>
                   <textarea
                     className="mt-2 min-h-28 w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]"
                     value={addressDraft.notes}
@@ -587,7 +512,7 @@ export function AddressManagementScreen() {
                     className="h-4 w-4 rounded border-neutral-400 accent-[#1abb89]"
                   />
                   <span className="text-sm font-semibold text-neutral-700">
-                    Jadikan alamat utama
+                    Set as default address
                   </span>
                 </label>
               </div>
@@ -600,54 +525,14 @@ export function AddressManagementScreen() {
                 {isSaving
                   ? "Menyimpan..."
                   : editingAddressId
-                    ? "Simpan alamat"
-                    : "Tambah alamat"}
+                    ? "Save address"
+                    : "Add address"}
               </button>
             </form>
           ) : null}
           </div>
         </div>
       </section>
-
-      {pendingDeleteAddress ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-address-title"
-        >
-          <div className="w-full max-w-[420px] rounded-[18px] border border-black/5 bg-white p-6 shadow-[0_18px_35px_rgba(0,0,0,0.22)]">
-            <h2 id="delete-address-title" className="text-[1.35rem] font-bold text-neutral-900">
-              Hapus alamat?
-            </h2>
-            <p className="mt-2 text-[1rem] text-neutral-600">
-              Apakah Anda yakin ingin menghapus alamat ini?
-            </p>
-            <p className="mt-4 rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm text-neutral-600">
-              Alamat: <span className="font-semibold text-neutral-900">{pendingDeleteAddress.label}</span>
-            </p>
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={Boolean(deletingAddressId)}
-                className="h-11 rounded-2xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteAddress(pendingDeleteAddress)}
-                disabled={Boolean(deletingAddressId)}
-                className="h-11 rounded-2xl bg-red-600 px-5 text-sm font-semibold text-white shadow-[0_8px_16px_rgba(220,38,38,0.24)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingAddressId ? "Menghapus..." : "Hapus"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }
