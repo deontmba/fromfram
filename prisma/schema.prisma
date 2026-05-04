@@ -64,8 +64,11 @@ model User {
   password           String?
   name               String
   role               Role                @default(USER)
+  isVerified         Boolean             @default(false)
+  googleId           String?             @unique        
+  avatarUrl          String?                            
   createdAt          DateTime            @default(now())
-
+ 
   // Relations
   nutritionalProfile NutritionalProfile?
   addresses          Address[]
@@ -73,10 +76,31 @@ model User {
   transactions       Transaction[]
   weeklyBoxes        WeeklyBox[]
   deliveries         Delivery[]
-  recipes            Recipe[]            // relasi untuk nutritionist
+  recipes            Recipe[]
+  verificationTokens VerificationToken[]
+  passwordResetTokens PasswordResetToken[]
 }
 
-// ← BARU: profil gizi pengguna, relasi 1:1 dengan User
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+ 
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model NutritionalProfile {
   id               String  @id @default(cuid())
   userId           String  @unique
