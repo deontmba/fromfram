@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   createAddressId,
   type Address,
@@ -35,6 +36,12 @@ type StatusMessage =
       text: string;
     }
   | null;
+
+type AddressSaveConfirmation = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+} | null;
 
 const inputClassName =
   "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
@@ -72,6 +79,9 @@ export function AddressManagementScreen() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [message, setMessage] = useState<StatusMessage>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [addressSaveConfirmation, setAddressSaveConfirmation] =
+    useState<AddressSaveConfirmation>(null);
+  const [pendingDefaultAddressId, setPendingDefaultAddressId] = useState<string | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [pendingDeleteAddress, setPendingDeleteAddress] = useState<ManagedAddress | null>(null);
 
@@ -150,6 +160,32 @@ export function AddressManagementScreen() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isSaving) {
+      return;
+    }
+
+    setAddressSaveConfirmation(
+      editingAddressId
+        ? {
+            title: "Simpan Perubahan Alamat",
+            message: "Apakah Anda yakin ingin menyimpan perubahan alamat?",
+            confirmLabel: "Ya, Simpan",
+          }
+        : {
+            title: "Tambah Alamat",
+            message: "Apakah Anda yakin ingin menambahkan alamat ini?",
+            confirmLabel: "Ya, Tambahkan",
+          },
+    );
+  };
+
+  const handleConfirmSaveAddress = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    setAddressSaveConfirmation(null);
     setIsSaving(true);
     setMessage(null);
 
@@ -257,7 +293,13 @@ export function AddressManagementScreen() {
     }
   };
 
-  const handleSetDefault = async (id: string) => {
+  const handleConfirmSetDefault = async () => {
+    if (!pendingDefaultAddressId) {
+      return;
+    }
+
+    const id = pendingDefaultAddressId;
+    setPendingDefaultAddressId(null);
     setMessage(null);
 
     try {
@@ -444,7 +486,7 @@ export function AddressManagementScreen() {
               {!address.isDefault ? (
                 <button
                   type="button"
-                  onClick={() => handleSetDefault(address.id)}
+                  onClick={() => setPendingDefaultAddressId(address.id)}
                   className="mt-5 h-12 w-full rounded-2xl border border-neutral-300 bg-white text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50"
                 >
                   Jadikan Alamat Utama
@@ -609,45 +651,40 @@ export function AddressManagementScreen() {
         </div>
       </section>
 
-      {pendingDeleteAddress ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-address-title"
-        >
-          <div className="w-full max-w-[420px] rounded-[18px] border border-black/5 bg-white p-6 shadow-[0_18px_35px_rgba(0,0,0,0.22)]">
-            <h2 id="delete-address-title" className="text-[1.35rem] font-bold text-neutral-900">
-              Hapus alamat?
-            </h2>
-            <p className="mt-2 text-[1rem] text-neutral-600">
-              Apakah Anda yakin ingin menghapus alamat ini?
-            </p>
-            <p className="mt-4 rounded-2xl bg-[#f7f7f7] px-4 py-3 text-sm text-neutral-600">
-              Alamat: <span className="font-semibold text-neutral-900">{pendingDeleteAddress.label}</span>
-            </p>
-
-            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={Boolean(deletingAddressId)}
-                className="h-11 rounded-2xl border border-neutral-300 bg-white px-5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteAddress(pendingDeleteAddress)}
-                disabled={Boolean(deletingAddressId)}
-                className="h-11 rounded-2xl bg-red-600 px-5 text-sm font-semibold text-white shadow-[0_8px_16px_rgba(220,38,38,0.24)] transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingAddressId ? "Menghapus..." : "Hapus"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        isOpen={Boolean(addressSaveConfirmation)}
+        title={addressSaveConfirmation?.title ?? ""}
+        message={addressSaveConfirmation?.message ?? ""}
+        confirmLabel={addressSaveConfirmation?.confirmLabel ?? ""}
+        cancelLabel="Batal"
+        isConfirming={isSaving}
+        onCancel={() => setAddressSaveConfirmation(null)}
+        onConfirm={handleConfirmSaveAddress}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(pendingDefaultAddressId)}
+        title="Jadikan Alamat Utama"
+        message="Apakah Anda yakin ingin menjadikan alamat ini sebagai alamat utama?"
+        confirmLabel="Ya, Jadikan Utama"
+        cancelLabel="Batal"
+        onCancel={() => setPendingDefaultAddressId(null)}
+        onConfirm={handleConfirmSetDefault}
+      />
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteAddress)}
+        title="Hapus Alamat"
+        message="Apakah Anda yakin ingin menghapus alamat ini? Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        variant="destructive"
+        isConfirming={Boolean(deletingAddressId)}
+        onCancel={closeDeleteModal}
+        onConfirm={() => {
+          if (pendingDeleteAddress) {
+            void handleDeleteAddress(pendingDeleteAddress);
+          }
+        }}
+      />
     </main>
   );
 }

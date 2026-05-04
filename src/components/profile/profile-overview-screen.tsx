@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   profileMockData,
   type ProfileDetails,
@@ -40,8 +41,11 @@ export function ProfileOverviewScreen() {
   const [profile, setProfile] = useState<ProfileDetails>(profileMockData);
   const [draft, setDraft] = useState<ProfileDetails>(profileMockData);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [message, setMessage] = useState<StatusMessage>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -94,6 +98,20 @@ export function ProfileOverviewScreen() {
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaveConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaveConfirmOpen(false);
     setIsSaving(true);
     setMessage(null);
 
@@ -149,6 +167,11 @@ export function ProfileOverviewScreen() {
   };
 
   const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
@@ -329,10 +352,11 @@ export function ProfileOverviewScreen() {
 
           <button
             type="button"
-            onClick={handleLogout}
-            className="mt-5 h-14 w-full rounded-2xl bg-[#fff1f2] text-[1rem] font-semibold text-[#e11d48] transition hover:bg-[#ffe4e8]"
+            onClick={() => setIsLogoutConfirmOpen(true)}
+            disabled={isLoggingOut}
+            className="mt-5 h-14 w-full rounded-2xl bg-[#fff1f2] text-[1rem] font-semibold text-[#e11d48] transition hover:bg-[#ffe4e8] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Log out
+            {isLoggingOut ? "Logging out..." : "Log out"}
           </button>
         </section>
       </main>
@@ -406,6 +430,27 @@ export function ProfileOverviewScreen() {
           </div>
         </div>
       ) : null}
+      <ConfirmDialog
+        isOpen={isSaveConfirmOpen}
+        title="Konfirmasi Perubahan Profil"
+        message="Apakah Anda yakin ingin menyimpan perubahan data profil?"
+        confirmLabel="Ya, Simpan"
+        cancelLabel="Batal"
+        isConfirming={isSaving}
+        onCancel={() => setIsSaveConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+      />
+      <ConfirmDialog
+        isOpen={isLogoutConfirmOpen}
+        title="Konfirmasi Logout"
+        message="Apakah Anda yakin ingin keluar dari akun ini?"
+        confirmLabel="Ya, Logout"
+        cancelLabel="Batal"
+        variant="destructive"
+        isConfirming={isLoggingOut}
+        onCancel={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }
