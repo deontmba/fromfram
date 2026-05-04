@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import styles from "./role-portal-screen.module.css";
 
@@ -33,41 +33,45 @@ type ActionItem = {
 type DeliveryRow = {
   id: string;
   user: string;
+  userId: string;
   menu: string;
   address: string;
+  deliveryDate: string;
   status: "PREPARING" | "SHIPPED" | "DELIVERED";
+  shippedAt: string | null;
+  deliveredAt: string | null;
 };
 
 type UserRow = {
+  id: string;
   name: string;
-  contact: string;
-  address: string;
-  plan: "Mingguan" | "Bulanan" | "Tahunan";
-  serving: string;
-  status: "ACTIVE" | "PAUSED" | "CANCELLED";
-  joined: string;
-  nextDelivery: string;
+  email: string;
+  phoneNumber: string | null;
+  address: string | null;
+  plan: string | null;
+  servings: number | null;
+  subscriptionStatus: string | null;
+  goal: string | null;
+  joinedAt: string;
+  nextDelivery: string | null;
 };
 
 type RecipeRow = {
+  id: string;
   name: string;
-  category: string;
+  description: string;
   calories: number;
   protein: number;
-  difficulty: "Mudah" | "Sedang" | "Sulit";
-  cookTime: string;
-  readiness: "OK" | "Needs Review";
+  servings: number;
 };
 
-type WeeklyDayRow = {
-  day: string;
-  menu: string;
-  goal: string;
+type WeeklyMenuRow = {
+  id: string;
+  recipeName: string;
   calories: number;
   protein: number;
-  validation: "Valid" | "Review";
+  suitableGoals: string[];
 };
-
 type RoleConfig = {
   title: string;
   subtitle: string;
@@ -81,70 +85,6 @@ type RoleConfig = {
   accentMid: string;
   accentSoft: string;
 };
-
-const adminDeliveries: DeliveryRow[] = [
-  { id: "DEL-001", user: "John Doe", menu: "Nasi Goreng Kampung", address: "Jakarta Selatan", status: "SHIPPED" },
-  { id: "DEL-002", user: "Jane Smith", menu: "Ayam Teriyaki Bowl", address: "Jakarta Pusat", status: "PREPARING" },
-  { id: "DEL-003", user: "Bob Wilson", menu: "Spaghetti Carbonara", address: "Tangerang", status: "DELIVERED" },
-  { id: "DEL-004", user: "Alice Brown", menu: "Nasi Hainan", address: "Bekasi", status: "SHIPPED" },
-  { id: "DEL-005", user: "Charlie Lee", menu: "Beef Bulgogi", address: "Jakarta Barat", status: "PREPARING" },
-  { id: "DEL-006", user: "Diana Chen", menu: "Tom Yum Seafood", address: "Jakarta Timur", status: "SHIPPED" },
-  { id: "DEL-007", user: "Evan Park", menu: "Rendang Sapi", address: "Depok", status: "DELIVERED" },
-  { id: "DEL-008", user: "Fiona Kim", menu: "Pad Thai", address: "Jakarta Selatan", status: "PREPARING" },
-];
-
-const adminUsers: UserRow[] = [
-  {
-    name: "John Doe",
-    contact: "john@email.com | +62 812-3456-7890",
-    address: "Jl. Sudirman No. 123, Jakarta",
-    plan: "Bulanan",
-    serving: "2 orang",
-    status: "ACTIVE",
-    joined: "1 Mar 2026",
-    nextDelivery: "6 Mar 2026",
-  },
-  {
-    name: "Jane Smith",
-    contact: "jane@email.com | +62 813-9876-5432",
-    address: "Jl. Gatot Subroto No. 45, Jakarta",
-    plan: "Tahunan",
-    serving: "4 orang",
-    status: "ACTIVE",
-    joined: "15 Feb 2026",
-    nextDelivery: "5 Mar 2026",
-  },
-  {
-    name: "Bob Wilson",
-    contact: "bob@email.com | +62 815-5555-1234",
-    address: "Jl. Thamrin No. 67, Jakarta",
-    plan: "Mingguan",
-    serving: "1 orang",
-    status: "ACTIVE",
-    joined: "20 Feb 2026",
-    nextDelivery: "4 Mar 2026",
-  },
-  {
-    name: "Alice Brown",
-    contact: "alice@email.com | +62 821-2222-3333",
-    address: "Jl. Rasuna Said No. 89, Jakarta",
-    plan: "Bulanan",
-    serving: "2 orang",
-    status: "PAUSED",
-    joined: "5 Feb 2026",
-    nextDelivery: "-",
-  },
-  {
-    name: "Charlie Lee",
-    contact: "charlie@email.com | +62 822-4444-5555",
-    address: "Jl. Kuningan No. 12, Jakarta",
-    plan: "Bulanan",
-    serving: "3 orang",
-    status: "ACTIVE",
-    joined: "10 Jan 2026",
-    nextDelivery: "8 Mar 2026",
-  },
-];
 
 const nutritionRecipes: RecipeRow[] = [
   { name: "Nasi Goreng Kampung", category: "Indonesian", calories: 450, protein: 18, difficulty: "Mudah", cookTime: "25 min", readiness: "OK" },
@@ -192,14 +132,14 @@ const adminConfig: RoleConfig = {
       { label: "Deliveries Today", value: "342", delta: "89%", icon: <BoxIcon /> },
     ],
     deliveries: [
-      { label: "Preparing", value: "3", delta: "Live", icon: <ClockIcon /> },
-      { label: "Shipped", value: "3", delta: "Live", icon: <TruckIcon /> },
-      { label: "Delivered", value: "2", delta: "Live", icon: <CheckCircleIcon /> },
+      { label: "Preparing", value: "0", delta: "Live", icon: <ClockIcon /> },
+      { label: "Shipped", value: "0", delta: "Live", icon: <TruckIcon /> },
+      { label: "Delivered", value: "0", delta: "Live", icon: <CheckCircleIcon /> },
     ],
     users: [
-      { label: "Total Users", value: "8", delta: "Realtime", icon: <PeopleIcon /> },
-      { label: "Active", value: "6", delta: "Healthy", icon: <CheckCircleIcon /> },
-      { label: "Paused/Cancelled", value: "2", delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Total Users", value: "0", delta: "Realtime", icon: <PeopleIcon /> },
+      { label: "Active", value: "0", delta: "Healthy", icon: <CheckCircleIcon /> },
+      { label: "Paused/Cancelled", value: "0", delta: "Needs Action", icon: <AlertIcon /> },
     ],
   },
   activities: {
@@ -315,23 +255,293 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const config = role === "admin" ? adminConfig : nutritionConfig;
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
 
+  // Real data states
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [advancingId, setAdvancingId] = useState<string | null>(null);
+
+  // Nutritionist states
+  const [nutritionKpis, setNutritionKpis] = useState<KpiItem[] | null>(null);
+  const [recipes, setRecipes] = useState<RecipeRow[]>([]);
+  const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenuRow[]>([]);
+
+  // CRUD states
+  const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+  const [showMenuForm, setShowMenuForm] = useState(false);
+  const [menuForm, setMenuForm] = useState({ recipeId: "", weekStartDate: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Search/filter states
+  const [deliverySearch, setDeliverySearch] = useState("");
+  const [deliveryStatusFilter, setDeliveryStatusFilter] = useState("all");
+  const [deliveryAreaFilter, setDeliveryAreaFilter] = useState("all");
+  const [userSearch, setUserSearch] = useState("");
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+
   const themeVars = {
     "--accent-strong": config.accentStrong,
     "--accent-mid": config.accentMid,
     "--accent-soft": config.accentSoft,
   } as CSSProperties;
 
+  // Fetch deliveries
+  const fetchDeliveries = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (deliveryStatusFilter !== "all") params.set("status", deliveryStatusFilter.toUpperCase());
+      if (deliveryAreaFilter !== "all") params.set("area", deliveryAreaFilter);
+
+      const res = await fetch(`/api/admin/deliveries?${params}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch deliveries");
+      const data = await res.json();
+      setDeliveries(data.data || []);
+    } catch (err) {
+      console.error("[FETCH DELIVERIES]", err);
+      setError("Gagal memuat data deliveries");
+    }
+  }, [deliveryStatusFilter, deliveryAreaFilter]);
+
+  // Fetch users
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      setUsers(data.data || []);
+    } catch (err) {
+      console.error("[FETCH USERS]", err);
+      setError("Gagal memuat data users");
+    }
+  }, []);
+
+  // Fetch Nutrition KPIs
+  const fetchNutritionKpis = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nutritionist/dashboard/kpis", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch KPIs");
+      const data = await res.json();
+      setNutritionKpis([
+        { label: "Total Recipes", value: String(data.data.totalRecipes), delta: "Realtime", icon: <BookIcon /> },
+        { label: "Weekly Menus", value: String(data.data.weeklyMenusCount), delta: "Active", icon: <CalendarIcon /> },
+        { label: "Active Users", value: String(data.data.activeUsers), delta: "Healthy", icon: <PeopleIcon /> },
+      ]);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const fetchRecipes = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nutritionist/recipes", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch recipes");
+      const data = await res.json();
+      setRecipes(data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const fetchWeeklyMenus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nutritionist/weekly-menus", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch weekly menus");
+      const data = await res.json();
+      setWeeklyMenus(data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  // Load data when tab changes or filters change
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+
+    const load = async () => {
+      if (role === "admin") {
+        if (activeTab === "deliveries") await fetchDeliveries();
+        else if (activeTab === "users") await fetchUsers();
+      } else if (role === "nutritionist") {
+        if (activeTab === "dashboard") await fetchNutritionKpis();
+        else if (activeTab === "recipes") await fetchRecipes();
+        else if (activeTab === "weekly-menu") await fetchWeeklyMenus();
+      }
+      setLoading(false);
+    };
+
+    load();
+  }, [role, activeTab, fetchDeliveries, fetchUsers, fetchNutritionKpis, fetchRecipes, fetchWeeklyMenus]);
+
+  // Advance delivery status
+  async function advanceDelivery(id: string) {
+    setAdvancingId(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/admin/deliveries/${id}/advance`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to advance delivery");
+      }
+
+      // Refresh the list
+      await fetchDeliveries();
+    } catch (err: unknown) {
+      console.error("[ADVANCE DELIVERY]", err);
+      const message = err instanceof Error ? err.message : "Gagal memajukan status delivery";
+      setError(message);
+    } finally {
+      setAdvancingId(null);
+    }
+  }
+
+  // CRUD Functions
+  async function handleSaveRecipe(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const method = recipeForm.id ? "PATCH" : "POST";
+      const url = recipeForm.id ? `/api/nutritionist/recipes/${recipeForm.id}` : "/api/nutritionist/recipes";
+      const body = {
+        name: recipeForm.name,
+        description: recipeForm.description,
+        calories: parseInt(recipeForm.calories),
+        protein: parseFloat(recipeForm.protein),
+        servings: parseInt(recipeForm.servings),
+      };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include"
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan resep");
+      await fetchRecipes();
+      setShowRecipeForm(false);
+      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+    } catch (err) {
+      console.error(err);
+      alert("Error saving recipe");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteRecipe(id: string) {
+    if (!confirm("Hapus resep ini?")) return;
+    try {
+      const res = await fetch(`/api/nutritionist/recipes/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Gagal menghapus resep");
+      await fetchRecipes();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting recipe");
+    }
+  }
+
+  async function handleAddMenu(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/nutritionist/weekly-menus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipeId: menuForm.recipeId,
+          weekStartDate: menuForm.weekStartDate || new Date().toISOString()
+        }),
+        credentials: "include"
+      });
+      if (!res.ok) throw new Error("Gagal menambah menu");
+      await fetchWeeklyMenus();
+      setShowMenuForm(false);
+      setMenuForm({ recipeId: "", weekStartDate: "" });
+    } catch (err) {
+      console.error(err);
+      alert("Error adding menu");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDeleteMenu(id: string) {
+    if (!confirm("Hapus dari jadwal minggu ini?")) return;
+    try {
+      const res = await fetch(`/api/nutritionist/weekly-menus/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Gagal menghapus menu");
+      await fetchWeeklyMenus();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting menu");
+    }
+  }
+
+  // Computed KPI values from real data
+  const deliveryKpis = useMemo(() => {
+    const preparing = deliveries.filter((d) => d.status === "PREPARING").length;
+    const shipped = deliveries.filter((d) => d.status === "SHIPPED").length;
+    const delivered = deliveries.filter((d) => d.status === "DELIVERED").length;
+    return [
+      { label: "Preparing", value: String(preparing), delta: "Live", icon: <ClockIcon /> },
+      { label: "Shipped", value: String(shipped), delta: "Live", icon: <TruckIcon /> },
+      { label: "Delivered", value: String(delivered), delta: "Live", icon: <CheckCircleIcon /> },
+    ];
+  }, [deliveries]);
+
+  const userKpis = useMemo(() => {
+    const total = users.length;
+    const active = users.filter((u) => u.subscriptionStatus === "ACTIVE").length;
+    const pausedCancelled = users.filter(
+      (u) => u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
+    ).length;
+    return [
+      { label: "Total Users", value: String(total), delta: "Realtime", icon: <PeopleIcon /> },
+      { label: "Active", value: String(active), delta: "Healthy", icon: <CheckCircleIcon /> },
+      { label: "Paused/Cancelled", value: String(pausedCancelled), delta: "Needs Action", icon: <AlertIcon /> },
+    ];
+  }, [users]);
+
+  // Filtered deliveries
   const filteredDeliveries = useMemo(() => {
-    return adminDeliveries;
-  }, []);
+    return deliveries.filter((d) => {
+      const matchesSearch =
+        deliverySearch === "" ||
+        d.id.toLowerCase().includes(deliverySearch.toLowerCase()) ||
+        d.user.toLowerCase().includes(deliverySearch.toLowerCase()) ||
+        d.menu.toLowerCase().includes(deliverySearch.toLowerCase());
+      return matchesSearch;
+    });
+  }, [deliveries, deliverySearch]);
 
+  // Filtered users
   const filteredUsers = useMemo(() => {
-    return adminUsers;
-  }, []);
+    return users.filter((u) => {
+      const matchesSearch =
+        userSearch === "" ||
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      const matchesPlan = userPlanFilter === "all" || u.plan?.toLowerCase() === userPlanFilter.toLowerCase();
+      const matchesStatus = userStatusFilter === "all" || u.subscriptionStatus?.toLowerCase() === userStatusFilter.toLowerCase();
+      return matchesSearch && matchesPlan && matchesStatus;
+    });
+  }, [users, userSearch, userPlanFilter, userStatusFilter]);
 
-  const filteredRecipes = useMemo(() => {
-    return nutritionRecipes;
-  }, []);
+  // Get KPIs based on active tab
+  const currentKpis = useMemo(() => {
+    if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
+    if (role === "admin" && activeTab === "users") return userKpis;
+    if (role === "nutritionist" && activeTab === "dashboard" && nutritionKpis) return nutritionKpis;
+    return config.kpis[activeTab] || [];
+  }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis]);
 
   return (
     <main className={styles.shell} style={themeVars}>
@@ -344,7 +554,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               <p className={styles.brandSub}>{config.subtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.logoutButton}>
+          <button type="button" className={styles.logoutButton} onClick={() => {
+            fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then(() => {
+              window.location.href = "/login";
+            });
+          }}>
             Logout
           </button>
         </header>
@@ -367,8 +581,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
             <h2 className={styles.sectionTitle}>{config.heroTitle[activeTab]}</h2>
             <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
 
+            {error && (
+              <div className={styles.notice} style={{ background: "#fee2e2", borderColor: "#ef4444" }}>
+                <p className={styles.noticeTitle} style={{ color: "#dc2626" }}>Error:</p>
+                <p style={{ color: "#dc2626" }}>{error}</p>
+              </div>
+            )}
+
             <div className={styles.kpiGrid}>
-              {config.kpis[activeTab].map((kpi, index) => (
+              {currentKpis.map((kpi, index) => (
                 <article key={kpi.label} className={styles.kpiCard} style={{ animationDelay: `${index * 80}ms` }}>
                   <div className={styles.kpiRow}>
                     <span className={styles.activityIcon}>{kpi.icon}</span>
@@ -380,14 +601,20 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               ))}
             </div>
 
-            {role === "admin" && activeTab === "deliveries" ? (
+            {loading && (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                Memuat data...
+              </div>
+            )}
+
+            {role === "admin" && activeTab === "deliveries" && !loading ? (
               <>
                 <div className={styles.metricRow}>
                   {[
-                    { label: "Preparing", value: "3" },
-                    { label: "Shipped", value: "3" },
-                    { label: "Delivered", value: "2" },
-                    { label: "Total Today", value: "8", hot: true },
+                    { label: "Preparing", value: String(deliveries.filter((d) => d.status === "PREPARING").length) },
+                    { label: "Shipped", value: String(deliveries.filter((d) => d.status === "SHIPPED").length) },
+                    { label: "Delivered", value: String(deliveries.filter((d) => d.status === "DELIVERED").length) },
+                    { label: "Total Today", value: String(deliveries.length), hot: true },
                   ].map((metric) => (
                     <article key={metric.label} className={clsx(styles.metric, metric.hot && styles.metricHot)}>
                       <p className={styles.metricLabel}>{metric.label}</p>
@@ -397,18 +624,32 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 </div>
 
                 <div className={styles.searchRow}>
-                  <input className={styles.input} placeholder="Cari delivery by ID, user, atau menu" />
-                  <select className={styles.select} defaultValue="all">
+                  <input
+                    className={styles.input}
+                    placeholder="Cari delivery by ID, user, atau menu"
+                    value={deliverySearch}
+                    onChange={(e) => setDeliverySearch(e.target.value)}
+                  />
+                  <select
+                    className={styles.select}
+                    value={deliveryStatusFilter}
+                    onChange={(e) => setDeliveryStatusFilter(e.target.value)}
+                  >
                     <option value="all">Semua status</option>
                     <option value="preparing">Preparing</option>
                     <option value="shipped">Shipped</option>
                     <option value="delivered">Delivered</option>
                   </select>
-                  <select className={styles.select} defaultValue="all">
+                  <select
+                    className={styles.select}
+                    value={deliveryAreaFilter}
+                    onChange={(e) => setDeliveryAreaFilter(e.target.value)}
+                  >
                     <option value="all">Semua area</option>
                     <option value="jakarta">Jakarta</option>
                     <option value="tangerang">Tangerang</option>
                     <option value="bekasi">Bekasi</option>
+                    <option value="depok">Depok</option>
                   </select>
                 </div>
 
@@ -425,22 +666,40 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredDeliveries.map((row) => (
-                        <tr key={row.id}>
-                          <td className={styles.tableKey}>{row.id}</td>
-                          <td>{row.user}</td>
-                          <td>{row.menu}</td>
-                          <td>{row.address}</td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
-                          </td>
-                          <td>
-                            <button type="button" className={styles.actionCard} style={{ padding: "0.45rem 0.7rem" }}>
-                              Advance
-                            </button>
+                      {filteredDeliveries.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                            Tidak ada data delivery
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredDeliveries.map((row) => (
+                          <tr key={row.id}>
+                            <td className={styles.tableKey}>{row.id.slice(0, 8)}...</td>
+                            <td>{row.user}</td>
+                            <td>{row.menu}</td>
+                            <td>{row.address}</td>
+                            <td>
+                              <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className={styles.actionCard}
+                                style={{ padding: "0.45rem 0.7rem" }}
+                                onClick={() => advanceDelivery(row.id)}
+                                disabled={row.status === "DELIVERED" || advancingId === row.id}
+                              >
+                                {advancingId === row.id
+                                  ? "Memproses..."
+                                  : row.status === "DELIVERED"
+                                  ? "Selesai"
+                                  : "Advance"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -456,17 +715,30 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
-            {role === "admin" && activeTab === "users" ? (
+            {role === "admin" && activeTab === "users" && !loading ? (
               <>
                 <div className={styles.searchRow}>
-                  <input className={styles.input} placeholder="Cari user by nama atau email" />
-                  <select className={styles.select} defaultValue="all">
+                  <input
+                    className={styles.input}
+                    placeholder="Cari user by nama atau email"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                  <select
+                    className={styles.select}
+                    value={userPlanFilter}
+                    onChange={(e) => setUserPlanFilter(e.target.value)}
+                  >
                     <option value="all">Semua plan</option>
                     <option value="mingguan">Mingguan</option>
                     <option value="bulanan">Bulanan</option>
                     <option value="tahunan">Tahunan</option>
                   </select>
-                  <select className={styles.select} defaultValue="all">
+                  <select
+                    className={styles.select}
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                  >
                     <option value="all">Semua status</option>
                     <option value="active">Active</option>
                     <option value="paused">Paused</option>
@@ -489,22 +761,38 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((row) => (
-                        <tr key={row.name}>
-                          <td>{row.name}</td>
-                          <td>{row.contact}</td>
-                          <td>{row.address}</td>
-                          <td>
-                            <span className={clsx(styles.tag, styles.tagRed)}>{row.plan}</span>
+                      {filteredUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                            Tidak ada data user
                           </td>
-                          <td>{row.serving}</td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
-                          </td>
-                          <td>{row.joined}</td>
-                          <td>{row.nextDelivery}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        filteredUsers.map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.name}</td>
+                            <td>
+                              {row.email}
+                              {row.phoneNumber && <br />}
+                              {row.phoneNumber}
+                            </td>
+                            <td>{row.address || "-"}</td>
+                            <td>
+                              <span className={clsx(styles.tag, styles.tagRed)}>
+                                {row.plan || "-"}
+                              </span>
+                            </td>
+                            <td>{row.servings ? `${row.servings} orang` : "-"}</td>
+                            <td>
+                              <span className={clsx(styles.tag, statusClass[row.subscriptionStatus || ""])}>
+                                {row.subscriptionStatus || "-"}
+                              </span>
+                            </td>
+                            <td>{new Date(row.joinedAt).toLocaleDateString("id-ID")}</td>
+                            <td>{row.nextDelivery ? new Date(row.nextDelivery).toLocaleDateString("id-ID") : "-"}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -522,102 +810,150 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
             {role === "nutritionist" && activeTab === "recipes" ? (
               <>
-                <div className={styles.searchRow}>
-                  <input className={styles.input} placeholder="Cari recipe, kategori, atau goal" />
-                  <select className={styles.select} defaultValue="all">
-                    <option value="all">Semua kesulitan</option>
-                    <option value="mudah">Mudah</option>
-                    <option value="sedang">Sedang</option>
-                    <option value="sulit">Sulit</option>
-                  </select>
-                  <select className={styles.select} defaultValue="all">
-                    <option value="all">Semua readiness</option>
-                    <option value="ok">OK</option>
-                    <option value="review">Needs Review</option>
-                  </select>
+                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p className={styles.noticeTitle}>Daftar Resep Sistem</p>
+                    <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
+                  </div>
+                  <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => {
+                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+                    setShowRecipeForm(!showRecipeForm);
+                  }}>
+                    {showRecipeForm ? "Batal" : "+ Tambah Resep"}
+                  </button>
                 </div>
 
-                <div className={styles.tableShell}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Recipe</th>
-                        <th>Category</th>
-                        <th>Nutrition</th>
-                        <th>Difficulty</th>
-                        <th>Cook Time</th>
-                        <th>Validation</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRecipes.map((row) => (
-                        <tr key={row.name}>
-                          <td>{row.name}</td>
-                          <td>{row.category}</td>
-                          <td>
-                            {row.calories} kcal | {row.protein}g protein
-                          </td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.difficulty])}>{row.difficulty}</span>
-                          </td>
-                          <td>{row.cookTime}</td>
-                          <td>
-                            <span className={clsx(styles.tag, statusClass[row.readiness])}>{row.readiness}</span>
-                          </td>
+                {showRecipeForm && (
+                  <form onSubmit={handleSaveRecipe} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                      <input className={styles.input} style={{ flex: 1, minWidth: "200px" }} placeholder="Nama Resep" required value={recipeForm.name} onChange={e => setRecipeForm({...recipeForm, name: e.target.value})} />
+                      <input className={styles.input} style={{ width: "120px" }} type="number" placeholder="Kalori" required value={recipeForm.calories} onChange={e => setRecipeForm({...recipeForm, calories: e.target.value})} />
+                      <input className={styles.input} style={{ width: "120px" }} type="number" step="0.1" placeholder="Protein (g)" required value={recipeForm.protein} onChange={e => setRecipeForm({...recipeForm, protein: e.target.value})} />
+                      <input className={styles.input} style={{ width: "120px" }} type="number" placeholder="Porsi" required value={recipeForm.servings} onChange={e => setRecipeForm({...recipeForm, servings: e.target.value})} />
+                    </div>
+                    <textarea className={styles.input} placeholder="Deskripsi Singkat" required value={recipeForm.description} onChange={e => setRecipeForm({...recipeForm, description: e.target.value})} />
+                    <button type="submit" disabled={isSubmitting} className={styles.actionCard} style={{ padding: "0.5rem", maxWidth: "150px" }}>
+                      {isSubmitting ? "Menyimpan..." : "Simpan Resep"}
+                    </button>
+                  </form>
+                )}
+
+                {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
+                  <div className={styles.tableShell}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Recipe</th>
+                          <th>Description</th>
+                          <th>Calories</th>
+                          <th>Protein</th>
+                          <th>Servings</th>
+                          <th>Aksi</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {recipes.length === 0 ? (
+                          <tr><td colSpan={6} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada data resep</td></tr>
+                        ) : (
+                          recipes.map((row) => (
+                            <tr key={row.id}>
+                              <td>{row.name}</td>
+                              <td>{row.description ? row.description.slice(0, 50) + "..." : "-"}</td>
+                              <td>{row.calories} kcal</td>
+                              <td>{row.protein} g</td>
+                              <td>{row.servings}</td>
+                              <td>
+                                <button onClick={() => {
+                                  setRecipeForm({
+                                    id: row.id,
+                                    name: row.name,
+                                    description: row.description || "",
+                                    calories: String(row.calories),
+                                    protein: String(row.protein),
+                                    servings: String(row.servings)
+                                  });
+                                  setShowRecipeForm(true);
+                                }} style={{ marginRight: "0.5rem", color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Edit</button>
+                                <button onClick={() => handleDeleteRecipe(row.id)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Hapus</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             ) : null}
 
             {role === "nutritionist" && activeTab === "weekly-menu" ? (
               <>
-                <div className={styles.goalRow}>
-                  {[
-                    "Atlet",
-                    "Weight Loss",
-                    "Vegan High Protein",
-                    "Low Sodium",
-                    "Diabetes Friendly",
-                    "Weight Maintenance",
-                  ].map((goal) => (
-                    <span key={goal} className={styles.goalChip}>
-                      {goal}
-                    </span>
-                  ))}
+                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p className={styles.noticeTitle}>Weekly Menu Pool:</p>
+                    <p>Daftar resep yang tersedia untuk jadwal minggu ini. Sistem otomatis mencocokkan resep dengan target kesehatan pengguna.</p>
+                  </div>
+                  <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => setShowMenuForm(!showMenuForm)}>
+                    {showMenuForm ? "Batal" : "+ Tambah ke Minggu Ini"}
+                  </button>
                 </div>
 
-                <div className={styles.weekGrid}>
-                  {weeklyNutritionRows.map((row) => (
-                    <article key={row.day} className={styles.dayCard}>
-                      <div className={styles.dayHead}>
-                        <p className={styles.dayName}>{row.day}</p>
-                        <span className={clsx(styles.tag, statusClass[row.validation])}>{row.validation}</span>
-                      </div>
-                      <p className={styles.dayMenu}>{row.menu}</p>
-                      <div className={styles.dayStats}>
-                        <span>{row.goal}</span>
-                        <span>{row.calories} kcal</span>
-                        <span>{row.protein}g protein</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                {showMenuForm && (
+                  <form onSubmit={handleAddMenu} style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                    <select className={styles.select} style={{ flex: 1, minWidth: "200px" }} required value={menuForm.recipeId} onChange={e => setMenuForm({...menuForm, recipeId: e.target.value})}>
+                      <option value="">-- Pilih Resep --</option>
+                      {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                    <input className={styles.input} style={{ width: "180px" }} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({...menuForm, weekStartDate: e.target.value})} />
+                    <button type="submit" disabled={isSubmitting} className={styles.actionCard} style={{ padding: "0.5rem 1rem" }}>
+                      {isSubmitting ? "Menambah..." : "Tambah"}
+                    </button>
+                  </form>
+                )}
 
-                <div className={styles.notice}>
-                  <p className={styles.noticeTitle}>Nutrition Validation Notes:</p>
-                  <ul>
-                    <li>Fokus utama: validasi AKG harian berdasarkan segmen pengguna.</li>
-                    <li>Menu dengan label Review perlu cek ulang rasio kalori-protein.</li>
-                    <li>Grouping menu memungkinkan rekomendasi gizi yang lebih presisi.</li>
-                  </ul>
-                </div>
+                {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
+                  <div className={styles.tableShell}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Recipe</th>
+                          <th>Calories</th>
+                          <th>Protein</th>
+                          <th>Suitable Goals</th>
+                          <th>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {weeklyMenus.length === 0 ? (
+                          <tr><td colSpan={5} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada menu untuk minggu ini</td></tr>
+                        ) : (
+                          weeklyMenus.map((row) => (
+                            <tr key={row.id}>
+                              <td>{row.recipeName}</td>
+                              <td>{row.calories} kcal</td>
+                              <td>{row.protein} g</td>
+                              <td>
+                                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                  {row.suitableGoals.map(goal => (
+                                    <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{goal}</span>
+                                  ))}
+                                  {row.suitableGoals.length === 0 && <span className={clsx(styles.tag, styles.tagRed)}>Tidak ada</span>}
+                                </div>
+                              </td>
+                              <td>
+                                <button type="button" onClick={() => handleDeleteMenu(row.id)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Hapus</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             ) : null}
 
-            {(activeTab === "dashboard") ? (
+            {activeTab === "dashboard" ? (
               <>
                 <section className={styles.activityCard}>
                   <h3 className={styles.activityHeader}>Aktivitas Terkini</h3>
@@ -666,6 +1002,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     </main>
   );
 }
+
+// --- Icons ---
 
 function PeopleIcon() {
   return (
