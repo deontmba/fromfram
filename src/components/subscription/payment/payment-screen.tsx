@@ -352,8 +352,8 @@ export function PaymentScreen() {
   });
   const [isPreparing, setIsPreparing] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
-  const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran QRIS...");
+  const [autoPoll, setAutoPoll] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -453,22 +453,15 @@ export function PaymentScreen() {
     [summary],
   );
 
-  const handleCheckStatus = useCallback(async () => {
+  const handleCheckStatus = useCallback(async (silent = false) => {
     if (isPaying || !transaction.id) {
       return;
     }
 
-    setIsPaymentConfirmOpen(true);
-  }, [isPaying, transaction.id]);
-
-  const handleConfirmPayment = useCallback(async () => {
-    if (isPaying || !transaction.id) {
-      return;
+    if (!silent) {
+      setIsPaying(true);
+      setStatusMessage("Mengecek status pembayaran...");
     }
-
-    setIsPaymentConfirmOpen(false);
-    setIsPaying(true);
-    setStatusMessage("Mengecek status pembayaran...");
 
     try {
       const response = await fetch(
@@ -482,11 +475,13 @@ export function PaymentScreen() {
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const errorMessage =
-          isRecord(payload) && typeof payload.error === "string"
-            ? payload.error
-            : "Gagal mengecek status pembayaran.";
-        setStatusMessage(errorMessage);
+        if (!silent) {
+          const errorMessage =
+            isRecord(payload) && typeof payload.error === "string"
+              ? payload.error
+              : "Gagal mengecek status pembayaran.";
+          setStatusMessage(errorMessage);
+        }
         return;
       }
 
@@ -498,6 +493,7 @@ export function PaymentScreen() {
           qrImageDataUrl: prev.qrImageDataUrl,
         }));
         if (latestTransaction.status?.toUpperCase() === "COMPLETED") {
+          setAutoPoll(false);
           setStatusMessage("Pembayaran terverifikasi. Mengarahkan ke dashboard...");
           await lockCurrentWeeklyBox().catch((error) => {
             console.error("[lock weekly box after payment status check]", error);
@@ -507,15 +503,29 @@ export function PaymentScreen() {
         }
       }
 
-      setStatusMessage("Status transaksi masih PENDING. Selesaikan pembayaran lalu cek lagi.");
+      if (!silent) setStatusMessage("Status transaksi masih PENDING. Selesaikan pembayaran lalu cek lagi.");
     } catch {
-      setStatusMessage("Gagal mengecek status pembayaran.");
+      if (!silent) setStatusMessage("Gagal mengecek status pembayaran.");
     } finally {
-      setIsPaying(false);
+      if (!silent) setIsPaying(false);
     }
   }, [isPaying, router, transaction.id]);
 
   const canCheckStatus = !isPreparing && Boolean(transaction.id);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (canCheckStatus && transaction.status !== 'COMPLETED' && autoPoll) {
+      intervalId = setInterval(() => {
+        void handleCheckStatus(true);
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [canCheckStatus, transaction.status, autoPoll, handleCheckStatus]);
 
   return (
     <>
@@ -638,7 +648,7 @@ export function PaymentScreen() {
               <button
                 type="button"
                 disabled={!canCheckStatus || isPaying}
-                onClick={handleCheckStatus}
+                onClick={() => handleCheckStatus(false)}
                 className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPaying ? "Mengecek..." : "Cek Status Pembayaran"}
@@ -657,16 +667,6 @@ export function PaymentScreen() {
         </div>
       </section>
     </main>
-    <ConfirmDialog
-      isOpen={isPaymentConfirmOpen}
-      title="Konfirmasi Pembayaran"
-      message="Apakah Anda yakin ingin melanjutkan pembayaran ini?"
-      confirmLabel="Ya, Bayar Sekarang"
-      cancelLabel="Batal"
-      isConfirming={isPaying}
-      onCancel={() => setIsPaymentConfirmOpen(false)}
-      onConfirm={handleConfirmPayment}
-    />
     </>
   );
 }
