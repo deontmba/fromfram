@@ -1,9 +1,17 @@
-// src/app/reset-password/page.tsx
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+function LeafLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-7 w-7 text-white">
+      <path d="M20 4S13 3 8.5 7.5C5 11 5 16 5 16s5 0 8.5-3.5C18 8 20 4 20 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 20c1.5-2.5 3.4-4.4 5.8-5.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function LockIcon() {
   return (
@@ -14,6 +22,8 @@ function LockIcon() {
   );
 }
 
+import { Suspense } from "react";
+
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,131 +32,129 @@ function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
-  if (!token) {
-    return (
-      <div className="text-center">
-        <p className="text-red-500 font-medium mb-4">Token tidak ditemukan.</p>
-        <Link href="/forgot-password" className="text-[#13af82] font-semibold">Request ulang link reset</Link>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!token) {
+      setError("Token reset password tidak ditemukan.");
+    }
+  }, [token]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    if (!token) return;
 
+    if (!password || !confirmPassword) {
+      setError("Kedua kolom password wajib diisi.");
+      return;
+    }
     if (password.length < 8) {
-      return setError("Password minimal 8 karakter.");
+      setError("Password minimal 8 karakter.");
+      return;
     }
     if (password !== confirmPassword) {
-      return setError("Konfirmasi password tidak cocok.");
+      setError("Konfirmasi password tidak cocok.");
+      return;
     }
 
+    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, newPassword: password }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal mereset password");
+        setError(data.error || "Gagal mereset password.");
+      } else {
+        setMessage("Password Anda berhasil direset!");
+        setTimeout(() => {
+          router.push("/login");
+        }, 3000);
       }
-
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/login");
-      }, 3000);
-    } catch (err: any) {
-      setError(err.message);
+    } catch {
+      setError("Terjadi kesalahan jaringan.");
     } finally {
       setLoading(false);
     }
   }
 
-  if (success) {
-    return (
-      <div className="text-center space-y-4">
-        <div className="rounded-2xl border border-[#a7e8d0] bg-[#eafff5] px-5 py-4">
-          <p className="text-[1.05rem] font-bold text-[#0d7a56]">Password Berhasil Diubah! 🎉</p>
-          <p className="text-sm text-[#12b886] mt-1">Kamu akan diarahkan ke halaman login...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <label className="block space-y-2">
-        <span className="block text-[1.08rem] font-semibold text-neutral-800">Password Baru</span>
-        <span className={`flex h-14 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] border-neutral-300`}>
-          <LockIcon />
-          <input
-            type="password"
-            placeholder="Minimal 8 karakter"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-transparent text-[1.02rem] text-neutral-700 outline-none placeholder:text-neutral-400"
-          />
-        </span>
-      </label>
-
-      <label className="block space-y-2">
-        <span className="block text-[1.08rem] font-semibold text-neutral-800">Konfirmasi Password Baru</span>
-        <span className={`flex h-14 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] border-neutral-300`}>
-          <LockIcon />
-          <input
-            type="password"
-            placeholder="Ulangi password baru"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full bg-transparent text-[1.02rem] text-neutral-700 outline-none placeholder:text-neutral-400"
-          />
-        </span>
-      </label>
-
-      {error && (
-        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
+    <section className="relative mx-auto mt-10 w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-7 py-10 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8">
+      <div className="mb-9 flex flex-col items-center text-center">
+        <div className="mb-4 flex items-center gap-2">
+          <div className="grid h-14 w-14 place-items-center rounded-full bg-[#19ba89]">
+            <LeafLogo />
+          </div>
+          <h1 className="text-4xl font-bold tracking-[-0.03em] text-[#13a981]">Buat Password Baru</h1>
+        </div>
+        <p className="text-[1.05rem] leading-snug text-neutral-500">
+          Silakan masukkan password baru Anda di bawah ini.
         </p>
-      )}
+      </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="mt-3 h-14 w-full rounded-2xl bg-[#1abb89] text-[1.15rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] active:scale-[0.98] disabled:opacity-60"
-      >
-        {loading ? "Menyimpan..." : "Simpan Password Baru"}
-      </button>
-    </form>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <label className="block space-y-2">
+          <span className="block text-[1.08rem] font-semibold text-neutral-800">Password Baru</span>
+          <span className={`flex h-14 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] ${error && error.includes("karakter") ? "border-red-400" : "border-neutral-300"}`}>
+            <LockIcon />
+            <input
+              type="password"
+              placeholder="Minimal 8 karakter"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-transparent text-[1.02rem] text-neutral-700 outline-none placeholder:text-neutral-400"
+            />
+          </span>
+        </label>
+
+        <label className="block space-y-2">
+          <span className="block text-[1.08rem] font-semibold text-neutral-800">Konfirmasi Password</span>
+          <span className={`flex h-14 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] ${error && error.includes("cocok") ? "border-red-400" : "border-neutral-300"}`}>
+            <LockIcon />
+            <input
+              type="password"
+              placeholder="Ulangi password baru"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-transparent text-[1.02rem] text-neutral-700 outline-none placeholder:text-neutral-400"
+            />
+          </span>
+        </label>
+
+        {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+
+        {message && (
+          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm font-medium text-green-700 border border-green-200">
+            {message} Mengarahkan ke halaman login...
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading || !token}
+          className="mt-3 h-14 w-full rounded-2xl bg-[#1abb89] text-[1.15rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading ? "Memproses..." : "Simpan Password Baru"}
+        </button>
+      </form>
+    </section>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6 flex flex-col justify-center">
+    <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]" />
-
-      <section className="relative mx-auto w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-7 py-10 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-900 mb-2">Buat Password Baru</h1>
-          <p className="text-[1.05rem] text-neutral-500">
-            Pastikan password baru kamu mudah diingat namun sulit ditebak oleh orang lain.
-          </p>
-        </div>
-
-        <Suspense fallback={<p className="text-center text-neutral-500">Memuat data...</p>}>
-          <ResetPasswordForm />
-        </Suspense>
-      </section>
+      <Suspense fallback={<div className="text-center mt-20">Memuat...</div>}>
+        <ResetPasswordForm />
+      </Suspense>
     </main>
   );
 }
