@@ -61,7 +61,7 @@ enum DayOfWeek {
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique
-  password           String
+  password           String?
   name               String
   role               Role                @default(USER)
   createdAt          DateTime            @default(now())
@@ -236,4 +236,14 @@ model Delivery {
   user         User           @relation(fields: [userId], references: [id])
   weeklyBox    WeeklyBox      @relation(fields: [weeklyBoxId], references: [id])
   address      Address        @relation(fields: [addressId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
 }

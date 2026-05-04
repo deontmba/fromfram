@@ -86,7 +86,7 @@ type RoleConfig = {
   accentSoft: string;
 };
 
-const nutritionRecipes: RecipeRow[] = [
+const nutritionRecipes: any[] = [
   { name: "Nasi Goreng Kampung", category: "Indonesian", calories: 450, protein: 18, difficulty: "Mudah", cookTime: "25 min", readiness: "OK" },
   { name: "Ayam Teriyaki Bowl", category: "Japanese", calories: 520, protein: 31, difficulty: "Mudah", cookTime: "30 min", readiness: "OK" },
   { name: "Spaghetti Carbonara", category: "Italian", calories: 610, protein: 20, difficulty: "Mudah", cookTime: "20 min", readiness: "Needs Review" },
@@ -96,6 +96,15 @@ const nutritionRecipes: RecipeRow[] = [
   { name: "Rendang Sapi", category: "Indonesian", calories: 680, protein: 28, difficulty: "Sulit", cookTime: "45 min", readiness: "Needs Review" },
   { name: "Pad Thai", category: "Thai", calories: 490, protein: 21, difficulty: "Mudah", cookTime: "25 min", readiness: "OK" },
 ];
+
+type WeeklyDayRow = {
+  day: string;
+  menu: string;
+  goal: string;
+  calories: number;
+  protein: number;
+  validation: string;
+};
 
 const weeklyNutritionRows: WeeklyDayRow[] = [
   { day: "Senin", menu: "Salmon Teriyaki + Quinoa", goal: "Atlet", calories: 710, protein: 46, validation: "Valid" },

@@ -37,6 +37,12 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "Akun ini didaftarkan menggunakan Google SSO. Silakan login menggunakan Google." },
+        { status: 401 }
+      );
+    }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
