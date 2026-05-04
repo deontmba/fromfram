@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 
 type PlanKey = "weekly" | "monthly" | "yearly";
 
@@ -351,6 +352,7 @@ export function PaymentScreen() {
   });
   const [isPreparing, setIsPreparing] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  const [isPaymentConfirmOpen, setIsPaymentConfirmOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran QRIS...");
 
   useEffect(() => {
@@ -456,6 +458,15 @@ export function PaymentScreen() {
       return;
     }
 
+    setIsPaymentConfirmOpen(true);
+  }, [isPaying, transaction.id]);
+
+  const handleConfirmPayment = useCallback(async () => {
+    if (isPaying || !transaction.id) {
+      return;
+    }
+
+    setIsPaymentConfirmOpen(false);
     setIsPaying(true);
     setStatusMessage("Mengecek status pembayaran...");
 
@@ -507,6 +518,7 @@ export function PaymentScreen() {
   const canCheckStatus = !isPreparing && Boolean(transaction.id);
 
   return (
+    <>
     <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10">
       <section className="mx-auto w-full max-w-[980px]">
         <header className="mb-8 text-center">
@@ -645,5 +657,16 @@ export function PaymentScreen() {
         </div>
       </section>
     </main>
+    <ConfirmDialog
+      isOpen={isPaymentConfirmOpen}
+      title="Konfirmasi Pembayaran"
+      message="Apakah Anda yakin ingin melanjutkan pembayaran ini?"
+      confirmLabel="Ya, Bayar Sekarang"
+      cancelLabel="Batal"
+      isConfirming={isPaying}
+      onCancel={() => setIsPaymentConfirmOpen(false)}
+      onConfirm={handleConfirmPayment}
+    />
+    </>
   );
 }

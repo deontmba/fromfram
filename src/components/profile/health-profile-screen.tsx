@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   calculateBmi,
   healthMockData,
@@ -30,6 +31,7 @@ const inputClassName =
 
 export function HealthProfileScreen() {
   const [health, setHealth] = useState<HealthProfile>(healthMockData);
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
   const [message, setMessage] = useState<StatusMessage>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -68,6 +70,20 @@ export function HealthProfileScreen() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaveConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaveConfirmOpen(false);
     setIsSaving(true);
     setMessage(null);
 
@@ -117,6 +133,7 @@ export function HealthProfileScreen() {
   };
 
   return (
+    <>
     <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
       <div
         aria-hidden="true"
@@ -264,5 +281,16 @@ export function HealthProfileScreen() {
         </div>
       </section>
     </main>
+    <ConfirmDialog
+      isOpen={isSaveConfirmOpen}
+      title="Konfirmasi Perubahan Data Kesehatan"
+      message="Apakah Anda yakin ingin menyimpan perubahan data kesehatan?"
+      confirmLabel="Ya, Simpan"
+      cancelLabel="Batal"
+      isConfirming={isSaving}
+      onCancel={() => setIsSaveConfirmOpen(false)}
+      onConfirm={handleConfirmSave}
+    />
+    </>
   );
 }

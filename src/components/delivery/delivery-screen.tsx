@@ -18,39 +18,101 @@ const sectionIconStyles =
   "grid h-4 w-4 shrink-0 place-items-center text-[#12a97f]";
 
 export function DeliveryScreen({ delivery }: { delivery: DeliveryTrackingViewModel }) {
+  const hasDeliveryData = Boolean(
+    delivery.todayDelivery ||
+      delivery.upcomingDeliveries.length > 0 ||
+      delivery.recentDeliveries.length > 0,
+  );
+
   return (
     <main className="min-h-screen bg-[#f7f8f7] text-neutral-950">
       <DeliveryHeader periodLabel={delivery.periodLabel} />
 
       <div className="mx-auto w-full max-w-[660px] px-4 py-6 sm:px-6">
-        <section aria-labelledby="today-delivery-title">
-          <SectionHeading
-            id="today-delivery-title"
-            title="Hari ini"
-            icon={<ClockIcon className="h-4 w-4" />}
-          />
-          <FeaturedDeliveryCard delivery={delivery.todayDelivery} />
-        </section>
+        {delivery.errorMessage ? <DeliveryNotice message={delivery.errorMessage} /> : null}
 
-        <div className="mt-6 space-y-6">
-          <DeliveryListSection
-            id="upcoming-deliveries-title"
-            title="Pengiriman Berikutnya"
-            icon={<CalendarIcon className="h-4 w-4" />}
-            deliveries={delivery.upcomingDeliveries}
-          />
+        {hasDeliveryData ? (
+          <>
+            {delivery.todayDelivery ? (
+              <section aria-labelledby="today-delivery-title">
+                <SectionHeading
+                  id="today-delivery-title"
+                  title="Hari ini"
+                  icon={<ClockIcon className="h-4 w-4" />}
+                />
+                <FeaturedDeliveryCard delivery={delivery.todayDelivery} />
+              </section>
+            ) : (
+              <EmptyDeliveryCard
+                title="Belum ada pengiriman hari ini."
+                description="Pengiriman hari ini akan muncul saat sudah dijadwalkan."
+              />
+            )}
 
-          <DeliveryListSection
-            id="recent-deliveries-title"
-            title="Riwayat Terbaru"
-            icon={<HistoryIcon className="h-4 w-4" />}
-            deliveries={delivery.recentDeliveries}
-          />
+            <div className="mt-6 space-y-6">
+              <DeliveryListSection
+                id="upcoming-deliveries-title"
+                title="Pengiriman Berikutnya"
+                icon={<CalendarIcon className="h-4 w-4" />}
+                deliveries={delivery.upcomingDeliveries}
+                emptyMessage="Belum ada pengiriman berikutnya."
+              />
 
-          <DeliveryInfoBox bullets={delivery.infoBullets} />
-        </div>
+              <DeliveryListSection
+                id="recent-deliveries-title"
+                title="Riwayat Terbaru"
+                icon={<HistoryIcon className="h-4 w-4" />}
+                deliveries={delivery.recentDeliveries}
+                emptyMessage="Belum ada riwayat pengiriman."
+              />
+
+              <DeliveryInfoBox bullets={delivery.infoBullets} />
+            </div>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <EmptyDeliveryCard
+              title={delivery.emptyStateTitle}
+              description={delivery.emptyStateDescription}
+            />
+            <DeliveryInfoBox bullets={delivery.infoBullets} />
+          </div>
+        )}
       </div>
     </main>
+  );
+}
+
+function DeliveryNotice({ message }: { message: string }) {
+  return (
+    <div className="mb-4 rounded-lg border border-[#f4d878] bg-[#fff8d9] px-4 py-3 text-xs font-semibold text-[#8a5a00]">
+      {message}
+    </div>
+  );
+}
+
+function EmptyDeliveryCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <section
+      aria-labelledby="empty-delivery-title"
+      className="rounded-lg border border-neutral-200 bg-white p-5 text-center shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
+    >
+      <span className="mx-auto grid h-10 w-10 place-items-center rounded-lg bg-[#e0f5ec] text-[#0fa878]">
+        <CalendarIcon className="h-5 w-5" />
+      </span>
+      <h2 id="empty-delivery-title" className="mt-3 text-sm font-bold text-neutral-950">
+        {title}
+      </h2>
+      <p className="mx-auto mt-1 max-w-[320px] text-xs font-medium leading-5 text-neutral-500">
+        {description}
+      </p>
+    </section>
   );
 }
 
@@ -220,20 +282,28 @@ function DeliveryListSection({
   title,
   icon,
   deliveries,
+  emptyMessage,
 }: {
   id: string;
   title: string;
   icon: ReactNode;
   deliveries: DeliverySummaryItem[];
+  emptyMessage: string;
 }) {
   return (
     <section aria-labelledby={id}>
       <SectionHeading id={id} title={title} icon={icon} />
-      <div className="space-y-3">
-        {deliveries.map((delivery) => (
-          <CompactDeliveryCard key={delivery.id} delivery={delivery} />
-        ))}
-      </div>
+      {deliveries.length > 0 ? (
+        <div className="space-y-3">
+          {deliveries.map((delivery) => (
+            <CompactDeliveryCard key={delivery.id} delivery={delivery} />
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-xs font-medium text-neutral-500 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+          {emptyMessage}
+        </p>
+      )}
     </section>
   );
 }
