@@ -48,30 +48,35 @@ const userSeeds = [
     name: "Admin FromFram",
     password: COMMON_PASSWORD,
     role: "ADMIN",
+    isVerified: true,
   },
   {
     email: "sari@fromfram.test",
     name: "Sari Putri",
     password: COMMON_PASSWORD,
     role: "NUTRITIONIST",
+    isVerified: true,
   },
   {
     email: "budi@fromfram.test",
     name: "Budi Santoso",
     password: COMMON_PASSWORD,
     role: "USER",
+    isVerified: true,
   },
   {
     email: "rina@fromfram.test",
     name: "Rina Wulandari",
     password: COMMON_PASSWORD,
     role: "USER",
+    isVerified: true,
   },
   {
     email: "doni@fromfram.test",
     name: "Doni Pratama",
     password: COMMON_PASSWORD,
     role: "USER",
+    isVerified: true,
   },
 ];
 
@@ -466,6 +471,7 @@ async function main() {
         name: user.name,
         password: hashedPassword,
         role: user.role,
+        isVerified: user.isVerified || false,
       })),
     });
     const userRows = await tx.user.findMany({

@@ -26,13 +26,13 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await prisma.user.update({
-      where: { email: resetToken.email },
+      where: { id: resetToken.userId },
       data: { password: hashedPassword },
     });
 
     // Clean up the used token
     await prisma.passwordResetToken.deleteMany({
-      where: { email: resetToken.email },
+      where: { userId: resetToken.userId },
     });
 
     return NextResponse.json({ message: "Password berhasil direset." });
