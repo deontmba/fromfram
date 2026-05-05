@@ -6,7 +6,7 @@ import { Resend } from 'resend';
 import * as crypto from 'crypto';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy');
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
 
 // ============================================================

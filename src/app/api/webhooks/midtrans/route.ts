@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import prisma from '@/lib/prisma';
+import { SubscriptionStatus, TransactionStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,17 +30,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine status
-    let dbStatus: 'PENDING' | 'COMPLETED' | 'FAILED' = 'PENDING';
+    let dbStatus: TransactionStatus = TransactionStatus.PENDING;
 
     if (transaction_status == 'capture') {
-      if (fraud_status == 'challenge') dbStatus = 'PENDING';
-      else if (fraud_status == 'accept') dbStatus = 'COMPLETED';
+      if (fraud_status == 'challenge') dbStatus = TransactionStatus.PENDING;
+      else if (fraud_status == 'accept') dbStatus = TransactionStatus.COMPLETED;
     } else if (transaction_status == 'settlement') {
-      dbStatus = 'COMPLETED';
+      dbStatus = TransactionStatus.COMPLETED;
     } else if (transaction_status == 'cancel' || transaction_status == 'deny' || transaction_status == 'expire') {
-      dbStatus = 'FAILED';
+      dbStatus = TransactionStatus.FAILED;
     } else if (transaction_status == 'pending') {
-      dbStatus = 'PENDING';
+      dbStatus = TransactionStatus.PENDING;
     }
 
     // Update Transaction
@@ -47,20 +48,20 @@ export async function POST(req: NextRequest) {
       where: { id: order_id },
       data: {
         status: dbStatus,
-        ...(dbStatus === 'COMPLETED' && { paidAt: new Date() }),
+        ...(dbStatus === TransactionStatus.COMPLETED && { paidAt: new Date() }),
       },
     });
 
     // Update Subscription if needed
-    if (dbStatus === 'COMPLETED') {
+    if (dbStatus === TransactionStatus.COMPLETED) {
       const subscription = await prisma.subscription.findUnique({
         where: { userId: transaction.userId },
       });
 
-      if (subscription && subscription.status === 'UNPAID') {
+      if (subscription && subscription.status === SubscriptionStatus.UNPAID) {
          await prisma.subscription.update({
            where: { id: subscription.id },
-           data: { status: 'ACTIVE', startDate: new Date() }
+           data: { status: SubscriptionStatus.ACTIVE, startDate: new Date() }
          });
       }
     }
