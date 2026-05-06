@@ -329,7 +329,7 @@ function CheckIcon() {
 
 function QrisPlaceholder() {
   return (
-    <div className="grid h-full min-h-[230px] place-items-center rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] px-6 py-8">
+    <div className="mx-auto grid w-fit max-w-full min-h-[230px] place-items-center rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] px-6 py-8">
       <svg viewBox="0 0 180 180" aria-label="Kode QRIS demo" className="h-40 w-40 text-[#16b784]">
         <rect x="12" y="12" width="156" height="156" rx="8" fill="white" stroke="currentColor" strokeWidth="4" />
         <rect x="36" y="36" width="34" height="34" rx="4" fill="currentColor" />
@@ -610,7 +610,7 @@ export function PaymentScreen() {
 
               <div className="mt-5">
                 {transaction.qrImageDataUrl ? (
-                  <div className="grid h-full min-h-[230px] place-items-center rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] px-6 py-8">
+                  <div className="mx-auto grid w-fit max-w-full min-h-[230px] place-items-center rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] px-6 py-8">
                     <Image
                       src={transaction.qrImageDataUrl}
                       alt="Kode QR pembayaran"
@@ -626,7 +626,7 @@ export function PaymentScreen() {
 
               <p className="mt-4 text-[0.82rem] text-neutral-500">Kode berlaku selama 24 jam</p>
               {transaction.qrisCode ? (
-                <p className="mt-1 text-[0.78rem] font-medium text-neutral-400">
+                <p className="mt-1 max-w-full break-all px-2 text-[0.78rem] font-medium leading-snug text-neutral-400">
                   Kode transaksi: {transaction.qrisCode}
                 </p>
               ) : null}
