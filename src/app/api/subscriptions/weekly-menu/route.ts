@@ -1,27 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
-
-const DAYS_OF_WEEK = [
-  'SENIN',
-  'SELASA',
-  'RABU',
-  'KAMIS',
-  'JUMAT',
-  'SABTU',
-  'MINGGU',
-] as const;
-
-type DayKey = (typeof DAYS_OF_WEEK)[number];
+import { DAYS_OF_WEEK, DayKey, getEndOfWeek, getNextWeekStart, getStartOfWeek } from '@/lib/week';
 
 function buildWeeklyBoxDates(weekStart: Date) {
-  const weekEndDate = new Date(weekStart);
-  weekEndDate.setUTCDate(weekEndDate.getUTCDate() + 6);
-  weekEndDate.setUTCHours(23, 59, 59, 999);
+  const weekEndDate = getEndOfWeek(weekStart);
 
   const selectionDeadline = new Date(weekStart);
-  selectionDeadline.setUTCDate(selectionDeadline.getUTCDate() - 1);
-  selectionDeadline.setUTCHours(18, 0, 0, 0);
+  selectionDeadline.setDate(selectionDeadline.getDate() - 1);
+  selectionDeadline.setHours(18, 0, 0, 0);
 
   return {
     weekEndDate,
@@ -33,7 +20,7 @@ function buildWeeklyBoxDates(weekStart: Date) {
 /**
  * GET /api/subscriptions/weekly-menu
  *
- * Returns the weekly menu for NEXT week, grouped by day (SENIN–MINGGU).
+ * Returns the weekly menu for the active calendar week, grouped by day (SENIN–MINGGU).
  * Shape expected by the frontend WeeklyMenuPage:
  * {
  *   weekStartDate: string,   // ISO date string
@@ -45,10 +32,9 @@ function buildWeeklyBoxDates(weekStart: Date) {
  *   }>
  * }
  *
- * NOTE: The WeeklyMenu table stores recipes per week (not per day). All recipes
- * available that week are returned on EVERY day so the user can pick one per day.
- * This matches the frontend's UX — same catalog shown regardless of which day tab
- * the user is on.
+ * NOTE: The WeeklyMenu table stores menu entries as one row per recipe. We group
+ * rows by the active calendar week and expose the same recipe catalog on every
+ * day so the user can pick one recipe per day.
  */
 export async function GET(req: NextRequest) {
   // Auth check — keep consistent with the rest of the codebase.
@@ -61,25 +47,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Find the most recent/upcoming weekStartDate in WeeklyMenu
-    const latestMenu = await prisma.weeklyMenu.findFirst({
-    orderBy: { weekStartDate: 'desc' },
-    select: { weekStartDate: true },
-    });
+    const currentWeekStart = getStartOfWeek(new Date());
+    const nextWeekStart = getNextWeekStart(currentWeekStart);
 
-    if (!latestMenu) {
-    return NextResponse.json({
-        weekStartDate: null,
-        weekEndDate: null,
-      menu: DAYS_OF_WEEK.map((day) => ({ day, date: null, recipes: [] })),
-    });
-    }
-
-    const weekStart = latestMenu.weekStartDate;
-    
-    // Fetch all recipes available for next week from WeeklyMenu table
     const weeklyMenus = await prisma.weeklyMenu.findMany({
-      where: { weekStartDate: weekStart },
+      where: {
+        weekStartDate: {
+          gte: currentWeekStart,
+          lt: nextWeekStart,
+        },
+      },
       include: {
         recipe: {
           select: {
@@ -95,24 +72,33 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Shape the recipes into the flat list the day-tabs will share
-    const recipes = weeklyMenus.map((wm) => ({
-      id: wm.recipe.id,
-      name: wm.recipe.name,
-      description: wm.recipe.description ?? undefined,
-      calories: wm.recipe.calories,
-      protein: wm.recipe.protein,
-      servings: wm.recipe.servings,
-      imageUrl: wm.recipe.imageUrl ?? undefined,
-    }));
+    if (weeklyMenus.length === 0) {
+      return NextResponse.json(
+        { error: 'Weekly menu belum tersedia untuk minggu aktif.' },
+        { status: 404 }
+      );
+    }
+
+    const recipes = Array.from(
+      new Map(
+        weeklyMenus.map((wm) => [wm.recipe.id, {
+          id: wm.recipe.id,
+          name: wm.recipe.name,
+          description: wm.recipe.description ?? undefined,
+          calories: wm.recipe.calories,
+          protein: wm.recipe.protein,
+          servings: wm.recipe.servings,
+          imageUrl: wm.recipe.imageUrl ?? undefined,
+        }])
+      ).values()
+    );
 
     // Build one entry per day — same recipe catalog on every day
-    const weekEndDate = new Date(weekStart);
-    weekEndDate.setDate(weekStart.getDate() + 6); // Sunday
+      const weekEndDate = getEndOfWeek(currentWeekStart);
 
     const menu = DAYS_OF_WEEK.map((day, idx) => {
-      const date = new Date(weekStart);
-      date.setDate(weekStart.getDate() + idx);
+        const date = new Date(currentWeekStart);
+        date.setDate(currentWeekStart.getDate() + idx);
       return {
         day,
         date: date.toISOString(),
@@ -121,7 +107,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      weekStartDate: weekStart.toISOString(),
+      weekStartDate: currentWeekStart.toISOString(),
       weekEndDate: weekEndDate.toISOString(),
       menu,
     });
@@ -165,18 +151,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const weekStart = new Date(weekStartDate);
-    if (isNaN(weekStart.getTime())) {
+    const requestedWeekStart = new Date(weekStartDate);
+    if (isNaN(requestedWeekStart.getTime())) {
       return NextResponse.json(
         { error: 'Invalid weekStartDate format.' },
         { status: 400 }
       );
     }
 
+    const weekStart = getStartOfWeek(requestedWeekStart);
+    const nextWeekStart = getNextWeekStart(weekStart);
+
     const userId = session.userId;
 
     const weeklyMenuRecipes = await prisma.weeklyMenu.findMany({
-      where: { weekStartDate: weekStart },
+      where: {
+        weekStartDate: {
+          gte: weekStart,
+          lt: nextWeekStart,
+        },
+      },
       select: { recipeId: true },
     });
     const availableRecipeIds = new Set(weeklyMenuRecipes.map((menu) => menu.recipeId));
@@ -199,11 +193,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const existingWeeklyBox = await prisma.weeklyBox.findUnique({
+    const existingWeeklyBox = await prisma.weeklyBox.findFirst({
       where: {
-        userId_weekStartDate: {
-          userId,
-          weekStartDate: weekStart,
+        userId,
+        weekStartDate: {
+          gte: weekStart,
+          lt: nextWeekStart,
         },
       },
       select: {

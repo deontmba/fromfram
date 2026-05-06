@@ -65,12 +65,24 @@ type RecipeRow = {
   servings: number;
 };
 
-type WeeklyMenuRow = {
+type WeeklyMenuItem = {
   id: string;
   recipeName: string;
   calories: number;
   protein: number;
   suitableGoals: string[];
+};
+
+type WeeklyMenuGroup = {
+  weekStartDate: string;
+  weekEndDate: string;
+  isActiveWeek: boolean;
+  menus: WeeklyMenuItem[];
+};
+
+type GoalOption = {
+  id: string;
+  name: string;
 };
 type RoleConfig = {
   title: string;
@@ -260,6 +272,32 @@ function clsx(...tokens: Array<string | false | null | undefined>) {
   return tokens.filter(Boolean).join(" ");
 }
 
+function formatWeekRangeLabel(weekStartDate: string, weekEndDate: string) {
+  const formatter = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return `${formatter.format(new Date(weekStartDate))} - ${formatter.format(new Date(weekEndDate))}`;
+}
+
+function formatMonthLabel(monthIndex: number) {
+  return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, monthIndex, 1));
+}
+
+function getMonthIndexFromIsoDate(dateString: string) {
+  return new Date(dateString).getMonth();
+}
+
+function getYearFromIsoDate(dateString: string) {
+  return new Date(dateString).getFullYear();
+}
+
+function buildGoalPreview(row: WeeklyMenuItem, goalOverrides: Record<string, string[]>) {
+  return goalOverrides[row.id] ?? row.suitableGoals;
+}
+
 export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const config = role === "admin" ? adminConfig : nutritionConfig;
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
@@ -274,7 +312,13 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   // Nutritionist states
   const [nutritionKpis, setNutritionKpis] = useState<KpiItem[] | null>(null);
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
-  const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenuRow[]>([]);
+  const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenuGroup[]>([]);
+  const [weeklyGoals, setWeeklyGoals] = useState<GoalOption[]>([]);
+  const [weeklyYearFilter, setWeeklyYearFilter] = useState<string>(String(new Date().getFullYear()));
+  const [weeklyMonthFilter, setWeeklyMonthFilter] = useState<string>(String(new Date().getMonth()));
+  const [expandedWeekStartDate, setExpandedWeekStartDate] = useState<string | null>(null);
+  const [goalEditorMenuId, setGoalEditorMenuId] = useState<string | null>(null);
+  const [goalOverrides, setGoalOverrides] = useState<Record<string, string[]>>({});
 
   // CRUD states
   const [showRecipeForm, setShowRecipeForm] = useState(false);
@@ -358,8 +402,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     try {
       const res = await fetch("/api/nutritionist/weekly-menus", { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch weekly menus");
-      const data = await res.json();
+      const data = await res.json() as {
+        data?: WeeklyMenuGroup[];
+        goals?: GoalOption[];
+      };
       setWeeklyMenus(data.data || []);
+      setWeeklyGoals(data.goals || []);
     } catch (err) {
       console.error(err);
     }
@@ -487,6 +535,16 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     try {
       const res = await fetch(`/api/nutritionist/weekly-menus/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Gagal menghapus menu");
+      setGoalEditorMenuId((current) => (current === id ? null : current));
+      setGoalOverrides((prev) => {
+        if (!(id in prev)) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       await fetchWeeklyMenus();
     } catch (err) {
       console.error(err);
@@ -519,6 +577,79 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     ];
   }, [users]);
 
+  const weeklyPeriods = useMemo(() => {
+    const seen = new Map<string, { year: number; month: number }>();
+
+    for (const week of weeklyMenus) {
+      const date = new Date(week.weekStartDate);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+      if (!seen.has(key)) {
+        seen.set(key, { year: date.getFullYear(), month: date.getMonth() });
+      }
+    }
+
+    return Array.from(seen.values()).sort((a, b) => (b.year - a.year) || (b.month - a.month));
+  }, [weeklyMenus]);
+
+  const weeklyYearOptions = useMemo(() => {
+    return Array.from(new Set(weeklyPeriods.map((period) => period.year))).sort((a, b) => b - a);
+  }, [weeklyPeriods]);
+
+  const weeklyMonthOptions = useMemo(() => {
+    const scopedPeriods = weeklyYearFilter === "all"
+      ? weeklyPeriods
+      : weeklyPeriods.filter((period) => period.year === Number(weeklyYearFilter));
+
+    return Array.from(new Set(scopedPeriods.map((period) => period.month))).sort((a, b) => a - b);
+  }, [weeklyMonthFilter, weeklyPeriods, weeklyYearFilter]);
+
+  const visibleWeeklyMenus = useMemo(() => {
+    return weeklyMenus.filter((week) => {
+      const weekDate = new Date(week.weekStartDate);
+      const matchesYear = weeklyYearFilter === "all" || weekDate.getFullYear() === Number(weeklyYearFilter);
+      const matchesMonth = weeklyMonthFilter === "all" || weekDate.getMonth() === Number(weeklyMonthFilter);
+      return matchesYear && matchesMonth;
+    });
+  }, [weeklyMenus, weeklyMonthFilter, weeklyYearFilter]);
+
+  const weeklyMenuKpis = useMemo(() => {
+    const visibleGoals = weeklyGoals.length;
+    const validatedSlots = visibleWeeklyMenus.reduce((count, week) => {
+      return count + week.menus.filter((menu) => buildGoalPreview(menu, goalOverrides).length > 0).length;
+    }, 0);
+    const pendingReview = visibleWeeklyMenus.reduce((count, week) => {
+      return count + week.menus.filter((menu) => buildGoalPreview(menu, goalOverrides).length === 0).length;
+    }, 0);
+
+    return [
+      { label: "Goal Groups", value: String(visibleGoals), delta: "Active", icon: <TargetIcon /> },
+      { label: "Validated Slots", value: String(validatedSlots), delta: "On Track", icon: <CheckCircleIcon /> },
+      { label: "Pending Review", value: String(pendingReview), delta: "Needs Action", icon: <AlertIcon /> },
+    ];
+  }, [goalOverrides, visibleWeeklyMenus, weeklyGoals.length]);
+
+  useEffect(() => {
+    if (role !== "nutritionist" || activeTab !== "weekly-menu") {
+      return;
+    }
+
+    if (visibleWeeklyMenus.length === 0) {
+      setExpandedWeekStartDate(null);
+      return;
+    }
+
+    const preferredWeek = visibleWeeklyMenus.find((week) => week.isActiveWeek) ?? visibleWeeklyMenus[0];
+
+    setExpandedWeekStartDate((current) => {
+      if (current && visibleWeeklyMenus.some((week) => week.weekStartDate === current)) {
+        return current;
+      }
+
+      return preferredWeek.weekStartDate;
+    });
+  }, [activeTab, role, visibleWeeklyMenus]);
+
   // Filtered deliveries
   const filteredDeliveries = useMemo(() => {
     return deliveries.filter((d) => {
@@ -549,8 +680,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
     if (role === "admin" && activeTab === "users") return userKpis;
     if (role === "nutritionist" && activeTab === "dashboard" && nutritionKpis) return nutritionKpis;
+    if (role === "nutritionist" && activeTab === "weekly-menu") return weeklyMenuKpis;
     return config.kpis[activeTab] || [];
-  }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis]);
+  }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis, weeklyMenuKpis]);
 
   return (
     <main className={styles.shell} style={themeVars}>
@@ -897,13 +1029,46 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
             {role === "nutritionist" && activeTab === "weekly-menu" ? (
               <>
-                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
                   <div>
-                    <p className={styles.noticeTitle}>Weekly Menu Pool:</p>
-                    <p>Daftar resep yang tersedia untuk jadwal minggu ini. Sistem otomatis mencocokkan resep dengan target kesehatan pengguna.</p>
+                    <p className={styles.noticeTitle}>Weekly Menu by Week:</p>
+                    <p>Setiap kartu mewakili satu minggu kalender. Badge <strong>Minggu aktif</strong> menandai minggu berjalan saat ini.</p>
                   </div>
-                  <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => setShowMenuForm(!showMenuForm)}>
-                    {showMenuForm ? "Batal" : "+ Tambah ke Minggu Ini"}
+                </div>
+
+                <div className={styles.searchRow} style={{ marginTop: "1rem", gridTemplateColumns: "1fr 1fr 1fr" }}>
+                  <select
+                    className={styles.select}
+                    value={weeklyYearFilter}
+                    onChange={(event) => setWeeklyYearFilter(event.target.value)}
+                  >
+                    <option value="all">Semua Tahun</option>
+                    {weeklyYearOptions.map((year) => (
+                      <option key={year} value={String(year)}>{year}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    className={styles.select}
+                    value={weeklyMonthFilter}
+                    onChange={(event) => setWeeklyMonthFilter(event.target.value)}
+                  >
+                    <option value="all">Semua Bulan</option>
+                    {weeklyMonthOptions.map((month) => (
+                      <option key={month} value={String(month)}>{formatMonthLabel(month)}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className={styles.tabButton}
+                    onClick={() => {
+                      const now = new Date();
+                      setWeeklyYearFilter(String(now.getFullYear()));
+                      setWeeklyMonthFilter(String(now.getMonth()));
+                    }}
+                  >
+                    Kembali ke bulan ini
                   </button>
                 </div>
 
@@ -921,42 +1086,195 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 )}
 
                 {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
-                  <div className={styles.tableShell}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Recipe</th>
-                          <th>Calories</th>
-                          <th>Protein</th>
-                          <th>Suitable Goals</th>
-                          <th>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {weeklyMenus.length === 0 ? (
-                          <tr><td colSpan={5} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada menu untuk minggu ini</td></tr>
-                        ) : (
-                          weeklyMenus.map((row) => (
-                            <tr key={row.id}>
-                              <td>{row.recipeName}</td>
-                              <td>{row.calories} kcal</td>
-                              <td>{row.protein} g</td>
-                              <td>
-                                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                                  {row.suitableGoals.map(goal => (
-                                    <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{goal}</span>
-                                  ))}
-                                  {row.suitableGoals.length === 0 && <span className={clsx(styles.tag, styles.tagRed)}>Tidak ada</span>}
+                  <div style={{ display: "grid", gap: "1rem" }}>
+                    {visibleWeeklyMenus.length === 0 ? (
+                      <div className={styles.notice} style={{ marginBottom: 0 }}>
+                        <p className={styles.noticeTitle}>Belum ada weekly menu pada periode ini.</p>
+                        <p>Coba ubah filter bulan/tahun, atau tambahkan resep ke minggu aktif lewat kartu minggu yang tersedia.</p>
+                      </div>
+                    ) : (
+                      visibleWeeklyMenus.map((week) => {
+                        const isExpanded = expandedWeekStartDate === week.weekStartDate;
+
+                        return (
+                          <section
+                            key={week.weekStartDate}
+                            style={{
+                              borderRadius: "18px",
+                              border: week.isActiveWeek ? "1px solid #1d4ed8" : "1px solid #e5e7eb",
+                              background: week.isActiveWeek ? "linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)" : "#ffffff",
+                              boxShadow: week.isActiveWeek ? "0 14px 28px rgba(29, 78, 216, 0.12)" : "0 10px 22px rgba(15, 23, 42, 0.06)",
+                              padding: "1rem",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setExpandedWeekStartDate(isExpanded ? null : week.weekStartDate)}
+                              style={{
+                                width: "100%",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: "1rem",
+                                border: "none",
+                                background: "transparent",
+                                padding: 0,
+                                cursor: "pointer",
+                                textAlign: "left",
+                              }}
+                            >
+                              <div>
+                                <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
+                                  {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
+                                </p>
+                                <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
+                                  {week.menus.length} menu tersimpan untuk minggu ini.
+                                </p>
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu aktif</span>}
+                                <span aria-hidden="true" style={{ fontSize: "1.15rem", color: "#64748b" }}>{isExpanded ? "▾" : "▸"}</span>
+                              </div>
+                            </button>
+
+                            {isExpanded && (
+                              <div style={{ marginTop: "1rem" }}>
+                                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMenuForm({ recipeId: "", weekStartDate: week.weekStartDate.slice(0, 10) });
+                                      setShowMenuForm(true);
+                                    }}
+                                    style={{
+                                      border: "1px solid #1d4ed8",
+                                      background: "#eef4ff",
+                                      color: "#1d4ed8",
+                                      fontWeight: 700,
+                                      borderRadius: "999px",
+                                      padding: "0.55rem 0.9rem",
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    + Tambah resep ke minggu ini
+                                  </button>
                                 </div>
-                              </td>
-                              <td>
-                                <button type="button" onClick={() => handleDeleteMenu(row.id)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Hapus</button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+
+                                <div className={styles.tableShell}>
+                                  <table className={styles.table}>
+                                    <thead>
+                                      <tr>
+                                        <th>Recipe</th>
+                                        <th>Calories</th>
+                                        <th>Protein</th>
+                                        <th>Suitable Goals</th>
+                                        <th>Aksi</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {week.menus.map((row) => {
+                                        const previewGoals = buildGoalPreview(row, goalOverrides);
+                                        const isEditingGoal = goalEditorMenuId === row.id;
+
+                                        return (
+                                          <tr key={row.id}>
+                                            <td>{row.recipeName}</td>
+                                            <td>{row.calories} kcal</td>
+                                            <td>{row.protein} g</td>
+                                            <td>
+                                              <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                                                {previewGoals.length > 0 ? (
+                                                  previewGoals.map((goal) => (
+                                                    <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{goal}</span>
+                                                  ))
+                                                ) : (
+                                                  <button
+                                                    type="button"
+                                                    className={styles.goalLinkButton}
+                                                    onClick={() => setGoalEditorMenuId(row.id)}
+                                                  >
+                                                    + Hubungkan Target
+                                                  </button>
+                                                )}
+
+                                                <button
+                                                  type="button"
+                                                  className={styles.goalEditButton}
+                                                  onClick={() => setGoalEditorMenuId((current) => current === row.id ? null : row.id)}
+                                                  aria-label="Edit target kesehatan"
+                                                >
+                                                  ✎
+                                                </button>
+
+                                                {isEditingGoal && (
+                                                  <div className={styles.goalPopover}>
+                                                    <div className={styles.goalPopoverTitle}>Hubungkan target kesehatan</div>
+                                                    <div className={styles.goalPopoverList}>
+                                                      {weeklyGoals.length === 0 ? (
+                                                        <p style={{ margin: 0, color: "#64748b" }}>Belum ada goal master tersedia.</p>
+                                                      ) : weeklyGoals.map((goal) => {
+                                                        const currentGoals = new Set(goalOverrides[row.id] ?? row.suitableGoals);
+                                                        const checked = currentGoals.has(goal.name);
+
+                                                        return (
+                                                          <label key={goal.id} className={styles.goalPopoverItem}>
+                                                            <input
+                                                              type="checkbox"
+                                                              checked={checked}
+                                                              onChange={() => {
+                                                                setGoalOverrides((prev) => {
+                                                                  const next = new Set(prev[row.id] ?? row.suitableGoals);
+                                                                  if (next.has(goal.name)) next.delete(goal.name);
+                                                                  else next.add(goal.name);
+                                                                  return { ...prev, [row.id]: Array.from(next) };
+                                                                });
+                                                              }}
+                                                            />
+                                                            <span>{goal.name}</span>
+                                                          </label>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                    <div className={styles.goalPopoverActions}>
+                                                      <button type="button" className={styles.tabButton} onClick={() => setGoalEditorMenuId(null)}>
+                                                        Tutup
+                                                      </button>
+                                                      <button type="button" className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => setGoalEditorMenuId(null)}>
+                                                        Simpan tampilan
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td>
+                                              <button
+                                                type="button"
+                                                className={styles.iconDangerButton}
+                                                onClick={() => handleDeleteMenu(row.id)}
+                                                aria-label="Hapus menu mingguan"
+                                              >
+                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="18" height="18">
+                                                  <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                                                  <path d="M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                                  <path d="M9 7V4h6v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </section>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </>
