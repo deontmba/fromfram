@@ -64,6 +64,27 @@ function ChefHatIcon() {
   );
 }
 
+function getStartOfWeek(date: Date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  value.setDate(value.getDate() - value.getDay());
+  return value;
+}
+
+function getEndOfWeek(date: Date) {
+  const value = getStartOfWeek(date);
+  value.setDate(value.getDate() + 6);
+  value.setHours(23, 59, 59, 999);
+  return value;
+}
+
+function formatWeekRange(start: Date, end: Date) {
+  return {
+    start: start.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+    end: end.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
+  };
+}
+
 export default function WeeklyMenuPage() {
   const router = useRouter();
   const [weeklyMenu, setWeeklyMenu] = useState<MenuDay[]>([]);
@@ -72,6 +93,7 @@ export default function WeeklyMenuPage() {
   const [hoveredRecipe, setHoveredRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [menuUnavailableMessage, setMenuUnavailableMessage] = useState<string | null>(null);
   const [weekRange, setWeekRange] = useState<{ start: string; end: string }>({
     start: "",
     end: "",
@@ -90,7 +112,25 @@ export default function WeeklyMenuPage() {
           | null;
 
         if (!response.ok) {
-          throw new Error(payload && "error" in payload && payload.error ? payload.error : "Failed to fetch weekly menu");
+          const message = payload && "error" in payload && payload.error ? payload.error : "Failed to fetch weekly menu";
+
+          if (response.status === 404) {
+            const currentWeekStart = getStartOfWeek(new Date());
+            const currentWeekEnd = getEndOfWeek(new Date());
+
+            setWeeklyMenu([]);
+            setMenuUnavailableMessage("Ahli gizi kamu belum menyiapkan menu untuk minggu ini");
+            setWeekRange(formatWeekRange(currentWeekStart, currentWeekEnd));
+
+            const initialSelected: Partial<Record<DayKey, string>> = {};
+            daysOfWeek.forEach(({ key }) => {
+              initialSelected[key] = "";
+            });
+            setSelectedByDay(initialSelected);
+            return;
+          }
+
+          throw new Error(message);
         }
 
         if (!payload || !("menu" in payload) || !Array.isArray(payload.menu)) {
@@ -106,14 +146,12 @@ export default function WeeklyMenuPage() {
         }));
 
         setWeeklyMenu(menuWithDates);
+        setMenuUnavailableMessage(null);
 
         // Format range untuk display
         const startDate = new Date(data.weekStartDate);
         const endDate = new Date(data.weekEndDate);
-        setWeekRange({
-          start: startDate.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
-          end: endDate.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }),
-        });
+        setWeekRange(formatWeekRange(startDate, endDate));
 
         // Init selectedByDay
         const initialSelected: Partial<Record<DayKey, string>> = {};
@@ -225,7 +263,7 @@ export default function WeeklyMenuPage() {
             <span className="text-3xl font-extrabold tracking-tight text-[#15b184]">FromFram</span>
           </div>
 
-          <h1 className="text-4xl font-black leading-none tracking-tight text-neutral-900">Pilih Menu</h1>
+          <h1 className="text-4xl font-black leading-none tracking-tight text-neutral-900">Pilih Menu Minggu Ini</h1>
           <p className="mt-2 text-sm text-neutral-500">
             {weekRange.start} - {weekRange.end}
           </p>
@@ -317,23 +355,38 @@ export default function WeeklyMenuPage() {
         {/* MAIN CONTENT */}
         <div className="relative flex-1 bg-[#f6f6f6]">
           <header className="bg-gradient-to-r from-[#18b887] to-[#139f95] px-6 py-5 text-white md:px-8">
-            <p className="text-sm text-white/85">Pilih menu untuk</p>
+            <p className="text-sm text-white/85">Pilih menu minggu ini untuk</p>
             <h2 className="text-4xl font-black leading-none tracking-tight">
-              {daysOfWeek.find(({ key }) => key === activeDay)?.label}
+              {menuUnavailableMessage ? "Menu Minggu Ini" : daysOfWeek.find(({ key }) => key === activeDay)?.label}
             </h2>
             <p className="mt-1 text-sm text-white/75">
-              {activeMenuDay?.date.toLocaleDateString("id-ID", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+              {menuUnavailableMessage
+                ? weekRange.start && weekRange.end
+                  ? `${weekRange.start} - ${weekRange.end}`
+                  : ""
+                : activeMenuDay?.date.toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
             </p>
           </header>
 
           {/* Menu Grid */}
           <div className="grid grid-cols-2 gap-4 p-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {activeMenuDay?.recipes.map((recipe) => {
+            {menuUnavailableMessage ? (
+              <div className="col-span-full flex min-h-[320px] items-center justify-center rounded-[24px] border border-dashed border-black/10 bg-white px-6 py-10 text-center shadow-sm">
+                <div className="max-w-lg">
+                  <p className="text-2xl font-black tracking-tight text-neutral-900">
+                    {menuUnavailableMessage}
+                  </p>
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Coba lagi nanti atau kembali setelah ahli gizi menambahkan menu untuk minggu ini.
+                  </p>
+                </div>
+              </div>
+            ) : activeMenuDay?.recipes.map((recipe) => {
               const selected = selectedByDay[activeDay] === recipe.id;
 
               return (

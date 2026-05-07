@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     if (weeklyMenus.length === 0) {
       return NextResponse.json(
-        { error: 'Weekly menu belum tersedia untuk minggu aktif.' },
+        { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu ini.' },
         { status: 404 }
       );
     }

@@ -1022,8 +1022,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               <>
                 <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
                   <div>
-                    <p className={styles.noticeTitle}>Weekly Menu by Week:</p>
-                    <p>Setiap kartu mewakili satu minggu kalender. Badge <strong>Minggu aktif</strong> menandai minggu berjalan saat ini.</p>
+                    <p className={styles.noticeTitle}>Menu Minggu Ini:</p>
+                    <p>Setiap kartu mewakili satu minggu kalender. Badge <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
                   </div>
                 </div>
 
@@ -1080,8 +1080,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <div style={{ display: "grid", gap: "1rem" }}>
                     {visibleWeeklyMenus.length === 0 ? (
                       <div className={styles.notice} style={{ marginBottom: 0 }}>
-                        <p className={styles.noticeTitle}>Belum ada weekly menu pada periode ini.</p>
-                        <p>Coba ubah filter bulan/tahun, atau tambahkan resep ke minggu aktif lewat kartu minggu yang tersedia.</p>
+                        <p className={styles.noticeTitle}>Belum ada menu pada periode ini.</p>
+                        <p>Coba ubah filter bulan/tahun, atau tambahkan resep ke minggu ini lewat kartu minggu yang tersedia.</p>
                       </div>
                     ) : (
                       visibleWeeklyMenus.map((week) => {
@@ -1124,7 +1124,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                               </div>
 
                               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                                {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu aktif</span>}
+                                {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>}
                                 <span aria-hidden="true" style={{ fontSize: "1.15rem", color: "#64748b" }}>{isExpanded ? "▾" : "▸"}</span>
                               </div>
                             </button>
