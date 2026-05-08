@@ -500,12 +500,16 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      if (!menuForm.weekStartDate) {
+        throw new Error("Target minggu belum dipilih.");
+      }
+
       const res = await fetch("/api/nutritionist/weekly-menus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipeId: menuForm.recipeId,
-          weekStartDate: menuForm.weekStartDate || new Date().toISOString()
+          weekStartDate: menuForm.weekStartDate,
         }),
         credentials: "include"
       });
@@ -1063,19 +1067,6 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </button>
                 </div>
 
-                {showMenuForm && (
-                  <form onSubmit={handleAddMenu} style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <select className={styles.select} style={{ flex: 1, minWidth: "200px" }} required value={menuForm.recipeId} onChange={e => setMenuForm({...menuForm, recipeId: e.target.value})}>
-                      <option value="">-- Pilih Resep --</option>
-                      {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
-                    <input className={styles.input} style={{ width: "180px" }} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({...menuForm, weekStartDate: e.target.value})} />
-                    <button type="submit" disabled={isSubmitting} className={styles.actionCard} style={{ padding: "0.5rem 1rem" }}>
-                      {isSubmitting ? "Menambah..." : "Tambah"}
-                    </button>
-                  </form>
-                )}
-
                 {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
                   <div style={{ display: "grid", gap: "1rem" }}>
                     {visibleWeeklyMenus.length === 0 ? (
@@ -1129,13 +1120,84 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                               </div>
                             </button>
 
+                            {showMenuForm && menuForm.weekStartDate === week.weekStartDate && (
+                              <div
+                                style={{
+                                  marginTop: "1rem",
+                                  marginBottom: "1rem",
+                                  padding: "1rem",
+                                  borderRadius: "18px",
+                                  border: "1px solid #c7d2fe",
+                                  background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)",
+                                  boxShadow: "0 16px 34px rgba(37, 99, 235, 0.12)",
+                                  position: "relative",
+                                  zIndex: 2,
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", marginBottom: "0.9rem" }}>
+                                  <div>
+                                    <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
+                                      Tambah resep ke minggu ini
+                                    </p>
+                                    <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
+                                      {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowMenuForm(false);
+                                      setMenuForm({ recipeId: "", weekStartDate: "" });
+                                    }}
+                                    style={{
+                                      border: "none",
+                                      background: "transparent",
+                                      color: "#64748b",
+                                      cursor: "pointer",
+                                      fontWeight: 700,
+                                      padding: 0,
+                                    }}
+                                  >
+                                    Tutup
+                                  </button>
+                                </div>
+
+                                <form onSubmit={handleAddMenu} style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+                                  <select
+                                    className={styles.select}
+                                    style={{ flex: 1, minWidth: "240px" }}
+                                    required
+                                    value={menuForm.recipeId}
+                                    onChange={(event) => setMenuForm({ ...menuForm, recipeId: event.target.value })}
+                                  >
+                                    <option value="">-- Pilih Resep --</option>
+                                    {recipes.map((recipe) => (
+                                      <option key={recipe.id} value={recipe.id}>
+                                        {recipe.name}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className={styles.actionCard}
+                                    style={{ padding: "0.5rem 1rem", minWidth: "120px" }}
+                                  >
+                                    {isSubmitting ? "Menambah..." : "Tambah"}
+                                  </button>
+                                </form>
+                              </div>
+                            )}
+
                             {isExpanded && (
                               <div style={{ marginTop: "1rem" }}>
                                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setMenuForm({ recipeId: "", weekStartDate: week.weekStartDate.slice(0, 10) });
+                                      setMenuForm({ recipeId: "", weekStartDate: week.weekStartDate });
                                       setShowMenuForm(true);
                                     }}
                                     style={{
