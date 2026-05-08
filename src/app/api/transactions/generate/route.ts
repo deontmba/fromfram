@@ -15,17 +15,6 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-/**
- * API Documentation
- * Endpoint   : POST /api/transactions/generate
- * Deskripsi  : Membuat transaction baru dengan QR dummy untuk user yang sedang login.
- * Method     : POST
- * Auth       : Cookie `token`
- * Body       :
- * {
- *   "amount": 150000
- * }
- */
 export async function POST(req: NextRequest) {
   const session = await getSessionUserId(req);
   if ('error' in session) {
@@ -59,11 +48,7 @@ export async function POST(req: NextRequest) {
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+            select: { id: true, name: true, email: true },
           },
         },
       }),
@@ -73,6 +58,7 @@ export async function POST(req: NextRequest) {
       currentSubscription &&
       latestTransaction &&
       latestTransaction.status !== 'FAILED' &&
+      latestTransaction.status !== 'COMPLETED' &&
       latestTransaction.amount === amount &&
       latestTransaction.createdAt >= currentSubscription.startDate;
 
@@ -93,25 +79,74 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const orderId = `ORDER-${Date.now()}-${randomUUID().slice(0, 8)}`;
+
     const transaction = await prisma.transaction.create({
       data: {
+        id: orderId,
         userId: session.userId,
         amount,
         status: 'PENDING',
-        qrisCode: `QRIS-DUMMY-${Date.now()}-${randomUUID().slice(0, 8)}`,
+        qrisCode: `PENDING_MIDTRANS`,
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        user: { select: { id: true, name: true, email: true } },
       },
     });
 
-    const qrImageDataUrl = await QRCode.toDataURL(transaction.qrisCode, {
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
+    const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
+    const apiUrl = isProduction ? 'https://api.midtrans.com/v2/charge' : 'https://api.sandbox.midtrans.com/v2/charge';
+
+    if (!serverKey) {
+      console.warn("Midtrans Server Key is missing. Using dummy QRIS.");
+      // Fallback to dummy QRIS if no key is provided
+      const dummyQris = `QRIS-DUMMY-${orderId}`;
+      await prisma.transaction.update({
+        where: { id: orderId },
+        data: { qrisCode: dummyQris }
+      });
+      const qrImageDataUrl = await QRCode.toDataURL(dummyQris, { errorCorrectionLevel: 'M', margin: 2, width: 320 });
+      return NextResponse.json({ message: 'Dummy transaction generated.', transaction: { ...transaction, qrisCode: dummyQris }, qrImageDataUrl }, { status: 201 });
+    }
+
+    const midtransPayload = {
+      payment_type: 'qris',
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: amount,
+      },
+      customer_details: {
+        first_name: transaction.user.name,
+        email: transaction.user.email,
+      }
+    };
+
+    const midtransRes = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from(serverKey + ':').toString('base64'),
+      },
+      body: JSON.stringify(midtransPayload),
+    });
+
+    const midtransData = await midtransRes.json();
+
+    if (!midtransRes.ok || (midtransData.status_code !== '201' && midtransData.status_code !== '200')) {
+      console.error('Midtrans Error:', midtransData);
+      throw new Error(midtransData.status_message || 'Gagal generate QRIS Midtrans');
+    }
+
+    const qrString = midtransData.qr_string || midtransData.actions?.find((a: any) => a.name === 'generate-qr-code')?.url || 'ERROR';
+
+    const updatedTransaction = await prisma.transaction.update({
+      where: { id: orderId },
+      data: { qrisCode: qrString },
+    });
+
+    const qrImageDataUrl = await QRCode.toDataURL(qrString, {
       errorCorrectionLevel: 'M',
       margin: 2,
       width: 320,
@@ -120,7 +155,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         message: 'Transaction generated successfully.',
-        transaction,
+        transaction: updatedTransaction,
         qrImageDataUrl,
       },
       { status: 201 }

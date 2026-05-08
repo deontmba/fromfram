@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { getStartOfWeek } from '@/lib/week';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   if (error === 'CONFIG_MISSING') {
@@ -28,13 +29,19 @@ export async function GET(req: NextRequest) {
     currentWeekStart.setDate(today.getDate() - today.getDay());
     currentWeekStart.setHours(0,0,0,0);
 
-    const [totalRecipes, weeklyMenusCount, activeUsers] = await prisma.$transaction([
+    const [totalRecipes, weeklyMenuWeeks, activeUsers] = await prisma.$transaction([
       prisma.recipe.count(),
-      prisma.weeklyMenu.count(),
+      prisma.weeklyMenu.findMany({
+        select: { weekStartDate: true },
+      }),
       prisma.subscription.count({
         where: { status: 'ACTIVE' }
       })
     ]);
+
+    const weeklyMenusCount = new Set(
+      weeklyMenuWeeks.map((menu) => getStartOfWeek(menu.weekStartDate).toISOString())
+    ).size;
 
     return NextResponse.json({
       data: {

@@ -11,6 +11,7 @@ import {
   getEmptyAddressDraft,
   profileMockData,
 } from "@/components/profile/mock-data";
+import { indonesiaRegions } from "@/lib/indonesia-regions";
 
 type ManagedAddress = Address & {
   recipientName: string;
@@ -84,6 +85,10 @@ export function AddressManagementScreen() {
   const [pendingDefaultAddressId, setPendingDefaultAddressId] = useState<string | null>(null);
   const [deletingAddressId, setDeletingAddressId] = useState<string | null>(null);
   const [pendingDeleteAddress, setPendingDeleteAddress] = useState<ManagedAddress | null>(null);
+
+  const provinces = indonesiaRegions;
+  const selectedProvinceData = provinces.find((p) => p.name === addressDraft.province);
+  const cities = selectedProvinceData ? selectedProvinceData.cities : [];
 
   useEffect(() => {
     let isMounted = true;
@@ -573,8 +578,32 @@ export function AddressManagementScreen() {
                 </label>
 
                 <label className="block">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Kota</span>
-                  <input
+                  <span className="block text-[1rem] font-semibold text-neutral-800">
+                    Provinsi
+                  </span>
+                  <select
+                    className={inputClassName}
+                    value={addressDraft.province}
+                    onChange={(event) =>
+                      setAddressDraft((currentDraft) => ({
+                        ...currentDraft,
+                        province: event.target.value,
+                        city: "", // reset kota jika provinsi berubah
+                      }))
+                    }
+                  >
+                    <option value="">Pilih Provinsi</option>
+                    {provinces.map((prov) => (
+                      <option key={prov.id} value={prov.name}>
+                        {prov.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="block text-[1rem] font-semibold text-neutral-800">Kota/Kabupaten</span>
+                  <select
                     className={inputClassName}
                     value={addressDraft.city}
                     onChange={(event) =>
@@ -583,23 +612,15 @@ export function AddressManagementScreen() {
                         city: event.target.value,
                       }))
                     }
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">
-                    Provinsi
-                  </span>
-                  <input
-                    className={inputClassName}
-                    value={addressDraft.province}
-                    onChange={(event) =>
-                      setAddressDraft((currentDraft) => ({
-                        ...currentDraft,
-                        province: event.target.value,
-                      }))
-                    }
-                  />
+                    disabled={!addressDraft.province || cities.length === 0}
+                  >
+                    <option value="">Pilih Kota/Kabupaten</option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.name}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="block sm:col-span-2">
