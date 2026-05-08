@@ -56,7 +56,7 @@ const durationPlans: DurationPlan[] = [
     id: "weekly",
     name: "Mingguan",
     price: "Rp 350.000",
-    unit: "/minggu",
+    unit: "",
     savings: "Fleksibel, bisa cancel kapan saja",
     benefits: ["7 hari meal kit", "Gratis ongkir", "Bisa skip minggu depan"],
   },
@@ -64,7 +64,7 @@ const durationPlans: DurationPlan[] = [
     id: "monthly",
     name: "Bulanan",
     price: "Rp 1.200.000",
-    unit: "/bulan",
+    unit: "",
     savings: "Hemat 14% dari plan mingguan",
     popular: true,
     benefits: ["28 hari meal kit", "Gratis ongkir", "Priority support", "Discount 14%"],
@@ -73,7 +73,7 @@ const durationPlans: DurationPlan[] = [
     id: "yearly",
     name: "Tahunan",
     price: "Rp 12.000.000",
-    unit: "/tahun",
+    unit: "",
     savings: "Hemat 29% dari plan mingguan",
     benefits: ["365 hari meal kit", "Gratis ongkir", "Priority support", "Discount 29%", "1 minggu gratis"],
   },
@@ -148,29 +148,36 @@ export function SelectPlanScreen() {
   };
 
   return (
-    <main className="min-h-screen bg-[#ececec] px-5 py-8 sm:py-10">
-      <section className="mx-auto w-full max-w-[1020px] rounded-[28px] border border-[#e4e4e4] bg-[#f4f4f4] px-5 py-7 shadow-[0_14px_36px_rgba(0,0,0,0.08)] sm:px-8 sm:py-9">
+    <main className="relative min-h-screen overflow-hidden px-5 py-8 sm:py-10">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
+      <div className="absolute -top-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-[#1db788]/40 to-[#0ea5a5]/10 blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-gradient-to-tr from-[#1db788]/25 to-transparent blur-3xl" />
+      <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
+      <div className="absolute top-0 left-1/2 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-white/40 to-[#1db788]/5 blur-3xl" />
+      
+      <section className="mx-auto w-full max-w-[1020px] px-5 py-7 sm:px-8 sm:py-9">
         <header className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 text-[#10b981]">
+          <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
             <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
             <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
           </div>
-          <h1 className="text-[2rem] font-bold leading-tight text-neutral-900 sm:text-[2.35rem]">
+          <h1 className="bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] bg-clip-text text-[2rem] font-bold leading-tight text-transparent sm:text-[2.35rem]">
             Atur Langganan Anda
           </h1>
-          <p className="mt-2 text-[0.98rem] text-neutral-500 sm:text-[1rem]">
+          <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
             Sesuaikan kategori meal plan dan durasi berlangganan
           </p>
         </header>
 
-        <div className="space-y-9">
+        <div className="space-y-12">
           <section aria-labelledby="meal-plan-title">
             <h2 id="meal-plan-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
               Pilih Kategori Meal Plan
             </h2>
             <fieldset>
               <legend className="sr-only">Kategori meal plan</legend>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-3">
                 {mealPlans.map((plan) => {
                   const active = plan.id === selectedMeal;
                   return (
@@ -179,17 +186,17 @@ export function SelectPlanScreen() {
                       type="button"
                       onClick={() => setSelectedMeal(plan.id)}
                       aria-pressed={active}
-                      className={`group rounded-2xl border bg-[#f8f8f8] px-6 py-5 text-center shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] ${
+                      className={`group rounded-3xl border-2 px-7 py-6 text-center backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                         active
-                          ? "border-[#1db788] ring-1 ring-[#1db788] shadow-[0_10px_20px_rgba(29,183,136,0.16)]"
-                          : "border-[#d7d7d7] hover:-translate-y-0.5 hover:border-[#9ed8c4] hover:shadow-[0_8px_18px_rgba(0,0,0,0.09)]"
+                          ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
+                          : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
                       }`}
                     >
                       <div
-                        className={`mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full transition-colors ${
+                        className={`mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full backdrop-blur-sm transition-all ${
                           active
-                            ? "bg-[#1db788]"
-                            : "bg-[#ececec] group-hover:bg-[#e6f5ef]"
+                            ? "bg-gradient-to-br from-[#1db788] to-[#0ea5a5] shadow-lg"
+                            : "bg-white/30 group-hover:bg-white/50 group-hover:shadow-md"
                         }`}
                       >
                         <Image
@@ -215,7 +222,7 @@ export function SelectPlanScreen() {
             </h2>
             <fieldset>
               <legend className="sr-only">Durasi langganan</legend>
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-6 lg:grid-cols-3">
                 {durationPlans.map((plan) => {
                   const active = plan.id === selectedDuration;
                   return (
@@ -224,22 +231,22 @@ export function SelectPlanScreen() {
                       type="button"
                       onClick={() => setSelectedDuration(plan.id)}
                       aria-pressed={active}
-                      className={`relative rounded-2xl border bg-[#f8f8f8] px-5 pb-6 pt-5 text-left shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] ${
+                      className={`relative rounded-3xl border-2 px-6 pb-7 pt-6 text-left backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                         active
-                          ? "border-[#1db788] ring-1 ring-[#1db788] shadow-[0_12px_22px_rgba(29,183,136,0.18)]"
-                          : "border-[#d7d7d7] hover:-translate-y-0.5 hover:border-[#9ed8c4] hover:shadow-[0_9px_20px_rgba(0,0,0,0.09)]"
+                          ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_18px_35px_rgba(29,183,136,0.28)]"
+                          : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_15px_30px_rgba(29,183,136,0.15)]"
                       }`}
                     >
                       {plan.popular ? (
-                        <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#f35f61] px-4 py-1 text-[0.72rem] font-bold text-white shadow-sm">
-                          Terpopuler
+                        <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-[#f35f61] to-[#e84c4c] px-4 py-1.5 text-[0.72rem] font-bold text-white shadow-lg backdrop-blur-sm">
+                          ⭐ Terpopuler
                         </span>
                       ) : null}
                       <article>
                         <h3 className="text-center text-[1.1rem] font-semibold text-neutral-900">{plan.name}</h3>
-                        <p className="mt-2 text-center text-[1.05rem] font-bold leading-tight text-[#14a67e]">
-                          <span className="block text-[1.75rem] leading-none">{plan.price}</span>
-                          <span className="mt-1 block text-[0.96rem] font-medium text-neutral-500">{plan.unit}</span>
+                        <p className="mt-2 text-center text-[1.05rem] font-bold leading-tight">
+                          <span className="block bg-gradient-to-r from-[#1db788] to-[#0ea5a5] bg-clip-text text-[1.75rem] leading-none text-transparent">{plan.price}</span>
+                          <span className="mt-1 block text-[0.96rem] font-medium text-neutral-600">{plan.unit}</span>
                         </p>
                         <p className="mt-3 text-center text-[0.95rem] text-neutral-500">{plan.savings}</p>
                       </article>
@@ -247,7 +254,7 @@ export function SelectPlanScreen() {
                       <ul className="mt-4 space-y-2.5 text-[0.96rem] text-neutral-700">
                         {plan.benefits.map((benefit) => (
                           <li key={benefit} className="flex items-center gap-2">
-                            <span className="grid h-5 w-5 place-items-center rounded-full bg-[#d9f2e8] text-[#14a67e]">
+                            <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-[#1db788]/30 to-[#0ea5a5]/20 text-[#1db788] backdrop-blur-sm">
                               <CheckIcon />
                             </span>
                             {benefit}
@@ -267,7 +274,7 @@ export function SelectPlanScreen() {
           <h2 id="serving-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
             Pilih Porsi
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3, 4, 5, 6].map((serving) => {
               const active = serving === selectedServing;
 
@@ -277,10 +284,10 @@ export function SelectPlanScreen() {
                   type="button"
                   onClick={() => setSelectedServing(serving)}
                   aria-pressed={active}
-                  className={`rounded-2xl border px-5 py-4 text-left shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] ${
+                  className={`rounded-3xl border-2 px-6 py-5 text-left backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                     active
-                      ? "border-[#1db788] bg-[#eaf8f1] ring-1 ring-[#1db788] shadow-[0_10px_20px_rgba(29,183,136,0.16)]"
-                      : "border-[#d7d7d7] bg-[#f8f8f8] hover:-translate-y-0.5 hover:border-[#9ed8c4] hover:shadow-[0_8px_18px_rgba(0,0,0,0.09)]"
+                      ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
+                      : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
                   }`}
                 >
                   <p className="text-[1.1rem] font-semibold text-neutral-900">{serving} orang</p>
@@ -291,17 +298,17 @@ export function SelectPlanScreen() {
           </div>
         </section>
 
-        <footer className="mt-9 flex items-center justify-between">
-          <p className="text-sm text-neutral-500">
-            Pilihan aktif: {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang
-          </p>
-
+        <footer className="mt-12 flex items-center justify-between gap-6">
           <Link
             href="/subscription"
-            className="rounded-2xl border border-[#cfcfcf] bg-[#f8f8f8] px-6 py-2.5 text-[1rem] font-semibold text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
+            className="rounded-2xl border-2 border-[#1db788]/30 bg-white/20 px-7 py-3 text-[1rem] font-semibold text-neutral-700 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/30 hover:shadow-[0_10px_20px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40"
           >
-            Kembali
+            ← Kembali
           </Link>
+
+          <p className="flex-1 text-center text-sm text-neutral-600">
+            {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang
+          </p>
 
           <button
             type="button"
@@ -309,9 +316,9 @@ export function SelectPlanScreen() {
               void handleContinue();
             }}
             disabled={isSubmitting}
-            className="rounded-2xl bg-[#1db788] px-8 py-2.5 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-2xl border-2 border-[#1db788] bg-gradient-to-r from-[#1db788] to-[#16a679] px-9 py-3 text-[1rem] font-semibold text-white shadow-[0_12px_25px_rgba(29,183,136,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(29,183,136,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60 outline outline-1 outline-white/50"
           >
-            {isSubmitting ? "Menyambungkan..." : "Lanjutkan"}
+            {isSubmitting ? "Menyambungkan..." : "Lanjutkan →"}
           </button>
         </footer>
 
