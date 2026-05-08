@@ -11,34 +11,65 @@ const prisma = new PrismaClient({
 });
 
 const COMMON_PASSWORD = "Password123!";
-const WEEK_START = new Date("2026-04-21T00:00:00.000Z");
-const WEEK_END   = new Date("2026-04-27T23:59:59.999Z");
-const SELECTION_DEADLINE = new Date("2026-04-20T18:00:00.000Z");
-const DELIVERY_SLOT      = new Date("2026-04-22T07:30:00.000Z");
-const DELIVERY_COMPLETED = new Date("2026-04-22T08:45:00.000Z");
-const DELIVERY_SHIPPED   = new Date("2026-04-21T21:00:00.000Z");
+
+function startOfWeek(date) {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  value.setDate(value.getDate() - value.getDay());
+  return value;
+}
+
+function addDays(date, days) {
+  const value = new Date(date);
+  value.setDate(value.getDate() + days);
+  return value;
+}
+
+function addWeeks(date, weeks) {
+  return addDays(date, weeks * 7);
+}
+
+function withTime(date, hours, minutes, seconds, milliseconds) {
+  const value = new Date(date);
+  value.setHours(hours, minutes, seconds, milliseconds);
+  return value;
+}
+
+const ACTIVE_WEEK_START = startOfWeek(new Date());
+const ACTIVE_WEEK_END = withTime(addDays(ACTIVE_WEEK_START, 6), 23, 59, 59, 999);
+const SELECTION_DEADLINE = withTime(addDays(ACTIVE_WEEK_START, -1), 18, 0, 0, 0);
+const DELIVERY_SLOT = withTime(addDays(ACTIVE_WEEK_START, 2), 7, 30, 0, 0);
+const DELIVERY_COMPLETED = withTime(addDays(ACTIVE_WEEK_START, 2), 8, 45, 0, 0);
+const DELIVERY_SHIPPED = withTime(addDays(ACTIVE_WEEK_START, 1), 21, 0, 0, 0);
 
 const goalSeeds = [
   {
     name: "Penurunan Berat Badan",
     description:
       "Target kalori lebih rendah untuk membantu defisit ringan dengan menu yang tetap seimbang.",
-    minCalories: 1500,
-    maxCalories: 1800,
+    minCalories: 350,
+    maxCalories: 499,
   },
   {
     name: "Maintain Berat Badan",
     description:
       "Target kalori untuk menjaga berat badan stabil tanpa mengorbankan kualitas makan harian.",
-    minCalories: 1800,
-    maxCalories: 2200,
+    minCalories: 500,
+    maxCalories: 620,
   },
   {
     name: "Bulking Atlet",
     description:
       "Menu berprotein tinggi dan lebih padat kalori untuk mendukung massa otot dan performa olahraga.",
-    minCalories: 2400,
-    maxCalories: 3000,
+    minCalories: 600,
+    maxCalories: 800,
+  },
+  {
+    name: "Sarapan Ringan",
+    description:
+      "Opsi sarapan ringan dengan kalori yang lebih terkendali untuk menu pagi hari.",
+    minCalories: 400,
+    maxCalories: 450,
   },
 ];
 
@@ -165,8 +196,8 @@ const subscriptionSeeds = [
     planType: "BULANAN",
     servings: 3,
     status: "ACTIVE",
-    startDate: new Date("2026-04-01T00:00:00.000Z"),
-    endDate: new Date("2026-05-01T00:00:00.000Z"),
+    startDate: addWeeks(ACTIVE_WEEK_START, -4),
+    endDate: addWeeks(ACTIVE_WEEK_START, 4),
   },
   {
     userEmail: "rina@fromfram.test",
@@ -174,8 +205,8 @@ const subscriptionSeeds = [
     planType: "MINGGUAN",
     servings: 2,
     status: "ACTIVE",
-    startDate: new Date("2026-04-06T00:00:00.000Z"),
-    endDate: new Date("2026-04-13T00:00:00.000Z"),
+    startDate: addWeeks(ACTIVE_WEEK_START, -1),
+    endDate: addWeeks(ACTIVE_WEEK_START, 1),
   },
   {
     userEmail: "doni@fromfram.test",
@@ -183,9 +214,9 @@ const subscriptionSeeds = [
     planType: "TAHUNAN",
     servings: 1,
     status: "PAUSED",
-    startDate: new Date("2026-01-10T00:00:00.000Z"),
-    endDate: new Date("2027-01-10T00:00:00.000Z"),
-    pausedUntil: new Date("2026-04-20T00:00:00.000Z"),
+    startDate: addWeeks(ACTIVE_WEEK_START, -12),
+    endDate: addWeeks(ACTIVE_WEEK_START, 40),
+    pausedUntil: addDays(ACTIVE_WEEK_START, -2),
   },
 ];
 
@@ -194,20 +225,20 @@ const transactionSeeds = [
     userEmail: "budi@fromfram.test",
     amount: 690000,
     status: "COMPLETED",
-    qrisCode: "QRIS-BUDI-202604",
-    paidAt: new Date("2026-04-01T10:15:00.000Z"),
+    qrisCode: "QRIS-BUDI-202605",
+    paidAt: addDays(ACTIVE_WEEK_START, -1),
   },
   {
     userEmail: "rina@fromfram.test",
     amount: 149000,
     status: "PENDING",
-    qrisCode: "QRIS-RINA-202604",
+    qrisCode: "QRIS-RINA-202605",
   },
   {
     userEmail: "doni@fromfram.test",
     amount: 2190000,
     status: "FAILED",
-    qrisCode: "QRIS-DONI-202604",
+    qrisCode: "QRIS-DONI-202605",
   },
 ];
 
@@ -295,32 +326,55 @@ const recipeIngredientSeeds = [
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Bawang Putih", quantity: "2 siung" },
 ];
 
-const weeklyMenuSeeds = recipeSeeds.map((recipe) => ({
-  recipeName: recipe.name,
-  weekStartDate: WEEK_START,
-}));
+const WEEK_BLUEPRINTS = [
+  { offset: -4, recipes: ["Oatmeal Pisang Greek Yogurt"] },
+  { offset: -3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat"] },
+  { offset: -2, recipes: ["Nasi Merah Ayam Brokoli", "Ayam Panggang Quinoa"] },
+  { offset: -1, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+  {
+    offset: 0,
+    recipes: [
+      "Oatmeal Pisang Greek Yogurt",
+      "Ayam Panggang Quinoa",
+      "Salmon Bowl Sehat",
+      "Nasi Merah Ayam Brokoli",
+    ],
+  },
+  { offset: 1, recipes: ["Ayam Panggang Quinoa", "Nasi Merah Ayam Brokoli"] },
+  { offset: 2, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt"] },
+  { offset: 3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Nasi Merah Ayam Brokoli"] },
+  { offset: 4, recipes: ["Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+];
+
+const weeklyMenuSeeds = WEEK_BLUEPRINTS.flatMap(({ offset, recipes }) => {
+  const weekStartDate = addWeeks(ACTIVE_WEEK_START, offset);
+  return recipes.map((recipeName) => ({
+    recipeName,
+    weekStartDate,
+  }));
+});
 
 const weeklyBoxSeeds = [
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
-    weekEndDate: WEEK_END,
+    weekStartDate: ACTIVE_WEEK_START,
+    weekEndDate: ACTIVE_WEEK_END,
     selectionDeadline: SELECTION_DEADLINE,
     isAutoSelected: false,
     status: "LOCKED",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
-    weekEndDate: WEEK_END,
+    weekStartDate: ACTIVE_WEEK_START,
+    weekEndDate: ACTIVE_WEEK_END,
     selectionDeadline: SELECTION_DEADLINE,
     isAutoSelected: true,
     status: "COMPLETED",
   },
   {
     userEmail: "doni@fromfram.test",
-    weekStartDate: WEEK_START,
-    weekEndDate: WEEK_END,
+    weekStartDate: ACTIVE_WEEK_START,
+    weekEndDate: ACTIVE_WEEK_END,
     selectionDeadline: SELECTION_DEADLINE,
     isAutoSelected: false,
     status: "PENDING_SELECTION",
@@ -330,85 +384,85 @@ const weeklyBoxSeeds = [
 const mealSelectionSeeds = [
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SENIN",
     recipeName: "Ayam Panggang Quinoa",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SELASA",
     recipeName: "Nasi Merah Ayam Brokoli",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "RABU",
     recipeName: "Salmon Bowl Sehat",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "KAMIS",
     recipeName: "Ayam Panggang Quinoa",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "JUMAT",
     recipeName: "Nasi Merah Ayam Brokoli",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SABTU",
     recipeName: "Salmon Bowl Sehat",
   },
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "MINGGU",
     recipeName: "Oatmeal Pisang Greek Yogurt",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SENIN",
     recipeName: "Oatmeal Pisang Greek Yogurt",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SELASA",
     recipeName: "Salmon Bowl Sehat",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "RABU",
     recipeName: "Ayam Panggang Quinoa",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "KAMIS",
     recipeName: "Oatmeal Pisang Greek Yogurt",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "JUMAT",
     recipeName: "Salmon Bowl Sehat",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SABTU",
     recipeName: "Ayam Panggang Quinoa",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "MINGGU",
     recipeName: "Oatmeal Pisang Greek Yogurt",
   },
@@ -417,14 +471,14 @@ const mealSelectionSeeds = [
 const deliverySeeds = [
   {
     userEmail: "budi@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     addressLabel: "Rumah",
     deliveryDate: DELIVERY_SLOT,
     status: "PREPARING",
   },
   {
     userEmail: "rina@fromfram.test",
-    weekStartDate: WEEK_START,
+    weekStartDate: ACTIVE_WEEK_START,
     addressLabel: "Rumah",
     deliveryDate: DELIVERY_SLOT,
     status: "DELIVERED",
@@ -497,10 +551,7 @@ async function main() {
         userId: { in: Object.values(userByEmail).map((user) => user.id) },
       },
     });
-    const addressByKey = indexBy(
-      addressRows,
-      (address) => `${address.userId}:${address.label}`
-    );
+    const addressByKey = indexBy(addressRows, (address) => `${address.userId}:${address.label}`);
 
     await tx.subscription.createMany({
       data: subscriptionSeeds.map(({ userEmail, goalName, ...subscription }) => ({
@@ -558,7 +609,7 @@ async function main() {
     const weeklyBoxRows = await tx.weeklyBox.findMany({
       where: {
         userId: { in: Object.values(userByEmail).map((user) => user.id) },
-        weekStartDate: WEEK_START,
+        weekStartDate: ACTIVE_WEEK_START,
       },
     });
     const weeklyBoxByKey = indexBy(
@@ -580,16 +631,15 @@ async function main() {
       data: deliverySeeds.map(({ userEmail, weekStartDate, addressLabel, ...delivery }) => ({
         ...delivery,
         userId: userByEmail[userEmail].id,
-        weeklyBoxId:
-          weeklyBoxByKey[
-            `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
-          ].id,
+        weeklyBoxId: weeklyBoxByKey[
+          `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
+        ].id,
         addressId: addressByKey[`${userByEmail[userEmail].id}:${addressLabel}`].id,
       })),
     });
   });
 
-  console.log("Seed dummy data berhasil dibuat dengan relasi yang saling terhubung.");
+  console.log("Seed dummy data berhasil dibuat dengan weekly menu multi-minggu dan active week.");
   console.log("Akun dummy menggunakan password:", COMMON_PASSWORD);
 }
 
