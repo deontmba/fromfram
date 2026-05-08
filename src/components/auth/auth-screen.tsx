@@ -383,7 +383,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   function handleGoogleLogin() {
     window.location.href = "/api/auth/google";
   }
-
+  
   // ── Email sent screen ──
   if (registeredEmail) {
     return (

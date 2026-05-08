@@ -261,3 +261,13 @@ model Delivery {
   weeklyBox    WeeklyBox      @relation(fields: [weeklyBoxId], references: [id])
   address      Address        @relation(fields: [addressId], references: [id])
 }
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([email, token])
+}

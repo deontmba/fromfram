@@ -42,10 +42,10 @@ const NEXT_STEP_PATH = "/subscription/weekly-menu";
 const addressLabels = ["Rumah", "Kantor", "Lainnya"];
 
 const inputClassName =
-  "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
+  "mt-2 h-14 w-full rounded-2xl border-2 border-[#1db788]/40 bg-white/20 px-4 text-[1.02rem] text-neutral-900 outline outline-1 outline-white/40 transition backdrop-blur-md focus:border-[#1db788] focus:bg-white/30 placeholder:text-neutral-600";
 
 const textareaClassName =
-  "mt-2 min-h-28 w-full rounded-2xl border border-neutral-300 bg-white px-4 py-3 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
+  "mt-2 min-h-28 w-full rounded-2xl border-2 border-[#1db788]/40 bg-white/20 px-4 py-3 text-[1.02rem] text-neutral-900 outline outline-1 outline-white/40 transition backdrop-blur-md focus:border-[#1db788] focus:bg-white/30 placeholder:text-neutral-600";
 
 function getDefaultRecipientName() {
   return profileMockData.fullName;
@@ -244,28 +244,35 @@ export function DeliveryAddressScreen() {
   };
 
   return (
-    <main className="min-h-screen bg-[#ececec] px-5 py-8 sm:py-10">
-      <section className="mx-auto w-full max-w-[860px] rounded-[28px] border border-[#e4e4e4] bg-[#f4f4f4] px-5 py-7 shadow-[0_14px_36px_rgba(0,0,0,0.08)] sm:px-8 sm:py-9">
-        <header className="text-center">
-          <div className="mb-5 inline-flex items-center gap-2 text-[#10b981]">
+    <main className="relative min-h-screen overflow-hidden px-5 py-8 sm:py-10">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
+      <div className="absolute -top-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-[#1db788]/40 to-[#0ea5a5]/10 blur-3xl" />
+      <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-gradient-to-tr from-[#1db788]/25 to-transparent blur-3xl" />
+      <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
+      <div className="absolute top-0 left-1/2 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-white/40 to-[#1db788]/5 blur-3xl" />
+      
+      <section className="mx-auto w-full max-w-[860px] rounded-[28px] border-2 border-[#1db788]/50 bg-white/10 px-5 py-7 backdrop-blur-md sm:px-8 sm:py-9">
+        <header className="mb-8 text-center">
+          <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
             <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
             <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
           </div>
-          <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-[#dff7ee] text-[#13a87d] shadow-[0_10px_20px_rgba(29,183,136,0.14)]">
+          <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-white/20 text-[#1db788] backdrop-blur-md shadow-[0_10px_20px_rgba(29,183,136,0.14)]">
             <LocationPinIcon />
           </div>
-          <h1 className="text-[2rem] font-bold leading-tight text-neutral-900 sm:text-[2.35rem]">
+          <h1 className="bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] bg-clip-text text-[2rem] font-bold leading-tight text-transparent sm:text-[2.35rem]">
             Alamat Pengiriman
           </h1>
-          <p className="mt-2 text-[0.98rem] text-neutral-500 sm:text-[1rem]">
+          <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
             Isi alamat untuk pengiriman meal kit Anda
           </p>
         </header>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <fieldset>
-            <legend className="mb-3 text-[1rem] font-semibold text-neutral-800">Label Alamat</legend>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <legend className="mb-3 text-[1rem] font-semibold text-neutral-900">Label Alamat</legend>
+            <div className="grid gap-4 sm:grid-cols-3">
               {addressLabels.map((label) => {
                 const active = addressDraft.label === label;
 
@@ -280,10 +287,10 @@ export function DeliveryAddressScreen() {
                         label,
                       }))
                     }
-                    className={`rounded-2xl border px-5 py-3 text-[1rem] font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] ${
+                    className={`rounded-2xl border-2 px-6 py-3.5 text-[1rem] font-semibold backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                       active
-                        ? "border-[#1db788] bg-[#e2f6ee] text-[#108463] shadow-[0_8px_16px_rgba(29,183,136,0.16)]"
-                        : "border-[#d7d7d7] bg-[#f8f8f8] text-neutral-700 hover:border-[#9ed8c4] hover:bg-white"
+                        ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 text-neutral-900 shadow-[0_8px_16px_rgba(29,183,136,0.16)]"
+                        : "border-[#1db788]/30 bg-white/20 text-neutral-700 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30"
                     }`}
                   >
                     {label}
@@ -295,7 +302,7 @@ export function DeliveryAddressScreen() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block sm:col-span-2">
-              <span className="block text-[1rem] font-semibold text-neutral-800">Alamat Lengkap</span>
+              <span className="block text-[1rem] font-semibold text-neutral-900">Alamat Lengkap</span>
               <input
                 className={inputClassName}
                 value={addressDraft.street}
@@ -309,7 +316,7 @@ export function DeliveryAddressScreen() {
             </label>
 
             <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-800">Provinsi</span>
+              <span className="block text-[1rem] font-semibold text-neutral-900">Provinsi</span>
               <select
                 className={inputClassName}
                 value={addressDraft.province}
@@ -331,7 +338,7 @@ export function DeliveryAddressScreen() {
             </label>
 
             <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-800">Kota/Kabupaten</span>
+              <span className="block text-[1rem] font-semibold text-neutral-900">Kota/Kabupaten</span>
               <select
                 className={inputClassName}
                 value={addressDraft.city}
@@ -353,7 +360,7 @@ export function DeliveryAddressScreen() {
             </label>
 
             <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-800">Kode Pos</span>
+              <span className="block text-[1rem] font-semibold text-neutral-900">Kode Pos</span>
               <input
                 className={inputClassName}
                 value={addressDraft.postalCode}
@@ -367,7 +374,7 @@ export function DeliveryAddressScreen() {
             </label>
 
             <label className="block sm:col-span-2">
-              <span className="block text-[1rem] font-semibold text-neutral-800">Catatan (Opsional)</span>
+              <span className="block text-[1rem] font-semibold text-neutral-900">Catatan (Opsional)</span>
               <textarea
                 className={textareaClassName}
                 value={addressDraft.notes}
@@ -385,7 +392,7 @@ export function DeliveryAddressScreen() {
             {message ? (
               <p
                 className={`text-sm font-medium ${
-                  message.tone === "error" ? "text-red-500" : "text-[#11af82]"
+                  message.tone === "error" ? "text-red-400" : "text-[#4ade80]"
                 }`}
               >
                 {message.text}
@@ -395,10 +402,10 @@ export function DeliveryAddressScreen() {
             ) : null}
           </div>
 
-          <footer className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <footer className="flex flex-col-reverse gap-6 sm:flex-row sm:items-center sm:justify-between pt-2">
             <Link
               href="/subscription/select-plan"
-              className="inline-flex h-12 items-center justify-center rounded-2xl border border-[#cfcfcf] bg-[#f8f8f8] px-6 text-[1rem] font-semibold text-neutral-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_16px_rgba(0,0,0,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-[#1db788]/30 bg-white/20 px-7 text-[1rem] font-semibold text-neutral-900 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_10px_20px_rgba(29,183,136,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40"
             >
               Kembali
             </Link>
@@ -406,7 +413,7 @@ export function DeliveryAddressScreen() {
             <button
               type="submit"
               disabled={isSaving}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-[#1db788] bg-gradient-to-r from-[#1db788] to-[#16a679] px-9 text-[1rem] font-semibold text-white shadow-[0_12px_25px_rgba(29,183,136,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(29,183,136,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60 outline outline-1 outline-white/50"
             >
               {isSaving ? "Menyimpan..." : "Lanjutkan"}
             </button>
