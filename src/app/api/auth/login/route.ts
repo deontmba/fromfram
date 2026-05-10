@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { login } from '@/controllers/authController';
+import { validate } from '@/lib/validate';
+import { loginSchema } from '@/schemas';
 
 export async function POST(req: NextRequest) {
-  try {
-    const { email, password } = await req.json();
-    return await login(email, password);
-  } catch (error) {
-    console.error("[LOGIN ROUTE ERROR]", error);
-    return NextResponse.json(
-      { error: "Internal server error." },
-      { status: 500 }
-    );
-  }
+  const body = await req.json();
+  const parsed = validate(loginSchema, body);
+  if (!parsed.success) return parsed.response;
+
+  return login(parsed.data.email, parsed.data.password);
 }
