@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "MealSelection" ADD COLUMN     "date" TIMESTAMP(3);
