@@ -240,11 +240,12 @@ model MealSelection {
   weeklyBoxId String
   recipeId    String
   dayOfWeek   DayOfWeek
+  date        DateTime? // TAMBAHAN: FRM-55 Untuk menyimpan tanggal eksak
 
-  weeklyBox   WeeklyBox @relation(fields: [weeklyBoxId], references: [id])
+  weeklyBox   WeeklyBox @relation(fields:[weeklyBoxId], references: [id])
   recipe      Recipe    @relation(fields: [recipeId], references: [id])
 
-  @@unique([weeklyBoxId, dayOfWeek]) // ← tambah: satu menu per hari per box
+  @@unique([weeklyBoxId, dayOfWeek])
 }
 
 model Delivery {
