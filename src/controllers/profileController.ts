@@ -14,6 +14,8 @@ const addressSelect = {
   postalCode: true,
   notes: true,
   isDefault: true,
+  latitude: true,
+  longitude: true,
 };
 
 const profileSelect = {
@@ -237,6 +239,8 @@ export const manageAddress = {
         province: body.province.trim(),
         postalCode: body.postalCode.trim(),
         notes: typeof body.notes === 'string' ? body.notes : null,
+        latitude:  typeof body.latitude  === 'number' ? body.latitude  : null,
+        longitude: typeof body.longitude === 'number' ? body.longitude : null,
       };
 
       const requestedDefault = body.isDefault === true;
@@ -290,6 +294,8 @@ export const manageAddress = {
       if (isNonEmptyString(body.province)) updateData.province = body.province.trim();
       if (isNonEmptyString(body.postalCode)) updateData.postalCode = body.postalCode.trim();
       if (typeof body.notes === 'string' || body.notes === null) updateData.notes = body.notes;
+      if (typeof body.latitude  === 'number') updateData.latitude  = body.latitude;
+      if (typeof body.longitude === 'number') updateData.longitude = body.longitude;
 
       const wantsDefault = body.isDefault === true;
       if (!wantsDefault && Object.keys(updateData).length === 0) {

@@ -53,7 +53,7 @@ export const login = async (email: string, password: string) => {
     const token = await createJwtToken(user.id, user.email, user.role); 
 
     const response = NextResponse.json(
-      { message: 'Login successful.', user: { id: user.id, name: user.name, email: user.email, role: user.role } },
+      { message: 'Login successful.', user: { id: user.id, name: user.name, email: user.email, role: user.role, hasCompletedOnboarding: user.hasCompletedOnboarding } },
       { status: 200 }
     );
 
@@ -138,7 +138,8 @@ export const handleGoogleCallback = async (code: string) => {
     }
 
     const jwtToken = await createJwtToken(user.id, user.email, user.role); 
-    const response = NextResponse.redirect(`${BASE_URL}/dashboard`);
+    const redirectUrl = user.hasCompletedOnboarding ? `${BASE_URL}/dashboard` : `${BASE_URL}/onboarding`;
+    const response = NextResponse.redirect(redirectUrl);
     return setAuthCookie(response, jwtToken);
   } catch (error) {
     console.error('[GOOGLE CALLBACK ERROR]', error);
@@ -150,7 +151,7 @@ export const getMe = async (userId: string) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, createdAt: true, hasCompletedOnboarding: true },
     });
 
     if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });

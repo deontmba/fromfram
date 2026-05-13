@@ -65,6 +65,7 @@ model User {
   name               String
   role               Role                @default(USER)
   isVerified         Boolean             @default(false)
+  hasCompletedOnboarding Boolean         @default(false)
   googleId           String?             @unique        
   avatarUrl          String?                            
   createdAt          DateTime            @default(now())
@@ -79,6 +80,7 @@ model User {
   recipes            Recipe[]
   verificationTokens VerificationToken[]
   passwordResetTokens PasswordResetToken[]
+  personalization    UserPersonalization?
 }
 
 model PasswordResetToken {
@@ -113,21 +115,41 @@ model NutritionalProfile {
   user             User    @relation(fields: [userId], references: [id])
 }
 
-model Address {
-  id         String     @id @default(cuid())
-  userId     String
-  recipientName String?
-  phoneNumber String?
-  label      String
-  street     String
-  city       String
-  province   String
-  postalCode String
-  notes      String?
-  isDefault  Boolean    @default(false)
+model UserPersonalization {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  goals            String[]
+  dietaryPrefs     String[]
+  allergies        String[]
+  cookingPrefs     String[]
+  
+  weight           Float?
+  height           Float?
+  age              Int?
 
-  user       User       @relation(fields: [userId], references: [id])
-  deliveries Delivery[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id            String     @id @default(cuid())
+  userId        String
+  recipientName String?
+  phoneNumber   String?
+  label         String
+  street        String
+  city          String
+  province      String
+  postalCode    String
+  notes         String?
+  isDefault     Boolean    @default(false)
+  latitude      Float?     // koordinat GPS dari MapPicker
+  longitude     Float?     // koordinat GPS dari MapPicker
+
+  user          User       @relation(fields: [userId], references: [id])
+  deliveries    Delivery[]
 }
 
 // ← BARU: tujuan kesehatan pengguna (Atlet, Diet, Gizi Buruk, dll)
@@ -178,6 +200,12 @@ model Recipe {
   protein        Float               // ← tambah: protein dalam gram
   servings       Int
   imageUrl       String?             // ← tambah: foto resep
+
+  // Tagging system for personalization
+  goalTags        String[]
+  dietaryTags     String[]
+  allergySafeTags String[]
+  cookingTags     String[]
 
   nutritionist   User                @relation(fields: [nutritionistId], references: [id])
   ingredients    RecipeIngredient[]  // ← tambah: relasi ke bahan baku

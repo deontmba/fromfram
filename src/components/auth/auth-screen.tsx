@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, type ReactNode } from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
 
 type AuthMode = "signup" | "login";
 type AuthScreenProps = { mode: AuthMode };
@@ -125,7 +127,7 @@ function InputField({
   return (
     <label className="block space-y-2">
       <span className="block text-[1.08rem] font-semibold text-neutral-800">{label}</span>
-      <span className={`flex h-14 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] ${error ? "border-red-400" : "border-neutral-300"}`}>
+      <span className={`flex h-12 items-center gap-3 rounded-2xl border bg-white px-3 text-neutral-400 shadow-[inset_0_1px_0_rgba(0,0,0,0.03)] transition focus-within:border-[#18b887] ${error ? "border-red-400" : "border-neutral-300"}`}>
         {icon}
         <input
           type={type}
@@ -370,7 +372,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         } else if (role === "NUTRITIONIST") {
           router.push("/nutritionist");
         } else {
-          router.push("/dashboard");
+          if (data.user?.hasCompletedOnboarding) {
+            router.push("/dashboard");
+          } else {
+            router.push("/onboarding");
+          }
         }
       }
     } catch {
@@ -387,204 +393,302 @@ export function AuthScreen({ mode }: AuthScreenProps) {
   // ── Email sent screen ──
   if (registeredEmail) {
     return (
-      <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]" />
-        <section className="relative mx-auto w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-7 py-10 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8">
-          <EmailSentScreen email={registeredEmail} />
-        </section>
+      <main className="flex h-screen w-full overflow-hidden bg-white">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="relative hidden h-full w-1/2 bg-neutral-900 lg:block"
+        >
+          <Image
+            src="/images/makanan1.png"
+            alt="FromFram Meals"
+            fill
+            className="object-cover opacity-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          <div className="absolute bottom-0 left-0 p-12 pr-16">
+            <h2 className="mb-4 text-3xl font-black leading-tight text-white md:text-4xl">
+              "Kesehatan bukan hanya tentang apa yang Anda makan, tetapi apa yang Anda pikirkan dan katakan."
+            </h2>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+          className="flex h-full w-full flex-col overflow-y-auto px-4 py-10 sm:px-6 lg:w-1/2 lg:px-8"
+        >
+          <div className="m-auto w-full max-w-[440px]">
+            <EmailSentScreen email={registeredEmail} />
+          </div>
+        </motion.div>
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]" />
+    <main className="flex h-screen w-full overflow-hidden bg-white">
+      {/* Left Visual Side */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="relative hidden h-full w-1/2 bg-neutral-900 lg:block"
+      >
+        <Image
+          src="/images/makanan1.png"
+          alt="FromFram Meals"
+          fill
+          className="object-cover opacity-90"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        
+        <div className="absolute bottom-0 left-0 p-12 pr-16">
+          {isSignup ? (
+            <h2 className="text-4xl font-black leading-tight text-white">
+              Mulai Hidup Sehatmu.
+            </h2>
+          ) : (
+            <h2 className="text-3xl font-black leading-tight text-white md:text-4xl">
+              "Kesehatan bukan hanya tentang apa yang Anda makan, tetapi apa yang Anda pikirkan dan katakan."
+            </h2>
+          )}
+        </div>
+      </motion.div>
 
-      <section className="relative mx-auto w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-7 py-10 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8">
+      {/* Right Form Side */}
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+        className="relative flex h-full w-full flex-col overflow-hidden px-4 sm:px-6 lg:w-1/2 lg:px-8"
+      >
         <Link
           href="/"
-          className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-500 shadow-sm transition hover:bg-neutral-50 hover:text-neutral-800"
+          className="absolute left-6 top-6 sm:left-10 sm:top-10 inline-flex w-fit items-center gap-2 text-sm font-bold text-neutral-500 transition hover:text-[#13b987] z-10"
         >
           <ArrowLeftIcon />
+          Kembali ke Beranda
         </Link>
-        <div className="mb-9 flex flex-col items-center text-center">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="grid h-14 w-14 place-items-center rounded-full bg-[#19ba89]">
-              <LeafLogo />
+
+        <div className="m-auto w-full max-w-[480px]">
+
+          <div className="mb-6 text-center">
+            <div className="mb-3 flex items-center justify-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-full bg-[#13b987]">
+                <LeafLogo />
+              </div>
+              <h1 className="text-2xl font-black text-neutral-900">FromFram</h1>
             </div>
-            <h1 className="text-5xl font-bold tracking-[-0.03em] text-[#13a981]">FromFram</h1>
-          </div>
-          <p className="text-[1.1rem] leading-none text-neutral-500">
-            {isSignup ? "Buat akun baru" : "Selamat datang kembali"}
-          </p>
-        </div>
-
-        {/* Banner: verified success */}
-        {verified === "success" && (
-          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[#a7e8d0] bg-[#eafff5] px-4 py-3">
-            <CheckCircleIcon />
-            <div>
-              <p className="text-sm font-bold text-[#0d7a56]">Email berhasil diverifikasi! 🎉</p>
-              <p className="text-sm text-[#12b886]">Akun kamu sudah aktif. Silakan login.</p>
-            </div>
-          </div>
-        )}
-
-        {/* Banner: resent success */}
-        {resentSuccess && (
-          <div className="mb-5 rounded-2xl border border-[#a7e8d0] bg-[#eafff5] px-4 py-3">
-            <p className="text-sm font-bold text-[#0d7a56]">Email verifikasi sudah dikirim ulang!</p>
-            <p className="text-sm text-[#12b886]">Cek inbox atau folder spam kamu.</p>
-          </div>
-        )}
-
-        {/* Form */}
-        <div className="space-y-5">
-          {isSignup && (
-            <InputField
-              label="Nama Lengkap"
-              placeholder="Masukkan nama lengkap"
-              icon={<UserIcon />}
-              value={name}
-              onChange={setName}
-              error={fieldErrors.name}
-            />
-          )}
-
-          <InputField
-            label="Email"
-            type="email"
-            placeholder="nama@email.com"
-            icon={<MailIcon />}
-            value={email}
-            onChange={setEmail}
-            error={fieldErrors.email}
-          />
-
-          <InputField
-            label="Password"
-            type={showPassword ? "text" : "password"}
-            placeholder={isSignup ? "Minimal 8 karakter" : "Masukkan password"}
-            icon={<LockIcon />}
-            value={password}
-            onChange={setPassword}
-            error={fieldErrors.password}
-            rightIcon={
-              <button 
-                type="button" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowPassword(!showPassword);
-                }}
-                className="text-neutral-400 hover:text-neutral-600 transition"
-              >
-                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-            }
-          />
-
-          {isSignup && (
-            <InputField
-              label="Konfirmasi Password"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Masukkan ulang password"
-              icon={<LockIcon />}
-              value={confirmPassword}
-              onChange={setConfirmPassword}
-              error={fieldErrors.confirmPassword}
-              rightIcon={
-                <button 
-                  type="button" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setShowConfirmPassword(!showConfirmPassword);
-                  }}
-                  className="text-neutral-400 hover:text-neutral-600 transition"
-                >
-                  {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              }
-            />
-          )}
-
-          {!isSignup && (
-            <div className="flex items-center justify-between pt-1 text-[1.05rem]">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-neutral-800">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 rounded border-neutral-400 accent-[#1abb89]"
-                />
-                <span className="font-semibold">Ingat saya</span>
-              </label>
-              <Link href="/forgot-password" className="font-semibold text-[#13af82] transition hover:text-[#0f8d68]">
-                Lupa password?
-              </Link>
-            </div>
-          )}
-
-          {/* Email not verified banner */}
-          {showNotVerified && (
-            <EmailNotVerifiedBanner
-              email={email}
-              onResent={() => {
-                setShowNotVerified(false);
-                setResentSuccess(true);
-              }}
-            />
-          )}
-
-          {/* Global error */}
-          {globalError && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-              {globalError}
+            <h2 className="text-2xl font-bold tracking-tight text-neutral-800">
+              {isSignup ? "Buat Akun Baru" : "Selamat Datang Kembali"}
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-neutral-500">
+              {isSignup ? "Daftar untuk mulai berlangganan meal kit sehat." : "Silakan masuk ke akun FromFram kamu."}
             </p>
-          )}
-
-          {/* Submit button */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="mt-3 h-14 w-full rounded-2xl bg-[#1abb89] text-[1.15rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] active:scale-[0.98] disabled:opacity-60"
-          >
-            {loading ? "Memproses..." : isSignup ? "Daftar" : "Masuk"}
-          </button>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-neutral-300" />
-            <span className="text-sm text-neutral-400">atau</span>
-            <div className="h-px flex-1 bg-neutral-300" />
           </div>
 
-          {/* Google SSO — di bawah form */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-neutral-300 bg-white text-[1.02rem] font-semibold text-neutral-700 shadow-sm transition hover:bg-neutral-50 hover:shadow-md active:scale-[0.98]"
-          >
-            <GoogleIcon />
-            {isSignup ? "Daftar dengan Google" : "Masuk dengan Google"}
-          </button>
+          {/* Banner: verified success */}
+          {verified === "success" && (
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#a7e8d0] bg-[#eafff5] px-4 py-3">
+              <CheckCircleIcon />
+              <div>
+                <p className="text-sm font-bold text-[#0d7a56]">Email berhasil diverifikasi! 🎉</p>
+                <p className="text-sm text-[#12b886]">Akun kamu sudah aktif. Silakan login.</p>
+              </div>
+            </div>
+          )}
 
+          {/* Banner: resent success */}
+          {resentSuccess && (
+            <div className="mb-6 rounded-2xl border border-[#a7e8d0] bg-[#eafff5] px-4 py-3">
+              <p className="text-sm font-bold text-[#0d7a56]">Email verifikasi sudah dikirim ulang!</p>
+              <p className="text-sm text-[#12b886]">Cek inbox atau folder spam kamu.</p>
+            </div>
+          )}
 
+          {/* Form */}
+          <div className="space-y-4">
+            {isSignup ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Nama Lengkap"
+                    placeholder="Masukkan nama"
+                    icon={<UserIcon />}
+                    value={name}
+                    onChange={setName}
+                    error={fieldErrors.name}
+                  />
+                  <InputField
+                    label="Email"
+                    type="email"
+                    placeholder="nama@email.com"
+                    icon={<MailIcon />}
+                    value={email}
+                    onChange={setEmail}
+                    error={fieldErrors.email}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField
+                    label="Password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Min. 8 karakter"
+                    icon={<LockIcon />}
+                    value={password}
+                    onChange={setPassword}
+                    error={fieldErrors.password}
+                    rightIcon={
+                      <button 
+                        type="button" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowPassword(!showPassword);
+                        }}
+                        className="text-neutral-400 hover:text-neutral-600 transition"
+                      >
+                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    }
+                  />
+                  <InputField
+                    label="Konfirmasi Password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Ulangi password"
+                    icon={<LockIcon />}
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    error={fieldErrors.confirmPassword}
+                    rightIcon={
+                      <button 
+                        type="button" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setShowConfirmPassword(!showConfirmPassword);
+                        }}
+                        className="text-neutral-400 hover:text-neutral-600 transition"
+                      >
+                        {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    }
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <InputField
+                  label="Email"
+                  type="email"
+                  placeholder="nama@email.com"
+                  icon={<MailIcon />}
+                  value={email}
+                  onChange={setEmail}
+                  error={fieldErrors.email}
+                />
+                <InputField
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan password"
+                  icon={<LockIcon />}
+                  value={password}
+                  onChange={setPassword}
+                  error={fieldErrors.password}
+                  rightIcon={
+                    <button 
+                      type="button" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowPassword(!showPassword);
+                      }}
+                      className="text-neutral-400 hover:text-neutral-600 transition"
+                    >
+                      {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  }
+                />
+              </>
+            )}
+
+            {!isSignup && (
+              <div className="flex items-center justify-between pt-1 text-[1.05rem]">
+                <label className="inline-flex cursor-pointer items-center gap-2 text-neutral-800">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-neutral-400 accent-[#13b987]"
+                  />
+                  <span className="font-semibold text-sm">Ingat saya</span>
+                </label>
+                <Link href="/forgot-password" className="font-semibold text-sm text-[#13b987] transition hover:text-[#0f996f]">
+                  Lupa password?
+                </Link>
+              </div>
+            )}
+
+            {/* Email not verified banner */}
+            {showNotVerified && (
+              <EmailNotVerifiedBanner
+                email={email}
+                onResent={() => {
+                  setShowNotVerified(false);
+                  setResentSuccess(true);
+                }}
+              />
+            )}
+
+            {/* Global error */}
+            {globalError && (
+              <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                {globalError}
+              </p>
+            )}
+
+            {/* Submit button */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="mt-2 h-12 w-full rounded-2xl bg-[#13b987] text-[1.1rem] font-bold text-white shadow-[0_8px_16px_rgba(19,185,135,0.35)] transition hover:bg-[#0f996f] active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+            >
+              {loading ? "Memproses..." : isSignup ? "Daftar" : "Masuk"}
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 py-2">
+              <div className="h-px flex-1 bg-neutral-200" />
+              <span className="text-sm font-medium text-neutral-400">atau</span>
+              <div className="h-px flex-1 bg-neutral-200" />
+            </div>
+
+            {/* Google SSO */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex h-12 w-full items-center justify-center gap-3 rounded-2xl border-2 border-neutral-200 bg-white text-[1rem] font-bold text-neutral-700 transition hover:bg-neutral-50 active:scale-[0.98] cursor-pointer"
+            >
+              <GoogleIcon />
+              {isSignup ? "Daftar dengan Google" : "Masuk dengan Google"}
+            </button>
+          </div>
+
+          <div className="pt-6 text-center text-sm font-medium text-neutral-500">
+            {isSignup ? "Sudah punya akun? " : "Belum punya akun? "}
+            <Link
+              href={isSignup ? "/login" : "/register"}
+              className="font-bold text-[#13b987] transition hover:text-[#0f996f]"
+            >
+              {isSignup ? "Masuk" : "Daftar sekarang"}
+            </Link>
+          </div>
         </div>
-
-        {/* Switch mode */}
-        <div className="pt-7 text-center text-[1.1rem] text-neutral-500">
-          {isSignup ? "Sudah punya akun? " : "Belum punya akun? "}
-          <Link
-            href={isSignup ? "/login" : "/register"}
-            className="font-bold text-[#11af82] transition hover:text-[#0e8e68]"
-          >
-            {isSignup ? "Masuk" : "Daftar sekarang"}
-          </Link>
-        </div>
-      </section>
+      </motion.div>
     </main>
   );
 }
