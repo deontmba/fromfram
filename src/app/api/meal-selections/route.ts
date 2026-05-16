@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { weeklyBoxId, selections } = body as {
       weeklyBoxId: string;
-      selections: { dayOfWeek: DayOfWeek; recipeId: string }[];
+      selections: { dayOfWeek: DayOfWeek; mealType?: 'LUNCH' | 'DINNER'; serving?: number; recipeId: string }[];
     };
 
     if (!weeklyBoxId || !Array.isArray(selections) || selections.length === 0) {
@@ -89,20 +89,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Upsert — one recipe per day per box (enforced by @@unique in schema)
+    // Upsert — one recipe per day per mealType per box (enforced by @@unique in schema)
     const upserts = selections.map((sel) =>
       prisma.mealSelection.upsert({
         where: {
-          weeklyBoxId_dayOfWeek: {
+          weeklyBoxId_dayOfWeek_mealType_recipeId: {
             weeklyBoxId,
             dayOfWeek: sel.dayOfWeek,
+            mealType: sel.mealType ?? 'LUNCH',
+            recipeId: sel.recipeId,
           },
         },
-        update: { recipeId: sel.recipeId },
+        update: { serving: sel.serving ?? 1 },
         create: {
           weeklyBoxId,
           recipeId: sel.recipeId,
           dayOfWeek: sel.dayOfWeek,
+          mealType: sel.mealType ?? 'LUNCH',
+          serving: sel.serving ?? 1,
         },
       })
     );

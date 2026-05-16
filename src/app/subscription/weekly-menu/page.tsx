@@ -258,7 +258,7 @@ export default function WeeklyMenuPage() {
     if (!canContinue) return;
 
     try {
-      const mealSelections: Array<{ day: DayKey; mealType: MealType; recipeId: string; portions: number }> = [];
+      const mealSelections: Array<{ day: DayKey; mealType: "LUNCH" | "DINNER"; serving?: number; recipeId: string }> = [];
       
       daysOfWeek.forEach(({ key: day }) => {
         const daySelections = selectedByDay[day];
@@ -266,7 +266,7 @@ export default function WeeklyMenuPage() {
           mealTypes.forEach(({ key: mealType }) => {
             const meals = daySelections[mealType] || [];
             meals.forEach((meal) => {
-              mealSelections.push({ day, mealType, recipeId: meal.recipeId, portions: meal.portions });
+              mealSelections.push({ day, mealType: mealType.toUpperCase() as "LUNCH" | "DINNER", serving: meal.portions, recipeId: meal.recipeId });
             });
           });
         }

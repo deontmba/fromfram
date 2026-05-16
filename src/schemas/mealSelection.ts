@@ -8,6 +8,7 @@ export const saveMealSelectionSchema = z.object({
       dayOfWeek: z.string().toUpperCase().pipe(
         z.enum(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'])
       ),
+      mealType: z.enum(['LUNCH', 'DINNER']).optional().default('LUNCH'),
       date: z.coerce.date().optional() 
     })
   ).min(1, 'Minimal pilih 1 menu')

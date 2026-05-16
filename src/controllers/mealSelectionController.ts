@@ -17,6 +17,7 @@ export async function saveMealSelection(userId: string, input: SaveMealSelection
             weeklyBoxId: input.weeklyBoxId,
             recipeId: sel.recipeId,
             dayOfWeek: sel.dayOfWeek,
+            mealType: sel.mealType ?? 'LUNCH',
             date: sel.date ? sel.date : null
         }))
         });
