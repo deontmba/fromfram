@@ -11,16 +11,15 @@ export async function saveMealSelection(userId: string, input: SaveMealSelection
     const result = await prisma.$transaction(async (tx) => {
       // Hapus pilihan sebelumnya untuk box ini
       await tx.mealSelection.deleteMany({ where: { weeklyBoxId: input.weeklyBoxId } });
-      
-      // Simpan pilihan baru beserta fix tanggalnya
-      return await tx.mealSelection.createMany({
+
+        return await tx.mealSelection.createMany({
         data: input.selections.map(sel => ({
-          weeklyBoxId: input.weeklyBoxId,
-          recipeId: sel.recipeId,
-          dayOfWeek: sel.dayOfWeek,
-          date: sel.date ? new Date(sel.date) : null // <-- FRM-55: Tanggal disimpan di DB
+            weeklyBoxId: input.weeklyBoxId,
+            recipeId: sel.recipeId,
+            dayOfWeek: sel.dayOfWeek,
+            date: sel.date ? sel.date : null
         }))
-      });
+        });
     });
 
     return { data: { message: 'Menu berhasil disimpan', count: result.count }, status: 201 };
