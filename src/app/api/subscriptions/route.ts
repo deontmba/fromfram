@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
         goalId: goalId,
         planType,
         servings,
-        status: "ACTIVE",
+        status: "UNPAID",
       },
       select: subscriptionSelect,
     });

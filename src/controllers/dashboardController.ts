@@ -90,6 +90,8 @@ export const getDashboard = async (userId: string) => {
               select: {
                 id: true,
                 dayOfWeek: true,
+                mealType: true,
+                serving: true,
                 recipe: {
                   select: {
                     id: true,
@@ -101,7 +103,7 @@ export const getDashboard = async (userId: string) => {
                   },
                 },
               },
-              orderBy: { dayOfWeek: 'asc' },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
           },
         }),
@@ -124,6 +126,8 @@ export const getDashboard = async (userId: string) => {
               select: {
                 id: true,
                 dayOfWeek: true,
+                mealType: true,
+                serving: true,
                 recipe: {
                   select: {
                     id: true,
@@ -135,7 +139,7 @@ export const getDashboard = async (userId: string) => {
                   },
                 },
               },
-              orderBy: { dayOfWeek: 'asc' },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
           },
         }),
@@ -155,6 +159,8 @@ export const getDashboard = async (userId: string) => {
               select: {
                 id: true,
                 dayOfWeek: true,
+                mealType: true,
+                serving: true,
                 recipe: {
                   select: {
                     id: true,
@@ -166,7 +172,7 @@ export const getDashboard = async (userId: string) => {
                   },
                 },
               },
-              orderBy: { dayOfWeek: 'asc' },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
           },
         }),

@@ -56,6 +56,11 @@ enum DayOfWeek {
   MINGGU
 }
 
+enum MealType {
+  LUNCH
+  DINNER
+}
+
 // --- MODELS ---
 
 model User {
@@ -240,11 +245,14 @@ model MealSelection {
   weeklyBoxId String
   recipeId    String
   dayOfWeek   DayOfWeek
+  mealType    MealType
+  serving     Int       @default(1)
+  date        DateTime?
 
-  weeklyBox   WeeklyBox @relation(fields: [weeklyBoxId], references: [id])
+  weeklyBox   WeeklyBox @relation(fields:[weeklyBoxId], references: [id])
   recipe      Recipe    @relation(fields: [recipeId], references: [id])
 
-  @@unique([weeklyBoxId, dayOfWeek]) // ← tambah: satu menu per hari per box
+  @@unique([weeklyBoxId, dayOfWeek, mealType, recipeId])
 }
 
 model Delivery {

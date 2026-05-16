@@ -404,7 +404,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
   // CRUD states
   const [showRecipeForm, setShowRecipeForm] = useState(false);
-  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "" });
+  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: '6' });
   const [showMenuForm, setShowMenuForm] = useState(false);
   const [menuForm, setMenuForm] = useState({ recipeId: "", weekStartDate: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -689,8 +689,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       const body = {
         name: recipeForm.name,
         description: recipeForm.description,
-        calories: parseInt(recipeForm.calories),
-        protein: parseFloat(recipeForm.protein),
+        calories: parseInt(recipeForm.calories) || 0,
+        protein: parseFloat(recipeForm.protein) || 0,
+        servings: parseInt(recipeForm.servings) || 6,
       };
 
       const res = await fetch(url, {
@@ -703,7 +704,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       if (!res.ok) throw new Error("Gagal menyimpan resep");
       await fetchRecipes();
       setShowRecipeForm(false);
-      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "" });
+      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
     } catch (err) {
       console.error(err);
       alert("Terjadi kesalahan saat menyimpan resep");
@@ -732,6 +733,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       description: recipe.description || "",
       calories: String(recipe.calories),
       protein: String(recipe.protein),
+      servings: String(recipe.servings),
     });
     setShowRecipeForm(true);
   }
@@ -1531,7 +1533,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
                   </div>
                   <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => {
-                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "" });
+                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
                     setShowRecipeForm(!showRecipeForm);
                   }}>
                     {showRecipeForm ? "Batal" : "+ Tambah Resep"}
@@ -1563,12 +1565,13 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                           <th>Deskripsi</th>
                           <th>Kalori</th>
                           <th>Protein</th>
+                          <th>Porsi</th>
                           <th>Aksi</th>
                         </tr>
                       </thead>
                       <tbody>
                         {recipes.length === 0 ? (
-                          <tr><td colSpan={5} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada data resep</td></tr>
+                          <tr><td colSpan={6} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada data resep</td></tr>
                         ) : (
                           recipes.map((row) => (
                             <tr key={row.id}>
@@ -1576,6 +1579,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                               <td>{row.description ? row.description.slice(0, 50) + "..." : "-"}</td>
                               <td>{row.calories} kcal</td>
                               <td>{row.protein} g</td>
+                              <td>{row.servings}</td>
                               <td style={{ position: "relative", width: "1%" }}>
                                 <button
                                   type="button"

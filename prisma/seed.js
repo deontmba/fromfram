@@ -381,91 +381,42 @@ const weeklyBoxSeeds = [
   },
 ];
 
+const DAYS = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"];
+
+// Helper: build entries for one user per day
+// Budi has 3 servings → 3 recipe slots per mealType, split across multiple recipes
+// e.g. Monday Lunch: Recipe A (1 serving) + Recipe B (1 serving) + Recipe C (1 serving)
+const allRecipes = [
+  "Ayam Panggang Quinoa",
+  "Salmon Bowl Sehat",
+  "Nasi Merah Ayam Brokoli",
+  "Oatmeal Pisang Greek Yogurt",
+];
+
+function buildMealSeeds(userEmail, servings) {
+  const seeds = [];
+  DAYS.forEach((day, di) => {
+    ["LUNCH", "DINNER"].forEach((mealType, mi) => {
+      for (let s = 0; s < servings; s++) {
+        // Rotate through recipes so each slot gets variety
+        const recipeIdx = (di * 2 + mi + s) % allRecipes.length;
+        seeds.push({
+          userEmail,
+          weekStartDate: ACTIVE_WEEK_START,
+          dayOfWeek: day,
+          mealType,
+          recipeName: allRecipes[recipeIdx],
+          serving: 1,
+        });
+      }
+    });
+  });
+  return seeds;
+}
+
 const mealSelectionSeeds = [
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SENIN",
-    recipeName: "Ayam Panggang Quinoa",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SELASA",
-    recipeName: "Nasi Merah Ayam Brokoli",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "RABU",
-    recipeName: "Salmon Bowl Sehat",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "KAMIS",
-    recipeName: "Ayam Panggang Quinoa",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "JUMAT",
-    recipeName: "Nasi Merah Ayam Brokoli",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SABTU",
-    recipeName: "Salmon Bowl Sehat",
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "MINGGU",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SENIN",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SELASA",
-    recipeName: "Salmon Bowl Sehat",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "RABU",
-    recipeName: "Ayam Panggang Quinoa",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "KAMIS",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "JUMAT",
-    recipeName: "Salmon Bowl Sehat",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SABTU",
-    recipeName: "Ayam Panggang Quinoa",
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "MINGGU",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-  },
+  ...buildMealSeeds("budi@fromfram.test", 3),  // 3 servings
+  ...buildMealSeeds("rina@fromfram.test", 2),   // 2 servings
 ];
 
 const deliverySeeds = [
@@ -618,12 +569,13 @@ async function main() {
     );
 
     await tx.mealSelection.createMany({
-      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, ...mealSelection }) => ({
+      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, serving, ...mealSelection }) => ({
         ...mealSelection,
         weeklyBoxId: weeklyBoxByKey[
           `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
         ].id,
         recipeId: recipeByName[recipeName].id,
+        serving: serving ?? 1,
       })),
     });
 

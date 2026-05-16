@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json()) as {
-      mealSelections: Array<{ day: DayKey; recipeId: string }>;
+      mealSelections: Array<{ day: DayKey; mealType: 'LUNCH' | 'DINNER'; serving?: number; recipeId: string }>;
       weekStartDate: string | Date;
     };
 
@@ -188,6 +188,12 @@ export async function POST(req: NextRequest) {
           {
             error: `Resep ${selection.recipeId} tidak tersedia di weekly menu minggu ini.`,
           },
+          { status: 400 }
+        );
+      }
+      if (selection.mealType !== 'LUNCH' && selection.mealType !== 'DINNER') {
+        return NextResponse.json(
+          { error: `mealType harus LUNCH atau DINNER.` },
           { status: 400 }
         );
       }
@@ -278,27 +284,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Upsert a MealSelection record for each day
-    // Using upsert so re-submitting the form doesn't create duplicates
-    const upsertOps = mealSelections.map(({ day, recipeId }) =>
-      prisma.mealSelection.upsert({
-        where: {
-          // Composite unique key: weeklyBoxId + dayOfWeek
-          weeklyBoxId_dayOfWeek: {
-            weeklyBoxId,
-            dayOfWeek: day,
-          },
-        },
-        update: { recipeId },
-        create: {
+    // Group selections by (day, mealType) for efficient delete+recreate
+    const dayMealKeys = [...new Set(
+      mealSelections.map(({ day, mealType }) => `${day}:${mealType}`)
+    )];
+
+    await prisma.$transaction(async (tx) => {
+      // Delete existing selections for each (day, mealType) being submitted
+      for (const key of dayMealKeys) {
+        const [day, mealType] = key.split(':') as [string, string];
+        await tx.mealSelection.deleteMany({
+          where: { weeklyBoxId, dayOfWeek: day as never, mealType: mealType as never },
+        });
+      }
+
+      // Create all new selections with serving counts
+      await tx.mealSelection.createMany({
+        data: mealSelections.map(({ day, mealType, recipeId, serving }) => ({
           weeklyBoxId,
           recipeId,
           dayOfWeek: day,
-        },
-      })
-    );
-
-    await prisma.$transaction(upsertOps);
+          mealType,
+          serving: serving ?? 1,
+        })),
+      });
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
