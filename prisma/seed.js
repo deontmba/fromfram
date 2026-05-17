@@ -272,7 +272,7 @@ const recipeSeeds = [
     calories: 560,
     protein: 42,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049326330-446246016.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -282,7 +282,7 @@ const recipeSeeds = [
     calories: 610,
     protein: 38,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049315758-772803481.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -292,7 +292,7 @@ const recipeSeeds = [
     calories: 430,
     protein: 18,
     servings: 1,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049305602-318426786.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -302,7 +302,7 @@ const recipeSeeds = [
     calories: 520,
     protein: 35,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049285426-883874412.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -312,7 +312,7 @@ const recipeSeeds = [
     calories: 580,
     protein: 45,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049269845-784928288.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -322,7 +322,7 @@ const recipeSeeds = [
     calories: 250,
     protein: 5,
     servings: 1,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049259738-862778987.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -332,7 +332,7 @@ const recipeSeeds = [
     calories: 320,
     protein: 28,
     servings: 3,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049245659-781862858.jpg",
   },
 ];
 
