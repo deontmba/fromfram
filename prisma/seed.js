@@ -258,6 +258,9 @@ const ingredientSeeds = [
   { name: "Madu", origin: "Mojokerto, Jawa Timur", supplierName: "Madu Alami", isAllergen: false },
   { name: "Bawang Putih", origin: "Banyuwangi, Jawa Timur", supplierName: "Bumbu Asli", isAllergen: false },
   { name: "Wortel", origin: "Cianjur, Jawa Barat", supplierName: "Sayur Segar", isAllergen: false },
+  { name: "Daging Sapi", origin: "Lembang, Jawa Barat", supplierName: "Daging Premium", isAllergen: false },
+  { name: "Apel", origin: "Malang, Jawa Timur", supplierName: "Buah Segar", isAllergen: false },
+  { name: "Jahe", origin: "Sumedang, Jawa Barat", supplierName: "Rempah Asli", isAllergen: false },
 ];
 
 const recipeSeeds = [
@@ -301,6 +304,36 @@ const recipeSeeds = [
     servings: 2,
     imageUrl: null,
   },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Steak Sapi Diet",
+    description:
+      "Potongan daging sapi tanpa lemak dengan kentang panggang dan buncis, kaya protein.",
+    calories: 580,
+    protein: 45,
+    servings: 2,
+    imageUrl: null,
+  },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Salad Buah Segar",
+    description:
+      "Kombinasi apel, anggur, melon, dan yogurt rendah lemak untuk camilan sehat.",
+    calories: 250,
+    protein: 5,
+    servings: 1,
+    imageUrl: null,
+  },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Sup Ayam Jahe",
+    description:
+      "Sup kaldu ayam bening dengan jahe dan sayuran segar, sangat baik untuk pemulihan.",
+    calories: 320,
+    protein: 28,
+    servings: 3,
+    imageUrl: null,
+  },
 ];
 
 const recipeIngredientSeeds = [
@@ -324,13 +357,16 @@ const recipeIngredientSeeds = [
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Brokoli", quantity: "90 g" },
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Wortel", quantity: "60 g" },
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Bawang Putih", quantity: "2 siung" },
+  { recipeName: "Steak Sapi Diet", ingredientName: "Daging Sapi", quantity: "200 g" },
+  { recipeName: "Salad Buah Segar", ingredientName: "Apel", quantity: "1 buah" },
+  { recipeName: "Sup Ayam Jahe", ingredientName: "Jahe", quantity: "1 ruas" },
 ];
 
 const WEEK_BLUEPRINTS = [
-  { offset: -4, recipes: ["Oatmeal Pisang Greek Yogurt"] },
-  { offset: -3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat"] },
-  { offset: -2, recipes: ["Nasi Merah Ayam Brokoli", "Ayam Panggang Quinoa"] },
-  { offset: -1, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+  { offset: -4, recipes: ["Oatmeal Pisang Greek Yogurt", "Sup Ayam Jahe"] },
+  { offset: -3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Steak Sapi Diet"] },
+  { offset: -2, recipes: ["Nasi Merah Ayam Brokoli", "Ayam Panggang Quinoa", "Salad Buah Segar"] },
+  { offset: -1, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli", "Sup Ayam Jahe"] },
   {
     offset: 0,
     recipes: [
@@ -338,12 +374,15 @@ const WEEK_BLUEPRINTS = [
       "Ayam Panggang Quinoa",
       "Salmon Bowl Sehat",
       "Nasi Merah Ayam Brokoli",
+      "Steak Sapi Diet",
+      "Salad Buah Segar",
+      "Sup Ayam Jahe"
     ],
   },
-  { offset: 1, recipes: ["Ayam Panggang Quinoa", "Nasi Merah Ayam Brokoli"] },
-  { offset: 2, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt"] },
-  { offset: 3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Nasi Merah Ayam Brokoli"] },
-  { offset: 4, recipes: ["Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+  { offset: 1, recipes: ["Ayam Panggang Quinoa", "Nasi Merah Ayam Brokoli", "Steak Sapi Diet", "Salad Buah Segar"] },
+  { offset: 2, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Sup Ayam Jahe"] },
+  { offset: 3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Nasi Merah Ayam Brokoli", "Steak Sapi Diet"] },
+  { offset: 4, recipes: ["Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli", "Salad Buah Segar"] },
 ];
 
 const weeklyMenuSeeds = WEEK_BLUEPRINTS.flatMap(({ offset, recipes }) => {
@@ -391,6 +430,9 @@ const allRecipes = [
   "Salmon Bowl Sehat",
   "Nasi Merah Ayam Brokoli",
   "Oatmeal Pisang Greek Yogurt",
+  "Steak Sapi Diet",
+  "Salad Buah Segar",
+  "Sup Ayam Jahe",
 ];
 
 function buildMealSeeds(userEmail, servings) {
