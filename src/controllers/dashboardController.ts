@@ -231,37 +231,28 @@ export const getDashboard = async (userId: string) => {
       return NextResponse.json({ message: 'User tidak ditemukan.' }, { status: 404 });
     }
 
-    // Hitung summary meal selections minggu ini
-    const selectedWeeklyBox = currentWeeklyBox ?? nextWeeklyBox ?? latestWeeklyBox ?? null;
-
     const totalDays = 7;
-    const selectedDays = selectedWeeklyBox?.mealSelections?.length ?? 0;
-    const remainingDays = Math.max(0, totalDays - selectedDays);
+    const calculateSummary = (box: typeof currentWeeklyBox) => {
+      if (!box) return null;
+      const selectedDays = box.mealSelections?.length ?? 0;
+      const remainingDays = Math.max(0, totalDays - selectedDays);
+      const selectionDeadline = box.selectionDeadline ? new Date(box.selectionDeadline) : null;
+      const canSelectMenu = box.status === 'PENDING_SELECTION' && selectionDeadline !== null && selectionDeadline > new Date();
+      return { totalDays, selectedDays, remainingDays, canSelectMenu };
+    };
 
-    // Cek apakah deadline pemilihan menu masih bisa dilakukan
-    const selectionDeadline = selectedWeeklyBox?.selectionDeadline
-      ? new Date(selectedWeeklyBox.selectionDeadline)
-      : null;
-    const canSelectMenu =
-      selectedWeeklyBox?.status === 'PENDING_SELECTION' &&
-      selectionDeadline !== null &&
-      selectionDeadline > new Date();
+    const currentBox = currentWeeklyBox ?? (latestWeeklyBox && latestWeeklyBox.weekEndDate < today ? latestWeeklyBox : null);
 
     return NextResponse.json({
       status: 'success',
       data: {
         user,
         subscription,
-        weeklyBox: selectedWeeklyBox
-          ? {
-              ...selectedWeeklyBox,
-              summary: {
-                totalDays,
-                selectedDays,
-                remainingDays,
-                canSelectMenu,
-              },
-            }
+        currentWeeklyBox: currentBox
+          ? { ...currentBox, summary: calculateSummary(currentBox) }
+          : null,
+        nextWeeklyBox: nextWeeklyBox
+          ? { ...nextWeeklyBox, summary: calculateSummary(nextWeeklyBox) }
           : null,
         todayDelivery,
         recentDeliveries,
