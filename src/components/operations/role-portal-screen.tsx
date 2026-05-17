@@ -1,7 +1,9 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import styles from "./role-portal-screen.module.css";
 
 type RoleVariant = "admin" | "nutritionist";
@@ -15,7 +17,7 @@ type KpiItem = {
   label: string;
   value: string;
   delta: string;
-  icon: ReactNode;
+  icon?: ReactNode;
 };
 
 type ActivityItem = {
@@ -28,6 +30,14 @@ type ActionItem = {
   title: string;
   subtitle: string;
   icon: ReactNode;
+};
+
+type TrendItem = {
+  label: string;
+  value: string;
+  delta: string;
+  note: string;
+  progress: number;
 };
 
 type DeliveryRow = {
@@ -98,6 +108,27 @@ type RoleConfig = {
   accentSoft: string;
 };
 
+function formatDeliveryStatusLabel(status: DeliveryRow["status"]) {
+  if (status === "PREPARING") return "Menyiapkan";
+  if (status === "SHIPPED") return "Dikirim";
+  return "Terkirim";
+}
+
+function formatSubscriptionStatusLabel(status: string | null | undefined) {
+  if (status === "ACTIVE") return "Aktif";
+  if (status === "PAUSED") return "Jeda";
+  if (status === "CANCELLED") return "Batal";
+  return status || "-";
+}
+
+function formatGoalLabel(goal: string) {
+  if (goal === "Weight Loss") return "Turun Berat Badan";
+  if (goal === "Low Sodium") return "Rendah Natrium";
+  if (goal === "Weight Maintenance") return "Jaga Berat Badan";
+  if (goal === "Vegan High Protein") return "Vegan Tinggi Protein";
+  return goal;
+}
+
 const nutritionRecipes: any[] = [
   { name: "Nasi Goreng Kampung", category: "Indonesian", calories: 450, protein: 18, difficulty: "Mudah", cookTime: "25 min", readiness: "OK" },
   { name: "Ayam Teriyaki Bowl", category: "Japanese", calories: 520, protein: 31, difficulty: "Mudah", cookTime: "30 min", readiness: "OK" },
@@ -120,70 +151,121 @@ type WeeklyDayRow = {
 
 const weeklyNutritionRows: WeeklyDayRow[] = [
   { day: "Senin", menu: "Salmon Teriyaki + Quinoa", goal: "Atlet", calories: 710, protein: 46, validation: "Valid" },
-  { day: "Selasa", menu: "Chicken Caesar Light", goal: "Weight Loss", calories: 520, protein: 35, validation: "Valid" },
-  { day: "Rabu", menu: "Tempe Power Bowl", goal: "Vegan High Protein", calories: 560, protein: 32, validation: "Valid" },
+  { day: "Selasa", menu: "Chicken Caesar Light", goal: "Turun Berat Badan", calories: 520, protein: 35, validation: "Valid" },
+  { day: "Rabu", menu: "Tempe Power Bowl", goal: "Vegan Protein Tinggi", calories: 560, protein: 32, validation: "Valid" },
   { day: "Kamis", menu: "Beef Bulgogi Set", goal: "Atlet", calories: 760, protein: 40, validation: "Review" },
-  { day: "Jumat", menu: "Tofu Miso Soup + Rice", goal: "Low Sodium", calories: 430, protein: 23, validation: "Valid" },
-  { day: "Sabtu", menu: "Greek Chicken Wrap", goal: "Weight Maintenance", calories: 590, protein: 33, validation: "Valid" },
+  { day: "Jumat", menu: "Tofu Miso Soup + Rice", goal: "Rendah Garam", calories: 430, protein: 23, validation: "Valid" },
+  { day: "Sabtu", menu: "Greek Chicken Wrap", goal: "Menjaga Berat Badan", calories: 590, protein: 33, validation: "Valid" },
   { day: "Minggu", menu: "Rendang Lean Plate", goal: "Atlet", calories: 690, protein: 38, validation: "Review" },
 ];
 
+const adminReportTrends: TrendItem[] = [
+  {
+    label: "Volume pesanan 7 hari",
+    value: "2.418",
+    delta: "+14%",
+    note: "Lonjakan tertinggi muncul di jam 17.00-20.00 pada hari kerja.",
+    progress: 78,
+  },
+  {
+    label: "Pengiriman tepat waktu",
+    value: "96.4%",
+    delta: "+2.1%",
+    note: "Rute Jakarta Selatan dan Bekasi paling stabil minggu ini.",
+    progress: 96,
+  },
+  {
+    label: "Tingkat kendala",
+    value: "1.8%",
+    delta: "-0.6%",
+    note: "Kendala terbesar berasal dari perubahan alamat mendadak.",
+    progress: 18,
+  },
+  {
+    label: "Pelanggan berulang",
+    value: "41%",
+    delta: "+6%",
+    note: "Pelanggan langganan mingguan mulai mendominasi funnel.",
+    progress: 41,
+  },
+];
+
+const adminReportHighlights = [
+  { label: "Rentang pesanan puncak", value: "17.00 - 20.00" },
+  { label: "Rute dengan keterlambatan tertinggi", value: "Tangerang Timur" },
+  { label: "Segmen pertumbuhan tercepat", value: "Langganan tahunan" },
+  { label: "Masalah paling sering", value: "Alamat tidak lengkap" },
+];
+
 const adminConfig: RoleConfig = {
-  title: "Admin Panel",
-  subtitle: "FromFram Operations",
+  title: "Panel Admin",
+  subtitle: "Operasional FromFram",
   tabs: [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "deliveries", label: "Deliveries" },
-    { id: "users", label: "Users" },
+    { id: "dashboard", label: "Beranda" },
+    { id: "deliveries", label: "Pengiriman" },
+    { id: "users", label: "Pengguna" },
+    { id: "reports", label: "Laporan" },
   ],
   heroTitle: {
-    dashboard: "Operational Dashboard",
-    deliveries: "Delivery Operations",
-    users: "User and Subscription Management",
+    dashboard: "Dasbor Operasional",
+    deliveries: "Operasi Pengiriman",
+    users: "Manajemen Pengguna dan Langganan",
+    reports: "Laporan Tren dan Pemantauan",
   },
   heroSubtitle: {
     dashboard: "Pantau data operasional harian dalam satu layar.",
-    deliveries: "Kontrol status batch delivery dan monitor flow logistik.",
+    deliveries: "Kontrol status batch pengiriman dan pantau alur logistik.",
     users: "Lihat status pelanggan dan dampaknya ke pengiriman berikutnya.",
+    reports: "Pantau tren, anomali, dan area yang perlu di-review oleh tim operasional.",
   },
   kpis: {
     dashboard: [
-      { label: "Total Users", value: "1,234", delta: "+12%", icon: <PeopleIcon /> },
-      { label: "Active Subscriptions", value: "856", delta: "+8%", icon: <ChartArrowIcon /> },
-      { label: "Deliveries Today", value: "342", delta: "89%", icon: <BoxIcon /> },
+      { label: "Total Pengguna", value: "1,234", delta: "+12%", icon: <PeopleIcon /> },
+      { label: "Langganan Aktif", value: "856", delta: "+8%", icon: <ChartArrowIcon /> },
+      { label: "Pengiriman Hari Ini", value: "342", delta: "89%", icon: <BoxIcon /> },
     ],
     deliveries: [
-      { label: "Preparing", value: "0", delta: "Live", icon: <ClockIcon /> },
-      { label: "Shipped", value: "0", delta: "Live", icon: <TruckIcon /> },
-      { label: "Delivered", value: "0", delta: "Live", icon: <CheckCircleIcon /> },
+      { label: "Menyiapkan", value: "0", delta: "Langsung", icon: <ClockIcon /> },
+      { label: "Dikirim", value: "0", delta: "Langsung", icon: <TruckIcon /> },
+      { label: "Terkirim", value: "0", delta: "Langsung", icon: <CheckCircleIcon /> },
     ],
     users: [
-      { label: "Total Users", value: "0", delta: "Realtime", icon: <PeopleIcon /> },
-      { label: "Active", value: "0", delta: "Healthy", icon: <CheckCircleIcon /> },
-      { label: "Paused/Cancelled", value: "0", delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Total Pengguna", value: "0", delta: "", icon: undefined },
+      { label: "Aktif", value: "0", delta: "", icon: undefined },
+      { label: "Jeda/Batal", value: "0", delta: "", icon: undefined },
+    ],
+    reports: [
+      { label: "Volume Pesanan", value: "2.4k", delta: "+14%", icon: <ChartArrowIcon /> },
+      { label: "Tepat Waktu", value: "96%", delta: "+2.1%", icon: <CheckCircleIcon /> },
+      { label: "Tingkat Kendala", value: "1.8%", delta: "-0.6%", icon: <AlertIcon /> },
     ],
   },
   activities: {
     dashboard: [
-      { text: "User baru mendaftar: john@email.com", time: "10 menit lalu", icon: <PeopleIcon /> },
-      { text: "15 subscription akan expired minggu depan", time: "2 jam lalu", icon: <CalendarIcon /> },
-      { text: "Delivery batch pagi selesai (342 deliveries)", time: "3 jam lalu", icon: <BoxIcon /> },
+      { text: "Pengguna baru mendaftar: john@email.com", time: "10 menit lalu", icon: <PeopleIcon /> },
+      { text: "15 langganan akan kedaluwarsa minggu depan", time: "2 jam lalu", icon: <CalendarIcon /> },
+      { text: "Batch pengiriman pagi selesai (342 pengiriman)", time: "3 jam lalu", icon: <BoxIcon /> },
     ],
     deliveries: [
-      { text: "3 order baru pindah ke PREPARING", time: "6 menit lalu", icon: <ClockIcon /> },
-      { text: "Kurir A menandai 2 order SHIPPED", time: "14 menit lalu", icon: <TruckIcon /> },
-      { text: "Semua order batch malam sudah DELIVERED", time: "42 menit lalu", icon: <CheckCircleIcon /> },
+      { text: "3 pesanan baru pindah ke MENYIAPKAN", time: "6 menit lalu", icon: <ClockIcon /> },
+      { text: "Kurir A menandai 2 pesanan sebagai DIKIRIM", time: "14 menit lalu", icon: <TruckIcon /> },
+      { text: "Semua pesanan batch malam sudah TERTKIRIM", time: "42 menit lalu", icon: <CheckCircleIcon /> },
     ],
     users: [
-      { text: "2 user pause subscription untuk 1 minggu", time: "12 menit lalu", icon: <AlertIcon /> },
-      { text: "4 user upgrade ke paket tahunan", time: "1 jam lalu", icon: <ChartArrowIcon /> },
-      { text: "Admin update data alamat user korporat", time: "2 jam lalu", icon: <MapPinIcon /> },
+      { text: "2 pengguna menjeda langganan selama 1 minggu", time: "12 menit lalu", icon: <AlertIcon /> },
+      { text: "4 pengguna meningkatkan ke paket tahunan", time: "1 jam lalu", icon: <ChartArrowIcon /> },
+      { text: "Admin memperbarui alamat pengguna korporat", time: "2 jam lalu", icon: <MapPinIcon /> },
+    ],
+    reports: [
+      { text: "Volume pesanan naik 14% dibanding minggu lalu", time: "5 menit lalu", icon: <ChartArrowIcon /> },
+      { text: "Tingkat kendala turun setelah audit alamat batch", time: "28 menit lalu", icon: <AlertIcon /> },
+      { text: "Ketepatan waktu pengiriman tetap di atas 95%", time: "1 jam lalu", icon: <CheckCircleIcon /> },
     ],
   },
   actions: [
-    { title: "Kelola Users", subtitle: "Lihat dan update data user", icon: <PeopleIcon /> },
-    { title: "Deliveries", subtitle: "Track dan manage delivery", icon: <TruckIcon /> },
-    { title: "Reports", subtitle: "Pantau tren operasional", icon: <ChartArrowIcon /> },
+    { title: "Kelola Pengguna", subtitle: "Lihat dan perbarui data pengguna", icon: <PeopleIcon /> },
+    { title: "Pengiriman", subtitle: "Pantau dan kelola pengiriman", icon: <TruckIcon /> },
+    { title: "Laporan", subtitle: "Pantau tren operasional", icon: undefined },
   ],
   accentStrong: "#e12533",
   accentMid: "#ff575f",
@@ -192,53 +274,53 @@ const adminConfig: RoleConfig = {
 
 const nutritionConfig: RoleConfig = {
   title: "Panel Ahli Gizi",
-  subtitle: "FromFram Nutrition Management",
+  subtitle: "Manajemen Gizi FromFram",
   tabs: [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "recipes", label: "Recipes" },
-    { id: "weekly-menu", label: "Weekly Menu" },
+    { id: "dashboard", label: "Beranda" },
+    { id: "recipes", label: "Resep" },
+    { id: "weekly-menu", label: "Menu Mingguan" },
   ],
   heroTitle: {
-    dashboard: "Nutrition Control Center",
-    recipes: "Recipe Nutrition Validation",
-    "weekly-menu": "Weekly Menu Validation by Goal",
+    dashboard: "Pusat Kontrol Gizi",
+    recipes: "Validasi Gizi Resep",
+    "weekly-menu": "Validasi Menu Mingguan Berdasarkan Tujuan",
   },
   heroSubtitle: {
     dashboard: "Validasi kalori, protein, dan kualitas menu mingguan.",
-    recipes: "Periksa detail resep sebelum dipublikasikan ke user.",
+    recipes: "Periksa detail resep sebelum dipublikasikan ke pengguna.",
     "weekly-menu": "Kelompokkan menu berdasarkan target kesehatan pengguna.",
   },
   kpis: {
     dashboard: [
-      { label: "Total Recipes", value: "156", delta: "+8", icon: <BookIcon /> },
-      { label: "Weekly Menus", value: "24", delta: "+3", icon: <CalendarIcon /> },
-      { label: "Active Users", value: "856", delta: "+12", icon: <PeopleIcon /> },
+      { label: "Total Resep", value: "156", delta: "+8", icon: <BookIcon /> },
+      { label: "Menu Mingguan", value: "24", delta: "+3", icon: <CalendarIcon /> },
+      { label: "Pengguna Aktif", value: "856", delta: "+12", icon: <PeopleIcon /> },
     ],
     recipes: [
-      { label: "Ready", value: "133", delta: "85%", icon: <CheckCircleIcon /> },
-      { label: "Need Review", value: "23", delta: "15%", icon: <AlertIcon /> },
-      { label: "Protein Focus", value: "47", delta: "+5", icon: <PulseIcon /> },
+      { label: "Siap", value: "133", delta: "85%", icon: <CheckCircleIcon /> },
+      { label: "Perlu Tinjau", value: "23", delta: "15%", icon: <AlertIcon /> },
+      { label: "Fokus Protein", value: "47", delta: "+5", icon: <PulseIcon /> },
     ],
     "weekly-menu": [
-      { label: "Goal Groups", value: "6", delta: "Active", icon: <TargetIcon /> },
-      { label: "Validated Slots", value: "19", delta: "On Track", icon: <CheckCircleIcon /> },
-      { label: "Pending Review", value: "5", delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Kelompok Tujuan", value: "6", delta: "Aktif", icon: <TargetIcon /> },
+      { label: "Slot Terverifikasi", value: "19", delta: "Sesuai Jalur", icon: <CheckCircleIcon /> },
+      { label: "Menunggu Tinjauan", value: "5", delta: "Perlu Tindakan", icon: <AlertIcon /> },
     ],
   },
   activities: {
     dashboard: [
       { text: "Menu baru ditambahkan: Salmon Teriyaki", time: "1 jam lalu", icon: <BookIcon /> },
-      { text: "Resep diupdate: Nasi Goreng Kampung", time: "3 jam lalu", icon: <PulseIcon /> },
-      { text: "Weekly menu Week 3 dipublikasikan", time: "5 jam lalu", icon: <CalendarIcon /> },
+      { text: "Resep diperbarui: Nasi Goreng Kampung", time: "3 jam lalu", icon: <PulseIcon /> },
+      { text: "Menu mingguan pekan 3 dipublikasikan", time: "5 jam lalu", icon: <CalendarIcon /> },
     ],
     recipes: [
-      { text: "2 resep melewati batas sodium harian", time: "8 menit lalu", icon: <AlertIcon /> },
+      { text: "2 resep melewati batas natrium harian", time: "8 menit lalu", icon: <AlertIcon /> },
       { text: "6 resep kategori atlet sudah terverifikasi", time: "36 menit lalu", icon: <CheckCircleIcon /> },
       { text: "Audit protein mingguan berhasil", time: "2 jam lalu", icon: <PulseIcon /> },
     ],
     "weekly-menu": [
-      { text: "Goal group Atlet mendapatkan 3 menu baru", time: "11 menit lalu", icon: <TargetIcon /> },
-      { text: "Review menu Low Sodium dijadwalkan", time: "47 menit lalu", icon: <ClockIcon /> },
+      { text: "Kelompok tujuan Atlet mendapat 3 menu baru", time: "11 menit lalu", icon: <TargetIcon /> },
+      { text: "Tinjauan menu Rendah Natrium dijadwalkan", time: "47 menit lalu", icon: <ClockIcon /> },
       { text: "Notifikasi rekomendasi gizi terkirim", time: "1 jam lalu", icon: <PeopleIcon /> },
     ],
   },
@@ -322,18 +404,42 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
   // CRUD states
   const [showRecipeForm, setShowRecipeForm] = useState(false);
-  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: '6' });
   const [showMenuForm, setShowMenuForm] = useState(false);
   const [menuForm, setMenuForm] = useState({ recipeId: "", weekStartDate: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Delivery CRUD UI states (admin)
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [deliveryForm, setDeliveryForm] = useState({ id: "", userId: "", menu: "", address: "", deliveryDate: "", status: "PREPARING" });
+  const [isDeliverySubmitting, setIsDeliverySubmitting] = useState(false);
+  const [isDeletingDeliveryId, setIsDeletingDeliveryId] = useState<string | null>(null);
+  // Action dropdown state for table rows
+  const [openActionMenu, setOpenActionMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [pendingDeliveryAction, setPendingDeliveryAction] = useState<
+    | { type: "save" }
+    | { type: "advance"; id: string }
+    | { type: "delete"; id: string }
+    | null
+  >(null);
+  
+  // Action dropdown state for recipe and menu tables
+  const [openRecipeActionMenu, setOpenRecipeActionMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [openMenuActionMenu, setOpenMenuActionMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [pendingRecipeAction, setPendingRecipeAction] = useState<{ type: "edit" | "delete"; id: string } | null>(null);
+  const [pendingMenuAction, setPendingMenuAction] = useState<{ type: "edit" | "delete"; id: string } | null>(null);
 
   // Search/filter states
   const [deliverySearch, setDeliverySearch] = useState("");
   const [deliveryStatusFilter, setDeliveryStatusFilter] = useState("all");
   const [deliveryAreaFilter, setDeliveryAreaFilter] = useState("all");
+  const [deliveryPageSize, setDeliveryPageSize] = useState(25);
+  const [deliveryPage, setDeliveryPage] = useState(1);
   const [userSearch, setUserSearch] = useState("");
   const [userPlanFilter, setUserPlanFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [userPageSize, setUserPageSize] = useState(25);
+  const [userPage, setUserPage] = useState(1);
 
   const themeVars = {
     "--accent-strong": config.accentStrong,
@@ -349,7 +455,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       if (deliveryAreaFilter !== "all") params.set("area", deliveryAreaFilter);
 
       const res = await fetch(`/api/admin/deliveries?${params}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch deliveries");
+      if (!res.ok) throw new Error("Gagal mengambil data pengiriman");
       const data = await res.json();
       setDeliveries(data.data || []);
     } catch (err) {
@@ -362,7 +468,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/users", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) throw new Error("Gagal mengambil data pengguna");
       const data = await res.json();
       setUsers(data.data || []);
     } catch (err) {
@@ -375,12 +481,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const fetchNutritionKpis = useCallback(async () => {
     try {
       const res = await fetch("/api/nutritionist/dashboard/kpis", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch KPIs");
+      if (!res.ok) throw new Error("Gagal mengambil KPI");
       const data = await res.json();
       setNutritionKpis([
-        { label: "Total Recipes", value: String(data.data.totalRecipes), delta: "Realtime", icon: <BookIcon /> },
-        { label: "Weekly Menus", value: String(data.data.weeklyMenusCount), delta: "Active", icon: <CalendarIcon /> },
-        { label: "Active Users", value: String(data.data.activeUsers), delta: "Healthy", icon: <PeopleIcon /> },
+        { label: "Total Resep", value: String(data.data.totalRecipes), delta: "", icon: <BookIcon /> },
+        { label: "Menu Mingguan", value: String(data.data.weeklyMenusCount), delta: "", icon: <CalendarIcon /> },
+        { label: "Pengguna Aktif", value: String(data.data.activeUsers), delta: "", icon: <PeopleIcon /> },
       ]);
     } catch (err) {
       console.error(err);
@@ -390,7 +496,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const fetchRecipes = useCallback(async () => {
     try {
       const res = await fetch("/api/nutritionist/recipes", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch recipes");
+      if (!res.ok) throw new Error("Gagal mengambil resep");
       const data = await res.json();
       setRecipes(data.data || []);
     } catch (err) {
@@ -401,7 +507,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const fetchWeeklyMenus = useCallback(async () => {
     try {
       const res = await fetch("/api/nutritionist/weekly-menus", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch weekly menus");
+      if (!res.ok) throw new Error("Gagal mengambil menu mingguan");
       const data = await res.json() as {
         data?: WeeklyMenuGroup[];
         goals?: GoalOption[];
@@ -420,8 +526,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
     const load = async () => {
       if (role === "admin") {
-        if (activeTab === "deliveries") await fetchDeliveries();
-        else if (activeTab === "users") await fetchUsers();
+        if (activeTab === "deliveries") {
+          await Promise.all([fetchUsers(), fetchDeliveries()]);
+        } else if (activeTab === "users") {
+          await fetchUsers();
+        }
       } else if (role === "nutritionist") {
         if (activeTab === "dashboard") await fetchNutritionKpis();
         else if (activeTab === "recipes") await fetchRecipes();
@@ -458,6 +567,117 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       setAdvancingId(null);
     }
   }
+  
+  // Delivery CRUD handlers (frontend only, use existing admin APIs)
+  async function openEditDelivery(row: DeliveryRow) {
+    setDeliveryForm({
+      id: row.id,
+      userId: row.userId,
+      menu: row.menu,
+      address: row.address,
+      deliveryDate: new Date(row.deliveryDate).toISOString().slice(0, 16),
+      status: row.status,
+    });
+    setShowDeliveryForm(true);
+  }
+
+  function openRevertDelivery(row: DeliveryRow) {
+    setDeliveryForm({
+      id: row.id,
+      userId: row.userId,
+      menu: row.menu,
+      address: row.address,
+      deliveryDate: new Date(row.deliveryDate).toISOString().slice(0, 16),
+      status: row.status === "DELIVERED" ? "SHIPPED" : row.status,
+    });
+    setShowDeliveryForm(true);
+  }
+
+  function openCreateDelivery() {
+    setDeliveryForm({ id: "", userId: "", menu: "", address: "", deliveryDate: "", status: "PREPARING" });
+    setShowDeliveryForm(true);
+  }
+
+  async function handleSaveDelivery(e: React.FormEvent) {
+    e.preventDefault();
+    if (!isDeliveryUserIdValid) {
+      setError("User ID tidak valid. Pilih user yang terdaftar terlebih dahulu.");
+      return;
+    }
+
+    setPendingDeliveryAction({ type: "save" });
+  }
+
+  async function confirmSaveDelivery() {
+    setIsDeliverySubmitting(true);
+    setError("");
+    try {
+      const method = deliveryForm.id ? "PATCH" : "POST";
+      const url = deliveryForm.id ? `/api/admin/deliveries/${deliveryForm.id}` : "/api/admin/deliveries";
+      const body = {
+        userId: deliveryForm.userId,
+        menu: deliveryForm.menu,
+        address: deliveryForm.address,
+        deliveryDate: deliveryForm.deliveryDate ? new Date(deliveryForm.deliveryDate).toISOString() : undefined,
+        status: deliveryForm.status,
+      };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Gagal menyimpan delivery");
+      await fetchDeliveries();
+      setShowDeliveryForm(false);
+      setDeliveryForm({ id: "", userId: "", menu: "", address: "", deliveryDate: "", status: "PREPARING" });
+      setPendingDeliveryAction(null);
+    } catch (err) {
+      console.error(err);
+      alert("Error saving delivery");
+    } finally {
+      setIsDeliverySubmitting(false);
+    }
+  }
+
+  async function confirmDeleteDelivery(id: string) {
+    setIsDeletingDeliveryId(id);
+    try {
+      const res = await fetch(`/api/admin/deliveries/${id}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Gagal menghapus delivery");
+      await fetchDeliveries();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting delivery");
+    } finally {
+      setIsDeletingDeliveryId(null);
+    }
+  }
+
+  async function handleConfirmDeliveryAction() {
+    if (!pendingDeliveryAction) {
+      return;
+    }
+
+    const action = pendingDeliveryAction;
+    setPendingDeliveryAction(null);
+
+    if (action.type === "save") {
+      await confirmSaveDelivery();
+      return;
+    }
+
+    if (action.type === "advance") {
+      setOpenActionMenu(null);
+      await advanceDelivery(action.id);
+      return;
+    }
+
+    setOpenActionMenu(null);
+    await confirmDeleteDelivery(action.id);
+  }
 
   // CRUD Functions
   async function handleSaveRecipe(e: React.FormEvent) {
@@ -469,9 +689,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       const body = {
         name: recipeForm.name,
         description: recipeForm.description,
-        calories: parseInt(recipeForm.calories),
-        protein: parseFloat(recipeForm.protein),
-        servings: parseInt(recipeForm.servings),
+        calories: parseInt(recipeForm.calories) || 0,
+        protein: parseFloat(recipeForm.protein) || 0,
+        servings: parseInt(recipeForm.servings) || 6,
       };
 
       const res = await fetch(url, {
@@ -484,25 +704,38 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       if (!res.ok) throw new Error("Gagal menyimpan resep");
       await fetchRecipes();
       setShowRecipeForm(false);
-      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
     } catch (err) {
       console.error(err);
-      alert("Error saving recipe");
+      alert("Terjadi kesalahan saat menyimpan resep");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   async function handleDeleteRecipe(id: string) {
-    if (!confirm("Hapus resep ini?")) return;
     try {
       const res = await fetch(`/api/nutritionist/recipes/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Gagal menghapus resep");
       await fetchRecipes();
     } catch (err) {
       console.error(err);
-      alert("Error deleting recipe");
+      alert("Terjadi kesalahan saat menghapus resep");
     }
+  }
+
+  function openEditRecipe(id: string) {
+    const recipe = recipes.find((r) => r.id === id);
+    if (!recipe) return;
+    setRecipeForm({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description || "",
+      calories: String(recipe.calories),
+      protein: String(recipe.protein),
+      servings: String(recipe.servings),
+    });
+    setShowRecipeForm(true);
   }
 
   async function handleAddMenu(e: React.FormEvent) {
@@ -552,6 +785,29 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     }
   }
 
+  function openEditMenu(menuId: string) {
+    // Search through weeks to find the menu and its week
+    let foundMenu = null;
+    let foundWeekStartDate = "";
+    for (const week of weeklyMenus) {
+      const menu = week.menus.find((m) => m.id === menuId);
+      if (menu) {
+        foundMenu = menu;
+        foundWeekStartDate = week.weekStartDate;
+        break;
+      }
+    }
+    if (!foundMenu) return;
+    // Find recipeId by matching the recipeName
+    const recipe = recipes.find((r) => r.name === foundMenu.recipeName);
+    const recipeId = recipe?.id || "";
+    setMenuForm({
+      recipeId: recipeId,
+      weekStartDate: foundWeekStartDate.slice(0, 10),
+    });
+    setShowMenuForm(true);
+  }
+
   // Computed KPI values from real data
   const deliveryKpis = useMemo(() => {
     const preparing = deliveries.filter((d) => d.status === "PREPARING").length;
@@ -571,9 +827,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       (u) => u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
     ).length;
     return [
-      { label: "Total Users", value: String(total), delta: "Realtime", icon: <PeopleIcon /> },
-      { label: "Active", value: String(active), delta: "Healthy", icon: <CheckCircleIcon /> },
-      { label: "Paused/Cancelled", value: String(pausedCancelled), delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Total Pengguna", value: String(total), delta: "", icon: undefined },
+      { label: "Aktif", value: String(active), delta: "", icon: undefined },
+      { label: "Ditangguhkan/Dibatalkan", value: String(pausedCancelled), delta: "", icon: undefined },
     ];
   }, [users]);
 
@@ -623,9 +879,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     }, 0);
 
     return [
-      { label: "Goal Groups", value: String(visibleGoals), delta: "Active", icon: <TargetIcon /> },
-      { label: "Validated Slots", value: String(validatedSlots), delta: "On Track", icon: <CheckCircleIcon /> },
-      { label: "Pending Review", value: String(pendingReview), delta: "Needs Action", icon: <AlertIcon /> },
+      { label: "Kelompok Tujuan", value: String(visibleGoals), delta: "Aktif", icon: <TargetIcon /> },
+      { label: "Slot Tervalidasi", value: String(validatedSlots), delta: "Aman", icon: <CheckCircleIcon /> },
+      { label: "Menunggu Tinjauan", value: String(pendingReview), delta: "Perlu Tindakan", icon: <AlertIcon /> },
     ];
   }, [goalOverrides, visibleWeeklyMenus, weeklyGoals.length]);
 
@@ -662,6 +918,120 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     });
   }, [deliveries, deliverySearch]);
 
+  const totalDeliveryPages = Math.max(1, Math.ceil(filteredDeliveries.length / deliveryPageSize));
+
+  const paginatedDeliveries = useMemo(() => {
+    const startIndex = (deliveryPage - 1) * deliveryPageSize;
+    return filteredDeliveries.slice(startIndex, startIndex + deliveryPageSize);
+  }, [filteredDeliveries, deliveryPage, deliveryPageSize]);
+
+  useEffect(() => {
+    setDeliveryPage(1);
+  }, [deliverySearch, deliveryStatusFilter, deliveryAreaFilter, deliveryPageSize]);
+
+  useEffect(() => {
+    setDeliveryPage((currentPage) => Math.min(currentPage, totalDeliveryPages));
+  }, [totalDeliveryPages]);
+
+  useEffect(() => {
+    setOpenActionMenu(null);
+  }, [deliveryPage, deliveryPageSize]);
+
+  const isDeliveryUserIdValid = useMemo(() => {
+    const normalizedUserId = deliveryForm.userId.trim();
+    if (!normalizedUserId) {
+      return true;
+    }
+
+    return users.some((user) => user.id === normalizedUserId);
+  }, [deliveryForm.userId, users]);
+
+  const selectedRecipeAction = useMemo(() => {
+    if (!pendingRecipeAction) {
+      return null;
+    }
+
+    if (pendingRecipeAction.type === "edit") {
+      return {
+        title: "Konfirmasi Edit Resep",
+        message: "Apakah Anda yakin ingin mengedit resep ini?",
+        confirmLabel: "Ya, Edit",
+        variant: "default" as const,
+      };
+    }
+
+    return {
+      title: "Konfirmasi Hapus Resep",
+      message: "Apakah Anda yakin ingin menghapus resep ini? Tindakan ini tidak dapat dibatalkan.",
+      confirmLabel: "Ya, Hapus",
+      variant: "destructive" as const,
+    };
+  }, [pendingRecipeAction]);
+
+  async function handleConfirmRecipeAction() {
+    if (!pendingRecipeAction) {
+      return;
+    }
+
+    const action = pendingRecipeAction;
+    setPendingRecipeAction(null);
+
+    if (action.type === "edit") {
+      setOpenRecipeActionMenu(null);
+      openEditRecipe(action.id);
+      return;
+    }
+
+    setOpenRecipeActionMenu(null);
+    await handleDeleteRecipe(action.id);
+  }
+
+  const selectedDeliveryAction = useMemo(() => {
+    if (!pendingDeliveryAction) {
+      return null;
+    }
+
+    if (pendingDeliveryAction.type === "save") {
+      return {
+        title: deliveryForm.id ? "Konfirmasi Perubahan Delivery" : "Konfirmasi Delivery Baru",
+        message: deliveryForm.id
+          ? "Pastikan detail delivery sudah benar sebelum perubahan disimpan."
+          : "Pastikan detail delivery sudah benar sebelum delivery baru dibuat.",
+        confirmLabel: deliveryForm.id ? "Ya, Simpan" : "Ya, Buat Delivery",
+        variant: "default" as const,
+      };
+    }
+
+    if (pendingDeliveryAction.type === "advance") {
+      return {
+        title: "Konfirmasi Advance Status",
+        message: "Apakah Anda yakin ingin memajukan status delivery ini?",
+        confirmLabel: "Ya, Advance",
+        variant: "default" as const,
+      };
+    }
+
+    return {
+      title: "Konfirmasi Hapus Delivery",
+      message: "Apakah Anda yakin ingin menghapus delivery ini? Tindakan ini tidak dapat dibatalkan.",
+      confirmLabel: "Ya, Hapus",
+      variant: "destructive" as const,
+    };
+  }, [deliveryForm.id, pendingDeliveryAction]);
+
+  useEffect(() => {
+    if (!openActionMenu) return;
+
+    const handleScroll = () => setOpenActionMenu(null);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [openActionMenu]);
+
   // Filtered users
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
@@ -675,6 +1045,26 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     });
   }, [users, userSearch, userPlanFilter, userStatusFilter]);
 
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize));
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (userPage - 1) * userPageSize;
+    return filteredUsers.slice(startIndex, startIndex + userPageSize);
+  }, [filteredUsers, userPage, userPageSize]);
+
+  useEffect(() => {
+    setUserPage(1);
+  }, [userSearch, userPlanFilter, userStatusFilter, userPageSize]);
+
+  useEffect(() => {
+    setUserPage((currentPage) => Math.min(currentPage, totalUserPages));
+  }, [totalUserPages]);
+
+  const openActionRow = useMemo(() => {
+    if (!openActionMenu) return null;
+    return filteredDeliveries.find((row) => row.id === openActionMenu.id) || null;
+  }, [filteredDeliveries, openActionMenu]);
+
   // Get KPIs based on active tab
   const currentKpis = useMemo(() => {
     if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
@@ -685,6 +1075,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis, weeklyMenuKpis]);
 
   return (
+    <>
     <main className={styles.shell} style={themeVars}>
       <div className={styles.page}>
         <header className={styles.topbar}>
@@ -700,7 +1091,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               window.location.href = "/login";
             });
           }}>
-            Logout
+            Keluar
           </button>
         </header>
 
@@ -733,8 +1124,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               {currentKpis.map((kpi, index) => (
                 <article key={kpi.label} className={styles.kpiCard} style={{ animationDelay: `${index * 80}ms` }}>
                   <div className={styles.kpiRow}>
-                    <span className={styles.activityIcon}>{kpi.icon}</span>
-                    <span className={styles.deltaBadge}>{kpi.delta}</span>
+                    {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : <span />}
+                    {kpi.delta ? <span className={styles.deltaBadge}>{kpi.delta}</span> : <span />}
                   </div>
                   <p className={styles.kpiValue}>{kpi.value}</p>
                   <p className={styles.kpiLabel}>{kpi.label}</p>
@@ -750,24 +1141,64 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
             {role === "admin" && activeTab === "deliveries" && !loading ? (
               <>
-                <div className={styles.metricRow}>
-                  {[
-                    { label: "Preparing", value: String(deliveries.filter((d) => d.status === "PREPARING").length) },
-                    { label: "Shipped", value: String(deliveries.filter((d) => d.status === "SHIPPED").length) },
-                    { label: "Delivered", value: String(deliveries.filter((d) => d.status === "DELIVERED").length) },
-                    { label: "Total Today", value: String(deliveries.length), hot: true },
-                  ].map((metric) => (
-                    <article key={metric.label} className={clsx(styles.metric, metric.hot && styles.metricHot)}>
-                      <p className={styles.metricLabel}>{metric.label}</p>
-                      <p className={styles.metricValue}>{metric.value}</p>
-                    </article>
-                  ))}
-                </div>
+                {/* add button moved next to area select */}
+
+                {showDeliveryForm && (
+                  <form onSubmit={handleSaveDelivery} style={{ marginBottom: "1rem", marginTop: "1rem", padding: "1.65rem 1rem 1rem", border: "1px solid #e6e6e6", borderRadius: 8, background: "#fff" }}>
+                    <div className={styles.deliveryFormGrid}>
+                      <label className={styles.deliveryField}>
+                        <span className={styles.deliveryFieldLabel}>User ID</span>
+                        <input
+                          className={clsx(styles.input, deliveryForm.userId && !isDeliveryUserIdValid && styles.deliveryFieldInvalidInput)}
+                          placeholder="cmoz814qj0007lkw262riq2a0"
+                          required
+                          value={deliveryForm.userId}
+                          onChange={e => setDeliveryForm({...deliveryForm, userId: e.target.value})}
+                        />
+                        {deliveryForm.userId && !isDeliveryUserIdValid && (
+                          <span className={styles.deliveryFieldWarning}>User ID tidak ditemukan. Pastikan user sudah terdaftar.</span>
+                        )}
+                      </label>
+
+                      <label className={styles.deliveryField}>
+                        <span className={styles.deliveryFieldLabel}>Menu</span>
+                        <input className={styles.input} placeholder="Salmon Bowl Sehat" required value={deliveryForm.menu} onChange={e => setDeliveryForm({...deliveryForm, menu: e.target.value})} />
+                      </label>
+
+                      <label className={styles.deliveryField}>
+                        <span className={styles.deliveryFieldLabel}>Alamat</span>
+                        <input className={styles.input} placeholder="Cimahi, Jawa Barat" required value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
+                      </label>
+
+                      <label className={styles.deliveryField}>
+                        <span className={styles.deliveryFieldLabel}>Tanggal Pengiriman</span>
+                        <input className={styles.input} type="datetime-local" placeholder="2026-05-12T00:30" value={deliveryForm.deliveryDate} onChange={e => setDeliveryForm({...deliveryForm, deliveryDate: e.target.value})} />
+                      </label>
+
+                      <label className={styles.deliveryField}>
+                        <span className={styles.deliveryFieldLabel}>Status</span>
+                        <select className={styles.select} value={deliveryForm.status} onChange={e => setDeliveryForm({...deliveryForm, status: e.target.value})}>
+                          <option value="PREPARING">Menyiapkan</option>
+                          <option value="SHIPPED">Dikirim</option>
+                          <option value="DELIVERED">Terkirim</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                      <button type="submit" className={styles.actionCard} disabled={isDeliverySubmitting} style={{ padding: "0.45rem 0.7rem" }}>
+                        {isDeliverySubmitting ? "Menyimpan..." : deliveryForm.id ? "Simpan Perubahan" : "Buat Pengiriman"}
+                      </button>
+                      <button type="button" className={clsx(styles.actionCard, styles.deliveryCancelButton)} onClick={() => setShowDeliveryForm(false)}>
+                        Batal
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 <div className={styles.searchRow}>
                   <input
                     className={styles.input}
-                    placeholder="Cari delivery by ID, user, atau menu"
+                    placeholder="Cari pengiriman berdasarkan ID, pengguna, atau menu"
                     value={deliverySearch}
                     onChange={(e) => setDeliverySearch(e.target.value)}
                   />
@@ -777,9 +1208,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     onChange={(e) => setDeliveryStatusFilter(e.target.value)}
                   >
                     <option value="all">Semua status</option>
-                    <option value="preparing">Preparing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
+                    <option value="preparing">Menyiapkan</option>
+                    <option value="shipped">Dikirim</option>
+                    <option value="delivered">Terkirim</option>
                   </select>
                   <select
                     className={styles.select}
@@ -792,50 +1223,62 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <option value="bekasi">Bekasi</option>
                     <option value="depok">Depok</option>
                   </select>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <button type="button" className={clsx(styles.tabButton)} onClick={openCreateDelivery} style={{ marginLeft: '0.5rem' }}>
+                      + Tambah Delivery
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.tableShell}>
                   <table className={styles.table}>
                     <thead>
                       <tr>
-                        <th>Delivery ID</th>
-                        <th>User</th>
+                        <th>ID Pengiriman</th>
+                        <th>Pengguna</th>
                         <th>Menu</th>
-                        <th>Address</th>
+                        <th>Alamat</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredDeliveries.length === 0 ? (
+                      {paginatedDeliveries.length === 0 ? (
                         <tr>
                           <td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
                             Tidak ada data delivery
                           </td>
                         </tr>
                       ) : (
-                        filteredDeliveries.map((row) => (
+                        paginatedDeliveries.map((row) => (
                           <tr key={row.id}>
                             <td className={styles.tableKey}>{row.id.slice(0, 8)}...</td>
                             <td>{row.user}</td>
                             <td>{row.menu}</td>
                             <td>{row.address}</td>
                             <td>
-                              <span className={clsx(styles.tag, statusClass[row.status])}>{row.status}</span>
+                              <span className={clsx(styles.tag, statusClass[row.status])}>{formatDeliveryStatusLabel(row.status)}</span>
                             </td>
-                            <td>
+                            <td style={{ position: "relative", width: "1%" }}>
                               <button
                                 type="button"
                                 className={styles.actionCard}
+                                onClick={(event) => {
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  setOpenActionMenu((current) => {
+                                    if (current?.id === row.id) return null;
+                                    return {
+                                      id: row.id,
+                                      top: rect.bottom + 8,
+                                      left: Math.max(12, rect.right - 152),
+                                    };
+                                  });
+                                }}
+                                aria-expanded={openActionMenu?.id === row.id}
+                                aria-controls={`actions-${row.id}`}
                                 style={{ padding: "0.45rem 0.7rem" }}
-                                onClick={() => advanceDelivery(row.id)}
-                                disabled={row.status === "DELIVERED" || advancingId === row.id}
                               >
-                                {advancingId === row.id
-                                  ? "Memproses..."
-                                  : row.status === "DELIVERED"
-                                  ? "Selesai"
-                                  : "Advance"}
+                                Aksi
                               </button>
                             </td>
                           </tr>
@@ -845,10 +1288,49 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </table>
                 </div>
 
+                <div className={styles.paginationBar}>
+                  <p className={styles.paginationInfo}>
+                    Menampilkan {filteredDeliveries.length === 0 ? 0 : (deliveryPage - 1) * deliveryPageSize + 1}
+                    -{Math.min(deliveryPage * deliveryPageSize, filteredDeliveries.length)} dari {filteredDeliveries.length} delivery
+                  </p>
+                  <div className={styles.paginationControls}>
+                    <select
+                      className={styles.select}
+                      value={deliveryPageSize}
+                      onChange={(e) => setDeliveryPageSize(Number(e.target.value))}
+                      style={{ width: "auto", minWidth: "110px" }}
+                    >
+                      <option value="10">10 / halaman</option>
+                      <option value="25">25 / halaman</option>
+                      <option value="50">50 / halaman</option>
+                      <option value="100">100 / halaman</option>
+                    </select>
+                    <button
+                      type="button"
+                      className={clsx(styles.tabButton, styles.paginationButton)}
+                      onClick={() => setDeliveryPage((currentPage) => Math.max(1, currentPage - 1))}
+                      disabled={deliveryPage === 1}
+                    >
+                      Prev
+                    </button>
+                    <span className={styles.paginationPageLabel}>
+                      Halaman {deliveryPage} / {totalDeliveryPages}
+                    </span>
+                    <button
+                      type="button"
+                      className={clsx(styles.tabButton, styles.paginationButton)}
+                      onClick={() => setDeliveryPage((currentPage) => Math.min(totalDeliveryPages, currentPage + 1))}
+                      disabled={deliveryPage === totalDeliveryPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+
                 <div className={styles.notice}>
                   <p className={styles.noticeTitle}>Force Advance Status (Demo UI):</p>
                   <ul>
-                    <li>PREPARING -&gt; SHIPPED -&gt; DELIVERED</li>
+                    <li>Menyiapkan -&gt; Dikirim -&gt; Terkirim</li>
                     <li>Digunakan untuk testing flow logistik massal.</li>
                     <li>Pada production, status idealnya diupdate otomatis dari sistem kurir.</li>
                   </ul>
@@ -861,7 +1343,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 <div className={styles.searchRow}>
                   <input
                     className={styles.input}
-                    placeholder="Cari user by nama atau email"
+                    placeholder="Cari pengguna berdasarkan nama atau email"
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                   />
@@ -870,7 +1352,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     value={userPlanFilter}
                     onChange={(e) => setUserPlanFilter(e.target.value)}
                   >
-                    <option value="all">Semua plan</option>
+                    <option value="all">Semua paket</option>
                     <option value="mingguan">Mingguan</option>
                     <option value="bulanan">Bulanan</option>
                     <option value="tahunan">Tahunan</option>
@@ -881,9 +1363,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     onChange={(e) => setUserStatusFilter(e.target.value)}
                   >
                     <option value="all">Semua status</option>
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="active">Aktif</option>
+                    <option value="paused">Jeda</option>
+                    <option value="cancelled">Batal</option>
                   </select>
                 </div>
 
@@ -891,25 +1373,25 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <table className={styles.table}>
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Contact</th>
-                        <th>Address</th>
-                        <th>Plan</th>
-                        <th>Serving</th>
+                        <th>Nama</th>
+                        <th>Kontak</th>
+                        <th>Alamat</th>
+                        <th>Paket</th>
+                        <th>Porsi</th>
                         <th>Status</th>
-                        <th>Joined</th>
-                        <th>Next Delivery</th>
+                        <th>Bergabung</th>
+                        <th>Pengiriman Berikutnya</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.length === 0 ? (
+                      {paginatedUsers.length === 0 ? (
                         <tr>
                           <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
                             Tidak ada data user
                           </td>
                         </tr>
                       ) : (
-                        filteredUsers.map((row) => (
+                        paginatedUsers.map((row) => (
                           <tr key={row.id}>
                             <td>{row.name}</td>
                             <td>
@@ -926,7 +1408,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                             <td>{row.servings ? `${row.servings} orang` : "-"}</td>
                             <td>
                               <span className={clsx(styles.tag, statusClass[row.subscriptionStatus || ""])}>
-                                {row.subscriptionStatus || "-"}
+                                {formatSubscriptionStatusLabel(row.subscriptionStatus)}
                               </span>
                             </td>
                             <td>{new Date(row.joinedAt).toLocaleDateString("id-ID")}</td>
@@ -936,6 +1418,45 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                <div className={styles.paginationBar}>
+                  <p className={styles.paginationInfo}>
+                    Menampilkan {filteredUsers.length === 0 ? 0 : (userPage - 1) * userPageSize + 1}
+                    -{Math.min(userPage * userPageSize, filteredUsers.length)} dari {filteredUsers.length} user
+                  </p>
+                  <div className={styles.paginationControls}>
+                    <select
+                      className={styles.select}
+                      value={userPageSize}
+                      onChange={(e) => setUserPageSize(Number(e.target.value))}
+                      style={{ width: "auto", minWidth: "110px" }}
+                    >
+                      <option value="10">10 / halaman</option>
+                      <option value="25">25 / halaman</option>
+                      <option value="50">50 / halaman</option>
+                      <option value="100">100 / halaman</option>
+                    </select>
+                    <button
+                      type="button"
+                      className={clsx(styles.tabButton, styles.paginationButton)}
+                      onClick={() => setUserPage((currentPage) => Math.max(1, currentPage - 1))}
+                      disabled={userPage === 1}
+                    >
+                      Prev
+                    </button>
+                    <span className={styles.paginationPageLabel}>
+                      Halaman {userPage} / {totalUserPages}
+                    </span>
+                    <button
+                      type="button"
+                      className={clsx(styles.tabButton, styles.paginationButton)}
+                      onClick={() => setUserPage((currentPage) => Math.min(totalUserPages, currentPage + 1))}
+                      disabled={userPage === totalUserPages}
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.notice}>
@@ -949,6 +1470,61 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
+            {role === "admin" && activeTab === "reports" ? (
+              <>
+                <div className={styles.notice} style={{ marginBottom: "1rem" }}>
+                  <p className={styles.noticeTitle}>Ringkasan Tren Mingguan</p>
+                  <p>
+                    Tab ini dipakai untuk memantau arah pertumbuhan operasi, titik macet, dan area yang perlu intervensi cepat.
+                  </p>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr", gap: "1rem" }}>
+                  <section className={styles.activityCard} style={{ marginTop: 0 }}>
+                    <h3 className={styles.activityHeader}>Sinyal Tren</h3>
+                    <div style={{ display: "grid", gap: "0.9rem" }}>
+                      {adminReportTrends.map((item) => (
+                        <article key={item.label} style={{ border: "1px solid #e8edf4", borderRadius: "14px", padding: "0.9rem", background: "#f8fafc" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
+                            <div>
+                              <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.label}</p>
+                              <p style={{ margin: "0.25rem 0 0", color: "#64748b", fontSize: "0.86rem" }}>{item.note}</p>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <p style={{ margin: 0, fontSize: "1.45rem", fontWeight: 800, color: "#0f172a" }}>{item.value}</p>
+                              <p style={{ margin: "0.18rem 0 0", fontWeight: 700, color: item.delta.startsWith("-") ? "#16a34a" : "#e11d48" }}>{item.delta}</p>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: "0.8rem", height: "10px", borderRadius: "999px", background: "#e5e7eb", overflow: "hidden" }}>
+                            <div style={{ width: `${item.progress}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, var(--accent-strong), var(--accent-mid))" }} />
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className={styles.activityCard} style={{ marginTop: 0 }}>
+                    <h3 className={styles.activityHeader}>Ringkasan Operasional</h3>
+                    <div style={{ display: "grid", gap: "0.75rem" }}>
+                      {adminReportHighlights.map((item) => (
+                        <div key={item.label} style={{ padding: "0.85rem", borderRadius: "14px", background: "#f8fafc", border: "1px solid #e8edf4" }}>
+                          <p style={{ margin: 0, color: "#64748b", fontSize: "0.82rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
+                          <p style={{ margin: "0.28rem 0 0", color: "#0f172a", fontSize: "1rem", fontWeight: 800 }}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ marginTop: "0.95rem", borderRadius: "14px", padding: "0.9rem", background: "linear-gradient(135deg, var(--accent-strong), var(--accent-mid))", color: "#ffffff" }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>Arah pekan ini</p>
+                      <p style={{ margin: "0.35rem 0 0", fontSize: "0.92rem", opacity: 0.95 }}>
+                        Fokus utama ada pada menjaga pengiriman tepat waktu dan mengurangi kendala dari data alamat yang tidak lengkap.
+                      </p>
+                    </div>
+                  </section>
+                </div>
+              </>
+            ) : null}
+
             {role === "nutritionist" && activeTab === "recipes" ? (
               <>
                 <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -957,7 +1533,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
                   </div>
                   <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => {
-                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "" });
+                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
                     setShowRecipeForm(!showRecipeForm);
                   }}>
                     {showRecipeForm ? "Batal" : "+ Tambah Resep"}
@@ -965,17 +1541,18 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 </div>
 
                 {showRecipeForm && (
-                  <form onSubmit={handleSaveRecipe} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                      <input className={styles.input} style={{ flex: 1, minWidth: "200px" }} placeholder="Nama Resep" required value={recipeForm.name} onChange={e => setRecipeForm({...recipeForm, name: e.target.value})} />
-                      <input className={styles.input} style={{ width: "120px" }} type="number" placeholder="Kalori" required value={recipeForm.calories} onChange={e => setRecipeForm({...recipeForm, calories: e.target.value})} />
-                      <input className={styles.input} style={{ width: "120px" }} type="number" step="0.1" placeholder="Protein (g)" required value={recipeForm.protein} onChange={e => setRecipeForm({...recipeForm, protein: e.target.value})} />
-                      <input className={styles.input} style={{ width: "120px" }} type="number" placeholder="Porsi" required value={recipeForm.servings} onChange={e => setRecipeForm({...recipeForm, servings: e.target.value})} />
+                  <form onSubmit={handleSaveRecipe} className={styles.recipeForm}>
+                    <div className={styles.recipeFormRow}>
+                      <input className={clsx(styles.input, styles.recipeFormField)} placeholder="Nama resep" required value={recipeForm.name} onChange={e => setRecipeForm({...recipeForm, name: e.target.value})} />
+                      <input className={clsx(styles.input, styles.recipeFormFieldSmall)} type="number" placeholder="Kalori" required value={recipeForm.calories} onChange={e => setRecipeForm({...recipeForm, calories: e.target.value})} />
+                      <input className={clsx(styles.input, styles.recipeFormFieldSmall)} type="number" step="0.1" placeholder="Protein (g)" required value={recipeForm.protein} onChange={e => setRecipeForm({...recipeForm, protein: e.target.value})} />
                     </div>
-                    <textarea className={styles.input} placeholder="Deskripsi Singkat" required value={recipeForm.description} onChange={e => setRecipeForm({...recipeForm, description: e.target.value})} />
-                    <button type="submit" disabled={isSubmitting} className={styles.actionCard} style={{ padding: "0.5rem", maxWidth: "150px" }}>
-                      {isSubmitting ? "Menyimpan..." : "Simpan Resep"}
-                    </button>
+                    <textarea className={clsx(styles.input, styles.recipeFormTextarea)} placeholder="Deskripsi singkat" required value={recipeForm.description} onChange={e => setRecipeForm({...recipeForm, description: e.target.value})} />
+                    <div className={styles.recipeFormActions}>
+                      <button type="submit" disabled={isSubmitting} className={styles.actionCard}>
+                        {isSubmitting ? "Menyimpan..." : "Simpan Resep"}
+                      </button>
+                    </div>
                   </form>
                 )}
 
@@ -984,11 +1561,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <table className={styles.table}>
                       <thead>
                         <tr>
-                          <th>Recipe</th>
-                          <th>Description</th>
-                          <th>Calories</th>
+                          <th>Resep</th>
+                          <th>Deskripsi</th>
+                          <th>Kalori</th>
                           <th>Protein</th>
-                          <th>Servings</th>
+                          <th>Porsi</th>
                           <th>Aksi</th>
                         </tr>
                       </thead>
@@ -1003,19 +1580,27 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                               <td>{row.calories} kcal</td>
                               <td>{row.protein} g</td>
                               <td>{row.servings}</td>
-                              <td>
-                                <button onClick={() => {
-                                  setRecipeForm({
-                                    id: row.id,
-                                    name: row.name,
-                                    description: row.description || "",
-                                    calories: String(row.calories),
-                                    protein: String(row.protein),
-                                    servings: String(row.servings)
-                                  });
-                                  setShowRecipeForm(true);
-                                }} style={{ marginRight: "0.5rem", color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Edit</button>
-                                <button onClick={() => handleDeleteRecipe(row.id)} style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: "bold" }}>Hapus</button>
+                              <td style={{ position: "relative", width: "1%" }}>
+                                <button
+                                  type="button"
+                                  className={styles.actionCard}
+                                  onClick={(event) => {
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    setOpenRecipeActionMenu((current) => {
+                                      if (current?.id === row.id) return null;
+                                      return {
+                                        id: row.id,
+                                        top: rect.bottom + 8,
+                                        left: Math.max(12, rect.right - 152),
+                                      };
+                                    });
+                                  }}
+                                  aria-expanded={openRecipeActionMenu?.id === row.id}
+                                  aria-controls={`recipe-actions-${row.id}`}
+                                  style={{ padding: "0.45rem 0.7rem" }}
+                                >
+                                  Aksi
+                                </button>
                               </td>
                             </tr>
                           ))
@@ -1032,7 +1617,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
                   <div>
                     <p className={styles.noticeTitle}>Menu Minggu Ini:</p>
-                    <p>Setiap kartu mewakili satu minggu kalender. Badge <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
+                    <p>Setiap kartu mewakili satu minggu kalender. Label <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
                   </div>
                 </div>
 
@@ -1073,15 +1658,17 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 </div>
 
                 {showMenuForm && (
-                  <form onSubmit={handleAddMenu} style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <select className={styles.select} style={{ flex: 1, minWidth: "200px" }} required value={menuForm.recipeId} onChange={e => setMenuForm({...menuForm, recipeId: e.target.value})}>
+                  <form onSubmit={handleAddMenu} className={styles.weeklyMenuForm}>
+                    <select className={styles.select} required value={menuForm.recipeId} onChange={e => setMenuForm({...menuForm, recipeId: e.target.value})}>
                       <option value="">-- Pilih Resep --</option>
                       {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
-                    <input className={styles.input} style={{ width: "180px" }} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({...menuForm, weekStartDate: e.target.value})} />
-                    <button type="submit" disabled={isSubmitting} className={styles.actionCard} style={{ padding: "0.5rem 1rem" }}>
-                      {isSubmitting ? "Menambah..." : "Tambah"}
-                    </button>
+                    <input className={styles.input} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({...menuForm, weekStartDate: e.target.value})} />
+                    <div className={styles.weeklyMenuFormActions}>
+                      <button type="submit" disabled={isSubmitting} className={styles.actionCard}>
+                        {isSubmitting ? "Menambah..." : "Tambah"}
+                      </button>
+                    </div>
                   </form>
                 )}
 
@@ -1099,62 +1686,36 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                         return (
                           <section
                             key={week.weekStartDate}
-                            style={{
-                              borderRadius: "18px",
-                              border: week.isActiveWeek ? "1px solid #1d4ed8" : "1px solid #e5e7eb",
-                              background: week.isActiveWeek ? "linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)" : "#ffffff",
-                              boxShadow: week.isActiveWeek ? "0 14px 28px rgba(29, 78, 216, 0.12)" : "0 10px 22px rgba(15, 23, 42, 0.06)",
-                              padding: "1rem",
-                            }}
+                            className={clsx(styles.weeklyMenuSection, week.isActiveWeek && "active")}
                           >
                             <button
                               type="button"
                               onClick={() => setExpandedWeekStartDate(isExpanded ? null : week.weekStartDate)}
-                              style={{
-                                width: "100%",
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                gap: "1rem",
-                                border: "none",
-                                background: "transparent",
-                                padding: 0,
-                                cursor: "pointer",
-                                textAlign: "left",
-                              }}
+                              className={styles.weeklyMenuHeader}
                             >
-                              <div>
-                                <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
+                              <div className={styles.weeklyMenuHeaderContent}>
+                                <p className={clsx(styles.noticeTitle, styles.weeklyMenuHeaderTitle)}>
                                   {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
                                 </p>
-                                <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
+                                <p className={styles.weeklyMenuHeaderSub}>
                                   {week.menus.length} menu tersimpan untuk minggu ini.
                                 </p>
                               </div>
 
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                              <div className={styles.weeklyMenuHeaderRight}>
                                 {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>}
                                 <span aria-hidden="true" style={{ fontSize: "1.15rem", color: "#64748b" }}>{isExpanded ? "▾" : "▸"}</span>
                               </div>
                             </button>
 
                             {isExpanded && (
-                              <div style={{ marginTop: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+                              <div className={styles.weeklyMenuContent}>
+                                <div className={styles.weeklyMenuAddButton}>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setMenuForm({ recipeId: "", weekStartDate: week.weekStartDate.slice(0, 10) });
                                       setShowMenuForm(true);
-                                    }}
-                                    style={{
-                                      border: "1px solid #1d4ed8",
-                                      background: "#eef4ff",
-                                      color: "#1d4ed8",
-                                      fontWeight: 700,
-                                      borderRadius: "999px",
-                                      padding: "0.55rem 0.9rem",
-                                      cursor: "pointer",
                                     }}
                                   >
                                     + Tambah resep ke minggu ini
@@ -1165,10 +1726,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                   <table className={styles.table}>
                                     <thead>
                                       <tr>
-                                        <th>Recipe</th>
-                                        <th>Calories</th>
+                                        <th>Resep</th>
+                                        <th>Kalori</th>
                                         <th>Protein</th>
-                                        <th>Suitable Goals</th>
+                                        <th>Tujuan Sesuai</th>
                                         <th>Aksi</th>
                                       </tr>
                                     </thead>
@@ -1186,7 +1747,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                               <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
                                                 {previewGoals.length > 0 ? (
                                                   previewGoals.map((goal) => (
-                                                    <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{goal}</span>
+                                                    <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{formatGoalLabel(goal)}</span>
                                                   ))
                                                 ) : (
                                                   <button
@@ -1194,7 +1755,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                     className={styles.goalLinkButton}
                                                     onClick={() => setGoalEditorMenuId(row.id)}
                                                   >
-                                                    + Hubungkan Target
+                                                    + Hubungkan tujuan
                                                   </button>
                                                 )}
 
@@ -1202,17 +1763,17 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                   type="button"
                                                   className={styles.goalEditButton}
                                                   onClick={() => setGoalEditorMenuId((current) => current === row.id ? null : row.id)}
-                                                  aria-label="Edit target kesehatan"
+                                                  aria-label="Ubah target kesehatan"
                                                 >
                                                   ✎
                                                 </button>
 
                                                 {isEditingGoal && (
                                                   <div className={styles.goalPopover}>
-                                                    <div className={styles.goalPopoverTitle}>Hubungkan target kesehatan</div>
+                                                    <div className={styles.goalPopoverTitle}>Hubungkan tujuan kesehatan</div>
                                                     <div className={styles.goalPopoverList}>
                                                       {weeklyGoals.length === 0 ? (
-                                                        <p style={{ margin: 0, color: "#64748b" }}>Belum ada goal master tersedia.</p>
+                                                        <p style={{ margin: 0, color: "#64748b" }}>Belum ada data tujuan master.</p>
                                                       ) : weeklyGoals.map((goal) => {
                                                         const currentGoals = new Set(goalOverrides[row.id] ?? row.suitableGoals);
                                                         const checked = currentGoals.has(goal.name);
@@ -1248,19 +1809,26 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                 )}
                                               </div>
                                             </td>
-                                            <td>
+                                            <td style={{ position: "relative", width: "1%" }}>
                                               <button
                                                 type="button"
-                                                className={styles.iconDangerButton}
-                                                onClick={() => handleDeleteMenu(row.id)}
-                                                aria-label="Hapus menu mingguan"
+                                                className={styles.actionCard}
+                                                onClick={(event) => {
+                                                  const rect = event.currentTarget.getBoundingClientRect();
+                                                  setOpenMenuActionMenu((current) => {
+                                                    if (current?.id === row.id) return null;
+                                                    return {
+                                                      id: row.id,
+                                                      top: rect.bottom + 8,
+                                                      left: Math.max(12, rect.right - 152),
+                                                    };
+                                                  });
+                                                }}
+                                                aria-expanded={openMenuActionMenu?.id === row.id}
+                                                aria-controls={`menu-actions-${row.id}`}
+                                                style={{ padding: "0.45rem 0.7rem" }}
                                               >
-                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="18" height="18">
-                                                  <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                                                  <path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                                                  <path d="M6 7l1 13h10l1-13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                                  <path d="M9 7V4h6v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                                </svg>
+                                                Aksi
                                               </button>
                                             </td>
                                           </tr>
@@ -1300,7 +1868,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 <div className={styles.actionGrid}>
                   {config.actions.map((action) => (
                     <button key={action.title} type="button" className={styles.actionCard}>
-                      <span>{action.icon}</span>
+                      {action.icon ? <span>{action.icon}</span> : null}
                       <p className={styles.actionTitle}>{action.title}</p>
                       <p className={styles.actionSub}>{action.subtitle}</p>
                     </button>
@@ -1327,6 +1895,147 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         </section>
       </div>
     </main>
+    {openActionMenu && openActionRow
+      ? createPortal(
+          <div
+            id={`actions-${openActionMenu.id}`}
+            className={styles.actionDropdownFloating}
+            role="menu"
+            style={{ top: `${openActionMenu.top}px`, left: `${openActionMenu.left}px` }}
+          >
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemAdvance)}
+              onClick={() => {
+                setOpenActionMenu(null);
+                if (openActionRow.status === "DELIVERED") {
+                  openRevertDelivery(openActionRow);
+                  return;
+                }
+
+                setPendingDeliveryAction({ type: "advance", id: openActionRow.id });
+              }}
+              disabled={advancingId === openActionRow.id}
+            >
+              {advancingId === openActionRow.id ? "Memproses..." : openActionRow.status === "DELIVERED" ? "Batalkan" : "Advance"}
+            </button>
+
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemEdit)}
+              onClick={() => {
+                setOpenActionMenu(null);
+                openEditDelivery(openActionRow);
+              }}
+            >
+              Ubah
+            </button>
+
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemDelete)}
+              onClick={() => {
+                setOpenActionMenu(null);
+                setPendingDeliveryAction({ type: "delete", id: openActionRow.id });
+              }}
+            >
+              Hapus
+            </button>
+          </div>,
+          document.body,
+        )
+      : null}
+    {openRecipeActionMenu && recipes.find(r => r.id === openRecipeActionMenu.id)
+      ? createPortal(
+          <div
+            id={`recipe-actions-${openRecipeActionMenu.id}`}
+            className={styles.actionDropdownFloating}
+            role="menu"
+            style={{ top: `${openRecipeActionMenu.top}px`, left: `${openRecipeActionMenu.left}px` }}
+          >
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemEdit)}
+              onClick={() => {
+                setPendingRecipeAction({ type: "edit", id: openRecipeActionMenu.id });
+              }}
+            >
+              Ubah
+            </button>
+
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemDelete)}
+              onClick={() => {
+                setPendingRecipeAction({ type: "delete", id: openRecipeActionMenu.id });
+              }}
+            >
+              Hapus
+            </button>
+          </div>,
+          document.body,
+        )
+      : null}
+    {openMenuActionMenu && weeklyMenus.some(week => week.menus.some(m => m.id === openMenuActionMenu.id))
+      ? createPortal(
+          <div
+            id={`menu-actions-${openMenuActionMenu.id}`}
+            className={styles.actionDropdownFloating}
+            role="menu"
+            style={{ top: `${openMenuActionMenu.top}px`, left: `${openMenuActionMenu.left}px` }}
+          >
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemEdit)}
+              onClick={() => {
+                setOpenMenuActionMenu(null);
+                openEditMenu(openMenuActionMenu.id);
+              }}
+            >
+              Ubah
+            </button>
+
+            <button
+              type="button"
+              className={clsx(styles.actionDropdownItem, styles.actionDropdownItemDelete)}
+              onClick={() => {
+                setOpenMenuActionMenu(null);
+                handleDeleteMenu(openMenuActionMenu.id);
+              }}
+            >
+              Hapus
+            </button>
+          </div>,
+          document.body,
+        )
+      : null}
+    <ConfirmDialog
+      isOpen={Boolean(selectedRecipeAction)}
+      title={selectedRecipeAction?.title ?? ""}
+      message={selectedRecipeAction?.message ?? ""}
+      confirmLabel={selectedRecipeAction?.confirmLabel ?? ""}
+      cancelLabel="Batal"
+      variant={selectedRecipeAction?.variant}
+      isConfirming={isSubmitting}
+      onCancel={() => setPendingRecipeAction(null)}
+      onConfirm={() => {
+        void handleConfirmRecipeAction();
+      }}
+    />
+    <ConfirmDialog
+      isOpen={Boolean(selectedDeliveryAction)}
+      title={selectedDeliveryAction?.title ?? ""}
+      message={selectedDeliveryAction?.message ?? ""}
+      confirmLabel={selectedDeliveryAction?.confirmLabel ?? ""}
+      cancelLabel="Batal"
+      variant={selectedDeliveryAction?.variant}
+      isConfirming={isDeliverySubmitting || Boolean(advancingId) || Boolean(isDeletingDeliveryId)}
+      onCancel={() => setPendingDeliveryAction(null)}
+      onConfirm={() => {
+        void handleConfirmDeliveryAction();
+      }}
+    />
+    </>
   );
 }
 

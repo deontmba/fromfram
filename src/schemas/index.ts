@@ -5,3 +5,5 @@ export * from './weeklyMenuSchema';
 export * from './mealSelectionSchema';
 export * from './addressSchema';
 export * from './profileSchema';
+export * from './mealSelection';
+export * from './transaction';
