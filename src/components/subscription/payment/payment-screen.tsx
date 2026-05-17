@@ -379,6 +379,12 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
   const [autoPoll, setAutoPoll] = useState(true);
   const [isSnapScriptLoaded, setIsSnapScriptLoaded] = useState(false);
   const [snapScriptError, setSnapScriptError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
 
   const resolvedMidtransClientKey = midtransClientKey ?? process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? null;
   const resolvedIsMidtransProduction = isMidtransProduction ?? process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
@@ -592,6 +598,22 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
       if (intervalId) clearInterval(intervalId);
     };
   }, [canCheckStatus, transaction.status, autoPoll, handleCheckStatus]);
+
+  if (!isMounted) {
+    return (
+      <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-flex items-center gap-2 text-[#10b981]">
+            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} priority />
+            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
+          </div>
+          <p className="text-neutral-500 font-semibold animate-pulse text-[0.98rem]">
+            Menyiapkan halaman pembayaran...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>
