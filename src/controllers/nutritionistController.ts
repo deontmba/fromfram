@@ -51,6 +51,7 @@ export async function getNutritionistRecipes(userId: string) {
       calories: true,
       protein: true,
       servings: true,
+      imageUrl: true,
     },
     orderBy: { id: 'desc' },
   });
@@ -84,7 +85,7 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  const { name, description, calories, protein, servings } = input;
+  const { name, description, calories, protein, servings, imageUrl } = input;
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -94,6 +95,7 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
       protein,
       servings,
       nutritionistId: userId,
+      ...(imageUrl ? { imageUrl } : {}),
     },
   });
 

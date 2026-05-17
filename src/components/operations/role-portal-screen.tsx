@@ -73,6 +73,7 @@ type RecipeRow = {
   calories: number;
   protein: number;
   servings: number;
+  imageUrl?: string;
 };
 
 type WeeklyMenuItem = {
@@ -404,7 +405,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
   // CRUD states
   const [showRecipeForm, setShowRecipeForm] = useState(false);
-  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: '6' });
+  const [recipeForm, setRecipeForm] = useState({ id: "", name: "", description: "", calories: "", protein: "", servings: '6', imageUrl: "" });
+  const [recipeImageFile, setRecipeImageFile] = useState<File | null>(null);
   const [showMenuForm, setShowMenuForm] = useState(false);
   const [menuForm, setMenuForm] = useState({ recipeId: "", weekStartDate: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -684,6 +686,22 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      let finalImageUrl = recipeForm.imageUrl;
+      
+      if (recipeImageFile) {
+        const formData = new FormData();
+        formData.append("file", recipeImageFile);
+        
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) throw new Error("Gagal mengunggah gambar");
+        const uploadData = await uploadRes.json();
+        finalImageUrl = uploadData.url;
+      }
+
       const method = recipeForm.id ? "PATCH" : "POST";
       const url = recipeForm.id ? `/api/nutritionist/recipes/${recipeForm.id}` : "/api/nutritionist/recipes";
       const body = {
@@ -692,6 +710,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         calories: parseInt(recipeForm.calories) || 0,
         protein: parseFloat(recipeForm.protein) || 0,
         servings: parseInt(recipeForm.servings) || 6,
+        ...(finalImageUrl ? { imageUrl: finalImageUrl } : {}),
       };
 
       const res = await fetch(url, {
@@ -704,7 +723,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       if (!res.ok) throw new Error("Gagal menyimpan resep");
       await fetchRecipes();
       setShowRecipeForm(false);
-      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
+      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6", imageUrl: "" });
+      setRecipeImageFile(null);
     } catch (err) {
       console.error(err);
       alert("Terjadi kesalahan saat menyimpan resep");
@@ -734,7 +754,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       calories: String(recipe.calories),
       protein: String(recipe.protein),
       servings: String(recipe.servings),
+      imageUrl: recipe.imageUrl || "",
     });
+    setRecipeImageFile(null);
     setShowRecipeForm(true);
   }
 
@@ -1533,7 +1555,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
                   </div>
                   <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => {
-                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6" });
+                    setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6", imageUrl: "" });
+                    setRecipeImageFile(null);
                     setShowRecipeForm(!showRecipeForm);
                   }}>
                     {showRecipeForm ? "Batal" : "+ Tambah Resep"}
@@ -1548,6 +1571,29 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       <input className={clsx(styles.input, styles.recipeFormFieldSmall)} type="number" step="0.1" placeholder="Protein (g)" required value={recipeForm.protein} onChange={e => setRecipeForm({...recipeForm, protein: e.target.value})} />
                     </div>
                     <textarea className={clsx(styles.input, styles.recipeFormTextarea)} placeholder="Deskripsi singkat" required value={recipeForm.description} onChange={e => setRecipeForm({...recipeForm, description: e.target.value})} />
+                    <div className={styles.recipeFormRow} style={{ marginTop: '0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#64748b' }}>Gambar Resep (Opsional):</span>
+                        <label style={{
+                          display: 'inline-block',
+                          padding: '0.5rem 1rem',
+                          background: '#e0f7f4',
+                          color: '#0ea5a5',
+                          borderRadius: '8px',
+                          border: '1px dashed #0ea5a5',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          textAlign: 'center'
+                        }}>
+                          {recipeImageFile ? recipeImageFile.name : recipeForm.imageUrl ? 'Ganti Gambar...' : '+ Pilih Gambar...'}
+                          <input type="file" accept="image/*" onChange={e => setRecipeImageFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
+                        </label>
+                      </div>
+                      {recipeForm.imageUrl && !recipeImageFile && (
+                        <div style={{ fontSize: '0.8rem', color: '#0ea5a5', fontStyle: 'italic', background: '#e0f7f4', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>✓ Memakai gambar yang sudah ada</div>
+                      )}
+                    </div>
                     <div className={styles.recipeFormActions}>
                       <button type="submit" disabled={isSubmitting} className={styles.actionCard}>
                         {isSubmitting ? "Menyimpan..." : "Simpan Resep"}
