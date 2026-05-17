@@ -1,75 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import prisma from '@/lib/prisma';
+import { getNutritionistRecipeById, updateNutritionistRecipe, deleteNutritionistRecipe } from '@/controllers/nutritionistController';
+import { validate } from '@/lib/validate';
+import { updateRecipeSchema } from '@/schemas';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING') return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
+  if (error === 'CONFIG_MISSING')
+    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-export async function PATCH(req: NextRequest, context: { params: any }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
-  const requestingUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { role: true },
-  });
-
-  if (!requestingUser || requestingUser.role !== 'NUTRITIONIST') {
-    return NextResponse.json({ error: 'Forbidden. Nutritionist access required.' }, { status: 403 });
+  try {
+    const { id } = await params;
+    const result = await getNutritionistRecipeById(session.userId, id);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error('[NUTRITIONIST RECIPE GET ERROR]', error);
+    return NextResponse.json({ error: 'Failed to fetch recipe.' }, { status: 500 });
   }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const params = await Promise.resolve(context.params);
-    const id = params.id;
     const body = await req.json();
-    
-    const { name, description, calories, protein, servings, imageUrl } = body;
+    const parsed = validate(updateRecipeSchema, body);
+    if (!parsed.success) return parsed.response;
 
-    const updatedRecipe = await prisma.recipe.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(calories !== undefined && { calories }),
-        ...(protein !== undefined && { protein }),
-        ...(servings !== undefined && { servings }),
-        ...(imageUrl !== undefined && { imageUrl }),
-      }
-    });
-
-    return NextResponse.json({ data: updatedRecipe });
+    const { id } = await params;
+    const result = await updateNutritionistRecipe(session.userId, id, parsed.data);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[NUTRITIONIST RECIPE PATCH ERROR]', error);
     return NextResponse.json({ error: 'Failed to update recipe.' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, context: { params: any }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
-  const requestingUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { role: true },
-  });
-
-  if (!requestingUser || requestingUser.role !== 'NUTRITIONIST') {
-    return NextResponse.json({ error: 'Forbidden. Nutritionist access required.' }, { status: 403 });
-  }
-
   try {
-    const params = await Promise.resolve(context.params);
-    const id = params.id;
-
-    await prisma.recipe.delete({
-      where: { id }
-    });
-
-    return NextResponse.json({ success: true, message: 'Recipe deleted.' });
+    const { id } = await params;
+    const result = await deleteNutritionistRecipe(session.userId, id);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[NUTRITIONIST RECIPE DELETE ERROR]', error);
-    return NextResponse.json({ error: 'Failed to delete recipe. It might be in use.' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to delete recipe.' }, { status: 500 });
   }
 }

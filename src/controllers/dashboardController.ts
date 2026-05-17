@@ -1,17 +1,6 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
-/**
- * getDashboard
- * Mengambil semua data yang dibutuhkan halaman /dashboard untuk user yang sedang login.
- *
- * Data yang dikembalikan:
- * - user           : nama & email user
- * - subscription   : status langganan aktif (plan, servings, status, goal)
- * - weeklyBox      : WeeklyBox minggu berjalan + meal selections + status
- * - todayDelivery  : status pengiriman hari ini
- * - deliveries     : riwayat 7 pengiriman terakhir
- */
 export const getDashboard = async (userId: string) => {
   try {
     const today = new Date();
@@ -287,9 +276,6 @@ export const getDashboard = async (userId: string) => {
   }
 };
 
-/**
- * Helper: konversi Date ke enum DayOfWeek sesuai schema Prisma
- */
 function getDayOfWeekEnum(date: Date) {
   const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
   return days[date.getDay()];

@@ -1,5 +1,7 @@
 import prisma from '@/lib/prisma';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { AddAddressInput, UpdateProfileInput, UpdateHealthInput } from '@/schemas';
+import { NutritionalProfileData } from '@/types';
 
 const addressSelect = {
   id: true,
@@ -12,6 +14,8 @@ const addressSelect = {
   postalCode: true,
   notes: true,
   isDefault: true,
+  latitude: true,
+  longitude: true,
 };
 
 const profileSelect = {
@@ -55,7 +59,7 @@ export const getAddresses = async (userId: string) => {
   }
 };
 
-export const getProfile = async (req: NextRequest, userId: string) => {
+export const getProfile = async (userId: string) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -70,22 +74,26 @@ export const getProfile = async (req: NextRequest, userId: string) => {
   }
 };
 
-export const updateProfile = async (req: NextRequest, userId: string) => {
+export const updateProfile = async (userId: string, input: UpdateProfileInput) => {
   try {
-    const body = await req.json();
-
     const updateData: Record<string, unknown> = {};
-    if (isNonEmptyString(body.name)) {
-      updateData.name = body.name.trim();
+
+    if (isNonEmptyString(input.name)) {
+      updateData.name = input.name.trim();
     }
 
-    const hasNutritionalPayload = ['weight', 'height', 'dailyCalorieNeed', 'allergies', 'medicalNotes']
-      .some((key) => Object.prototype.hasOwnProperty.call(body, key));
+    const hasNutritionalPayload = (
+      input.weight !== undefined ||
+      input.height !== undefined ||
+      input.dailyCalorieNeed !== undefined ||
+      input.allergies !== undefined ||
+      input.medicalNotes !== undefined
+    );
 
     if (hasNutritionalPayload) {
-      const weight = Number(body.weight);
-      const height = Number(body.height);
-      const dailyCalorieNeed = Number(body.dailyCalorieNeed);
+      const weight = Number(input.weight);
+      const height = Number(input.height);
+      const dailyCalorieNeed = Number(input.dailyCalorieNeed);
 
       if (!Number.isFinite(weight) || !Number.isFinite(height) || !Number.isFinite(dailyCalorieNeed)) {
         return NextResponse.json(
@@ -94,22 +102,18 @@ export const updateProfile = async (req: NextRequest, userId: string) => {
         );
       }
 
+      const nutritionalData: Omit<NutritionalProfileData, 'id'> = {
+        weight,
+        height,
+        dailyCalorieNeed,
+        allergies: typeof input.allergies === 'string' ? input.allergies : null,
+        medicalNotes: typeof input.medicalNotes === 'string' ? input.medicalNotes : null,
+      };
+
       updateData.nutritionalProfile = {
         upsert: {
-          create: {
-            weight,
-            height,
-            dailyCalorieNeed,
-            allergies: typeof body.allergies === 'string' ? body.allergies : null,
-            medicalNotes: typeof body.medicalNotes === 'string' ? body.medicalNotes : null,
-          },
-          update: {
-            weight,
-            height,
-            dailyCalorieNeed,
-            allergies: typeof body.allergies === 'string' ? body.allergies : null,
-            medicalNotes: typeof body.medicalNotes === 'string' ? body.medicalNotes : null,
-          },
+          create: nutritionalData,
+          update: nutritionalData,
         },
       };
     }
@@ -126,6 +130,7 @@ export const updateProfile = async (req: NextRequest, userId: string) => {
       data: updateData,
       select: profileSelect,
     });
+
     return NextResponse.json({ status: 'success', data: updated });
   } catch (error) {
     console.error('[PROFILE UPDATE ERROR]', error);
@@ -133,11 +138,83 @@ export const updateProfile = async (req: NextRequest, userId: string) => {
   }
 };
 
-export const manageAddress = {
-  add: async (req: NextRequest, userId: string) => {
-    try {
-      const body = await req.json();
+export const getHealthProfile = async (userId: string) => {
+  try {
+    const nutritionalProfile = await prisma.nutritionalProfile.findUnique({
+      where: { userId },
+      select: {
+        weight: true,
+        height: true,
+        dailyCalorieNeed: true,
+        allergies: true,
+        medicalNotes: true,
+      },
+    });
 
+    return NextResponse.json({ profile: nutritionalProfile ?? null });
+  } catch (error) {
+    console.error('[HEALTH GET ERROR]', error);
+    return NextResponse.json({ error: 'Gagal mengambil health profile.' }, { status: 500 });
+  }
+};
+
+export const updateHealthProfile = async (userId: string, input: UpdateHealthInput) => {
+  try {
+    const weight = Number(input.weight);
+    const height = Number(input.height);
+
+    if (!Number.isFinite(weight) || weight <= 0) {
+      return NextResponse.json(
+        { error: 'Berat badan (weight) harus berupa angka positif.' },
+        { status: 400 }
+      );
+    }
+    if (!Number.isFinite(height) || height <= 0) {
+      return NextResponse.json(
+        { error: 'Tinggi badan (height) harus berupa angka positif.' },
+        { status: 400 }
+      );
+    }
+
+    const existingProfile = await prisma.nutritionalProfile.findUnique({
+      where: { userId },
+      select: { dailyCalorieNeed: true },
+    });
+
+    const dailyCalorieNeed =
+      input.dailyCalorieNeed !== undefined &&
+      Number.isFinite(Number(input.dailyCalorieNeed)) &&
+      Number(input.dailyCalorieNeed) > 0
+        ? Number(input.dailyCalorieNeed)
+        : (existingProfile?.dailyCalorieNeed ??
+            Math.round(10 * weight + 6.25 * height - 5 * 25 + 5));
+
+    const allergies = typeof input.allergies === 'string' ? input.allergies : null;
+    const medicalNotes = typeof input.medicalNotes === 'string' ? input.medicalNotes : null;
+
+    const updatedProfile = await prisma.nutritionalProfile.upsert({
+      where: { userId },
+      create: { userId, weight, height, dailyCalorieNeed, allergies, medicalNotes },
+      update: { weight, height, dailyCalorieNeed, allergies, medicalNotes },
+      select: {
+        weight: true,
+        height: true,
+        dailyCalorieNeed: true,
+        allergies: true,
+        medicalNotes: true,
+      },
+    });
+
+    return NextResponse.json({ profile: updatedProfile });
+  } catch (error) {
+    console.error('[HEALTH PUT ERROR]', error);
+    return NextResponse.json({ error: 'Gagal menyimpan health profile.' }, { status: 500 });
+  }
+};
+
+export const manageAddress = {
+  add: async (userId: string, body: AddAddressInput) => {
+    try {
       if (
         !isNonEmptyString(body.recipientName) ||
         !isNonEmptyString(body.phoneNumber) ||
@@ -162,6 +239,8 @@ export const manageAddress = {
         province: body.province.trim(),
         postalCode: body.postalCode.trim(),
         notes: typeof body.notes === 'string' ? body.notes : null,
+        latitude:  typeof body.latitude  === 'number' ? body.latitude  : null,
+        longitude: typeof body.longitude === 'number' ? body.longitude : null,
       };
 
       const requestedDefault = body.isDefault === true;
@@ -195,7 +274,7 @@ export const manageAddress = {
     }
   },
 
-  update: async (req: NextRequest, userId: string, addressId: string) => {
+  update: async (userId: string, addressId: string, body: Partial<AddAddressInput>) => {
     try {
       const existing = await prisma.address.findFirst({
         where: { id: addressId, userId },
@@ -206,8 +285,6 @@ export const manageAddress = {
         return NextResponse.json({ message: 'Alamat tidak ditemukan' }, { status: 404 });
       }
 
-      const body = await req.json();
-
       const updateData: Record<string, unknown> = {};
       if (isNonEmptyString(body.recipientName)) updateData.recipientName = body.recipientName.trim();
       if (isNonEmptyString(body.phoneNumber)) updateData.phoneNumber = body.phoneNumber.trim();
@@ -217,6 +294,8 @@ export const manageAddress = {
       if (isNonEmptyString(body.province)) updateData.province = body.province.trim();
       if (isNonEmptyString(body.postalCode)) updateData.postalCode = body.postalCode.trim();
       if (typeof body.notes === 'string' || body.notes === null) updateData.notes = body.notes;
+      if (typeof body.latitude  === 'number') updateData.latitude  = body.latitude;
+      if (typeof body.longitude === 'number') updateData.longitude = body.longitude;
 
       const wantsDefault = body.isDefault === true;
       if (!wantsDefault && Object.keys(updateData).length === 0) {
@@ -255,7 +334,7 @@ export const manageAddress = {
     }
   },
 
-  setDefault: async (req: NextRequest, userId: string, addressId: string) => {
+  setDefault: async (userId: string, addressId: string) => {
     try {
       const targetAddress = await prisma.address.findFirst({
         where: { id: addressId, userId },
@@ -289,15 +368,8 @@ export const manageAddress = {
     }
   },
 
-  /**
-   * DELETE /api/profile/address?id={addressId}
-   * Menghapus alamat pengiriman milik user.
-   * Jika alamat yang dihapus adalah default dan masih ada alamat lain,
-   * otomatis set alamat pertama (label asc) sebagai default baru.
-   */
-  delete: async (req: NextRequest, userId: string, addressId: string) => {
+  delete: async (userId: string, addressId: string) => {
     try {
-      // Cek alamat milik user yang bersangkutan
       const existing = await prisma.address.findFirst({
         where: { id: addressId, userId },
         select: { id: true, isDefault: true },
@@ -309,10 +381,8 @@ export const manageAddress = {
 
       const wasDefault = existing.isDefault;
 
-      // Hapus alamat
       await prisma.address.delete({ where: { id: addressId } });
 
-      // Jika yang dihapus adalah default, otomatis assign default ke alamat berikutnya
       if (wasDefault) {
         const nextAddress = await prisma.address.findFirst({
           where: { userId },
@@ -328,10 +398,7 @@ export const manageAddress = {
         }
       }
 
-      return NextResponse.json({
-        status: 'success',
-        message: 'Alamat berhasil dihapus',
-      });
+      return NextResponse.json({ status: 'success', message: 'Alamat berhasil dihapus' });
     } catch (error) {
       console.error('[ADDRESS DELETE ERROR]', error);
       return NextResponse.json({ message: 'Gagal menghapus alamat' }, { status: 500 });

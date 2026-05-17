@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
+import { validate } from '@/lib/validate';
+import { saveMealSelectionSchema } from '@/schemas';
+import { saveMealSelection } from '@/controllers/mealSelectionController';
 import prisma from '@/lib/prisma';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
@@ -9,28 +12,19 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-// Define the runtime shape of your parameters
 type DynamicRouteParams = {
   weeklyBoxId: string;
 };
 
-// Define the RouteContext as the build system expects it (with Promise in params)
-// This is the workaround for the specific type error you're getting.
 interface RouteContext {
-  params: Promise<DynamicRouteParams>; // <--- Crucial change here
+  params: Promise<DynamicRouteParams>;
 }
 
-export async function GET(
-  req: NextRequest,
-  context: RouteContext
-) {
-  // Await context.params to satisfy the TypeScript compiler and correctly access params
-  const { weeklyBoxId } = await context.params; // <--- FIX: Add 'await' here
-  
+export async function GET(req: NextRequest, context: RouteContext) {
+  const { weeklyBoxId } = await context.params;
+
   const session = await getSessionUserId(req);
-  if ('error' in session) {
-    return getAuthErrorResponse(session.error);
-  }
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
     const box = await prisma.weeklyBox.findUnique({
@@ -41,7 +35,6 @@ export async function GET(
       return NextResponse.json({ error: 'Weekly box tidak ditemukan.' }, { status: 404 });
     }
 
-    // Only owner or admin can view
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
       select: { role: true },
@@ -52,7 +45,7 @@ export async function GET(
     }
 
     const selections = await prisma.mealSelection.findMany({
-      where: { weeklyBoxId: weeklyBoxId },
+      where: { weeklyBoxId },
       include: {
         recipe: {
           select: {
@@ -82,7 +75,7 @@ export async function GET(
     });
 
     return NextResponse.json({
-      weeklyBoxId: weeklyBoxId,
+      weeklyBoxId,
       weekStartDate: box.weekStartDate,
       status: box.status,
       selectionDeadline: box.selectionDeadline,
@@ -92,5 +85,29 @@ export async function GET(
   } catch (error) {
     console.error('[MEAL SELECTION GET ERROR]', error);
     return NextResponse.json({ error: 'Gagal mengambil pilihan menu.' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest, context: RouteContext) {
+  const { weeklyBoxId } = await context.params;
+
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
+
+  try {
+    const body = await req.json();
+    const parsed = validate(saveMealSelectionSchema, body);
+    if (!parsed.success) return parsed.response;
+
+    if (parsed.data.weeklyBoxId !== weeklyBoxId) {
+      return NextResponse.json({ error: 'weeklyBoxId tidak cocok.' }, { status: 400 });
+    }
+
+    const result = await saveMealSelection(session.userId, parsed.data);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error('[MEAL SELECTION POST ERROR]', error);
+    return NextResponse.json({ error: 'Gagal menyimpan pilihan menu.' }, { status: 500 });
   }
 }

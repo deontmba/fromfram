@@ -1,39 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
+import { saveMealSelection } from '@/controllers/mealSelectionController';
+import { validate } from '@/lib/validate';
+import { saveMealSelectionSchema } from '@/schemas';
 import prisma from '@/lib/prisma';
 import { DayOfWeek } from '@prisma/client';
-
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING') {
+  if (error === 'CONFIG_MISSING')
     return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
-  }
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-/**
- * API Documentation
- * Endpoint   : POST /api/v1/meal-selections
- * Deskripsi  : Menyimpan pilihan menu harian user untuk minggu tertentu.
- * Method     : POST
- * Auth       : Cookie `token`
- * Body       :
- * {
- *   "weeklyBoxId": "clx...",
- *   "selections": [
- *     { "dayOfWeek": "SENIN", "recipeId": "clx..." },
- *     { "dayOfWeek": "SELASA", "recipeId": "clx..." },
- *     ...
- *   ]
- * }
- */
 export async function POST(req: NextRequest) {
   const session = await getSessionUserId(req);
-  if ('error' in session) {
-    return getAuthErrorResponse(session.error);
-  }
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
     const body = await req.json();
+    const parsed = validate(saveMealSelectionSchema, body);
+    if (!parsed.success) return parsed.response;
     const { weeklyBoxId, selections } = body as {
       weeklyBoxId: string;
       selections: { dayOfWeek: DayOfWeek; mealType?: 'LUNCH' | 'DINNER'; serving?: number; recipeId: string }[];
@@ -113,10 +98,9 @@ export async function POST(req: NextRequest) {
 
     const results = await prisma.$transaction(upserts);
 
-    return NextResponse.json(
-      { message: 'Pilihan menu berhasil disimpan.', count: results.length, data: results },
-      { status: 201 }
-    );
+    const result = await saveMealSelection(session.userId, parsed.data);
+    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[MEAL SELECTION POST ERROR]', error);
     return NextResponse.json({ error: 'Gagal menyimpan pilihan menu.' }, { status: 500 });

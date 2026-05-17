@@ -1,43 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import { NextRequest } from 'next/server';
+import { resetPassword } from '@/controllers/authController';
+import { validate } from '@/lib/validate';
+import { resetPasswordSchema } from '@/schemas';
 
 export async function POST(req: NextRequest) {
-  try {
-    const { token, newPassword } = await req.json();
+  const body = await req.json();
+  const parsed = validate(resetPasswordSchema, body);
+  if (!parsed.success) return parsed.response;
 
-    if (!token || !newPassword) {
-      return NextResponse.json({ error: "Token and new password are required." }, { status: 400 });
-    }
-
-    const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token },
-    });
-
-    if (!resetToken) {
-      return NextResponse.json({ error: "Token reset password tidak valid." }, { status: 400 });
-    }
-
-    if (resetToken.expiresAt < new Date()) {
-      await prisma.passwordResetToken.delete({ where: { token } });
-      return NextResponse.json({ error: "Token reset password sudah kadaluarsa." }, { status: 400 });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    await prisma.user.update({
-      where: { id: resetToken.userId },
-      data: { password: hashedPassword },
-    });
-
-    // Clean up the used token
-    await prisma.passwordResetToken.deleteMany({
-      where: { userId: resetToken.userId },
-    });
-
-    return NextResponse.json({ message: "Password berhasil direset." });
-  } catch (error) {
-    console.error("[RESET_PASSWORD_ERROR]", error);
-    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
-  }
+  return resetPassword(parsed.data.token, parsed.data.newPassword);
 }

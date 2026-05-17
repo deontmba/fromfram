@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
@@ -12,15 +13,26 @@ import {
   profileMockData,
 } from "@/components/profile/mock-data";
 import { indonesiaRegions } from "@/lib/indonesia-regions";
+import type { GeoCoordinates, AddressDraftData } from "@/types/address";
+
+// Leaflet tidak kompatibel dengan SSR — wajib dynamic import
+const MapPicker = dynamic(
+  () => import("@/components/maps/MapPicker").then((m) => ({ default: m.MapPicker })),
+  { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-2xl bg-neutral-100" /> },
+);
 
 type ManagedAddress = Address & {
   recipientName: string;
   phoneNumber: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 type ManagedAddressDraft = AddressDraft & {
   recipientName: string;
   phoneNumber: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type AddressResponse = {
@@ -47,6 +59,54 @@ type AddressSaveConfirmation = {
 const inputClassName =
   "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
 
+// Field yang di-lock saat peta digunakan
+const readonlyClassName =
+  "mt-2 h-14 w-full rounded-2xl border border-[#18b887]/40 bg-[#f0fdf9] px-4 text-[1.02rem] text-neutral-600 outline-none cursor-not-allowed";
+
+/** Opsi label alamat yang umum digunakan */
+const ADDRESS_LABEL_OPTIONS = [
+  { value: "Rumah",      emoji: "🏠" },
+  { value: "Kantor",     emoji: "💼" },
+  { value: "Kos",        emoji: "🛏️" },
+  { value: "Apartemen",  emoji: "🏢" },
+  { value: "Toko",       emoji: "🏪" },
+  { value: "Gudang",     emoji: "📦" },
+  { value: "Lainnya",    emoji: "📍" },
+];
+
+/**
+ * Mencocokkan string dari Nominatim (misal "Jawa Barat") ke nama
+ * yang ada di indonesiaRegions ("JAWA BARAT") secara case-insensitive.
+ * Juga mencoba menghapus prefix "Provinsi ", "Kota ", "Kabupaten " agar
+ * lebih mudah dicocokkan.
+ */
+function matchRegionName(nominatimValue: string, candidates: string[]): string {
+  if (!nominatimValue) return "";
+  const cleaned = nominatimValue
+    .toUpperCase()
+    .replace(/^(PROVINSI|DAERAH ISTIMEWA|DAERAH KHUSUS IBUKOTA)\s+/i, "")
+    .trim();
+
+  // 1. Exact uppercase match
+  const exact = candidates.find((c) => c === cleaned);
+  if (exact) return exact;
+
+  // 2. Candidate yang mengandung cleaned, atau cleaned yang mengandung candidate keyword
+  const partial = candidates.find(
+    (c) =>
+      c.includes(cleaned) ||
+      cleaned.includes(c.replace(/^(KABUPATEN|KOTA)\s+/, "").trim()),
+  );
+  if (partial) return partial;
+
+  // 3. Coba cocokkan kata-kata kunci utama
+  const keywords = cleaned.replace(/^(KABUPATEN|KOTA)\s+/, "").trim().split(/\s+/);
+  const keyword = candidates.find((c) =>
+    keywords.every((kw) => c.includes(kw)),
+  );
+  return keyword ?? "";
+}
+
 function getDefaultRecipientName() {
   return profileMockData.fullName;
 }
@@ -68,6 +128,8 @@ function getManagedAddressDraft(): ManagedAddressDraft {
     ...getEmptyAddressDraft(),
     recipientName: getDefaultRecipientName(),
     phoneNumber: getDefaultPhoneNumber(),
+    latitude: null,
+    longitude: null,
   };
 }
 
@@ -151,6 +213,8 @@ export function AddressManagementScreen() {
       postalCode: address.postalCode,
       notes: address.notes,
       isDefault: address.isDefault,
+      latitude: address.latitude ?? null,
+      longitude: address.longitude ?? null,
     });
     setEditingAddressId(address.id);
     setIsFormOpen(true);
@@ -205,6 +269,8 @@ export function AddressManagementScreen() {
       postalCode: addressDraft.postalCode.trim(),
       notes: addressDraft.notes.trim(),
       isDefault: addressDraft.isDefault,
+      latitude: addressDraft.latitude,
+      longitude: addressDraft.longitude,
     };
 
     try {
@@ -226,6 +292,8 @@ export function AddressManagementScreen() {
           postalCode: addressDraft.postalCode,
           notes: addressDraft.notes,
           isDefault: addressDraft.isDefault,
+          latitude: addressDraft.latitude,
+          longitude: addressDraft.longitude,
         }),
       });
       const data = (await response.json().catch(() => null)) as AddressResponse | null;
@@ -532,10 +600,92 @@ export function AddressManagementScreen() {
                 </button>
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {/* ── Map Picker Section ── */}
+              <div className="mt-5">
+                <p className="mb-2 text-[1rem] font-semibold text-neutral-800">
+                  Pilih Lokasi di Peta
+                </p>
+                <MapPicker
+                  initialPosition={
+                    addressDraft.latitude && addressDraft.longitude
+                      ? { lat: addressDraft.latitude, lng: addressDraft.longitude }
+                      : undefined
+                  }
+                  height="280px"
+                  onLocationSelect={(
+                    coords: GeoCoordinates,
+                    geocoded: Partial<AddressDraftData>,
+                    cityCandidates: string[],
+                  ) => {
+                    setAddressDraft((draft) => {
+                      // ── Cocokkan provinsi ──
+                      const allProvinceNames = indonesiaRegions.map((p) => p.name);
+                      const matchedProvince = geocoded.province
+                        ? matchRegionName(geocoded.province, allProvinceNames)
+                        : draft.province;
+
+                      // ── Cocokkan kota: coba setiap kandidat sampai ada yang cocok ──
+                      const provinceData = indonesiaRegions.find(
+                        (p) => p.name === matchedProvince,
+                      );
+                      const allCityNames = provinceData?.cities.map((c) => c.name) ?? [];
+
+                      // Iterasi semua kandidat dari Nominatim (state_district, county, city, dll.)
+                      // Ambil yang pertama berhasil dicocokkan ke dropdown
+                      const matchedCity = cityCandidates
+                        .map((candidate) => matchRegionName(candidate, allCityNames))
+                        .find((result) => result !== "") ?? "";
+
+                      return {
+                        ...draft,
+                        latitude: coords.lat,
+                        longitude: coords.lng,
+                        ...(geocoded.street     ? { street:     geocoded.street     } : {}),
+                        ...(geocoded.postalCode ? { postalCode: geocoded.postalCode } : {}),
+                        ...(matchedProvince     ? { province: matchedProvince, city: matchedCity } : {}),
+                      };
+                    });
+                  }}
+                />
+                {addressDraft.latitude && addressDraft.longitude ? (
+                  <div className="mt-2 flex items-center justify-between rounded-xl bg-[#f0fdf9] px-3 py-2">
+                    <p className="text-xs text-[#11af82]">
+                      📍 {addressDraft.latitude.toFixed(5)}, {addressDraft.longitude.toFixed(5)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAddressDraft((d) => ({
+                          ...d,
+                          latitude: null,
+                          longitude: null,
+                          street: "",
+                          city: "",
+                          province: "",
+                          postalCode: "",
+                        }))
+                      }
+                      className="text-xs font-semibold text-red-400 hover:text-red-600"
+                    >
+                      ✕ Reset peta
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Hint locked fields */}
+              {addressDraft.latitude && addressDraft.longitude ? (
+                <p className="mt-4 flex items-center gap-1.5 rounded-xl bg-[#f0fdf9] px-3 py-2 text-xs text-[#11af82]">
+                  <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Alamat terkunci dari peta — pindahkan pin untuk mengubah, atau klik &ldquo;Reset peta&rdquo; untuk isi manual.
+                </p>
+              ) : null}
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {/* Label Alamat — dropdown */}
                 <label className="block">
                   <span className="block text-[1rem] font-semibold text-neutral-800">Label Alamat</span>
-                  <input
+                  <select
                     className={inputClassName}
                     value={addressDraft.label}
                     onChange={(event) =>
@@ -544,17 +694,30 @@ export function AddressManagementScreen() {
                         label: event.target.value,
                       }))
                     }
-                  />
+                  >
+                    <option value="">Pilih label…</option>
+                    {ADDRESS_LABEL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.emoji} {opt.value}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
+                {/* Kode Pos — read-only jika dari peta */}
                 <label className="block">
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Kode Pos
+                    {addressDraft.latitude ? (
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                    ) : null}
                   </span>
                   <input
-                    className={inputClassName}
+                    readOnly={Boolean(addressDraft.latitude)}
+                    className={addressDraft.latitude ? readonlyClassName : inputClassName}
                     value={addressDraft.postalCode}
                     onChange={(event) =>
+                      !addressDraft.latitude &&
                       setAddressDraft((currentDraft) => ({
                         ...currentDraft,
                         postalCode: event.target.value,
@@ -563,12 +726,20 @@ export function AddressManagementScreen() {
                   />
                 </label>
 
+                {/* Alamat Lengkap — read-only jika dari peta */}
                 <label className="block sm:col-span-2">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Alamat Lengkap</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">
+                    Alamat Lengkap
+                    {addressDraft.latitude ? (
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                    ) : null}
+                  </span>
                   <input
-                    className={inputClassName}
+                    readOnly={Boolean(addressDraft.latitude)}
+                    className={addressDraft.latitude ? readonlyClassName : inputClassName}
                     value={addressDraft.street}
                     onChange={(event) =>
+                      !addressDraft.latitude &&
                       setAddressDraft((currentDraft) => ({
                         ...currentDraft,
                         street: event.target.value,
@@ -577,18 +748,23 @@ export function AddressManagementScreen() {
                   />
                 </label>
 
+                {/* Provinsi — locked jika dari peta */}
                 <label className="block">
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Provinsi
+                    {addressDraft.latitude ? (
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                    ) : null}
                   </span>
                   <select
-                    className={inputClassName}
+                    className={addressDraft.latitude ? readonlyClassName : inputClassName}
                     value={addressDraft.province}
+                    disabled={Boolean(addressDraft.latitude)}
                     onChange={(event) =>
                       setAddressDraft((currentDraft) => ({
                         ...currentDraft,
                         province: event.target.value,
-                        city: "", // reset kota jika provinsi berubah
+                        city: "",
                       }))
                     }
                   >
@@ -601,18 +777,24 @@ export function AddressManagementScreen() {
                   </select>
                 </label>
 
+                {/* Kota/Kabupaten — locked jika dari peta */}
                 <label className="block">
-                  <span className="block text-[1rem] font-semibold text-neutral-800">Kota/Kabupaten</span>
+                  <span className="block text-[1rem] font-semibold text-neutral-800">
+                    Kota/Kabupaten
+                    {addressDraft.latitude ? (
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                    ) : null}
+                  </span>
                   <select
-                    className={inputClassName}
+                    className={addressDraft.latitude ? readonlyClassName : inputClassName}
                     value={addressDraft.city}
+                    disabled={Boolean(addressDraft.latitude) || !addressDraft.province || cities.length === 0}
                     onChange={(event) =>
                       setAddressDraft((currentDraft) => ({
                         ...currentDraft,
                         city: event.target.value,
                       }))
                     }
-                    disabled={!addressDraft.province || cities.length === 0}
                   >
                     <option value="">Pilih Kota/Kabupaten</option>
                     {cities.map((city) => (

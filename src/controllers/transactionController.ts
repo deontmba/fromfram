@@ -28,3 +28,29 @@ export async function createTransaction(userId: string, input: CreateTransaction
     return { error: 'Gagal memproses transaksi', status: 500 };
   }
 }
+
+export async function getAllTransactions(userId: string) {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+    return { data: transactions, status: 200 };
+  } catch (error) {
+    console.error('[getAllTransactions Error]', error);
+    return { error: 'Gagal mengambil data transaksi', status: 500 };
+  }
+}
+
+export async function getTransactionStatus(userId: string, transactionId: string) {
+  try {
+    const transaction = await prisma.transaction.findFirst({
+      where: { id: transactionId, userId }
+    });
+    if (!transaction) return { error: 'Transaksi tidak ditemukan', status: 404 };
+    return { data: transaction, status: 200 };
+  } catch (error) {
+    console.error('[getTransactionStatus Error]', error);
+    return { error: 'Gagal mengambil status transaksi', status: 500 };
+  }
+}
