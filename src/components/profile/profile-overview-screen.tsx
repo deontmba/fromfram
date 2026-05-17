@@ -3,11 +3,25 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { motion, type Variants } from "framer-motion";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   profileMockData,
   type ProfileDetails,
 } from "@/components/profile/mock-data";
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+};
 
 type ProfileResponse = {
   user?: {
@@ -32,7 +46,7 @@ type StatusMessage =
   | null;
 
 const inputClassName =
-  "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#18b887]";
+  "mt-2 h-14 w-full rounded-2xl border border-neutral-300 bg-white px-4 text-[1.02rem] text-neutral-700 outline-none transition focus:border-[#13b987]";
 const panelClassName =
   "rounded-[18px] border border-black/5 bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.05)]";
 
@@ -187,31 +201,36 @@ export function ProfileOverviewScreen() {
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]"
         />
 
-        <section className="relative mx-auto w-full max-w-[880px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <motion.section 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="relative mx-auto w-full max-w-[880px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8"
+        >
+          <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
             <Link
               href="/"
-              className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50 cursor-pointer"
             >
               Kembali
             </Link>
             <button
               type="button"
               onClick={openEditDialog}
-              className="inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
+              className="inline-flex h-11 items-center rounded-2xl bg-[#13b987] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(19,185,135,0.28)] transition hover:bg-[#0f996f] cursor-pointer"
             >
               Edit profile
             </button>
-          </div>
+          </motion.div>
 
-          <div className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-7 text-center shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#dff7ee] text-[1.8rem] font-bold text-[#109f78]">
+          <motion.div variants={itemVariants} className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-7 text-center shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-[#eafff5] text-[1.8rem] font-bold text-[#13b987]">
               {getInitials(profile.fullName)}
             </div>
             <h1 className="mt-4 text-[1.9rem] font-bold tracking-[-0.02em] text-neutral-900">
               {profile.fullName}
             </h1>
-            <div className="mt-3 inline-flex rounded-full bg-[#dff7ee] px-4 py-1 text-sm font-semibold text-[#109f78]">
+            <div className="mt-3 inline-flex rounded-full bg-[#eafff5] px-4 py-1 text-sm font-semibold text-[#13b987]">
               {profile.memberLabel}
             </div>
             <p className="mt-3 text-[0.98rem] text-neutral-500">{profile.joinedAt}</p>
@@ -230,11 +249,11 @@ export function ProfileOverviewScreen() {
                 <p className="text-sm text-neutral-500">Favorite meals</p>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <motion.div variants={itemVariants} className="mt-5 grid gap-5 md:grid-cols-2">
             <div className={panelClassName}>
-              <p className="text-sm font-semibold text-[#11af82]">Profile</p>
+              <p className="text-sm font-semibold text-[#13b987]">Profile</p>
               <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
                 Main profile
               </h2>
@@ -243,7 +262,7 @@ export function ProfileOverviewScreen() {
                 <button
                   type="button"
                   onClick={openEditDialog}
-                  className="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 text-left transition hover:bg-white"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 text-left transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">
@@ -253,29 +272,29 @@ export function ProfileOverviewScreen() {
                       Update nama dan email akun
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </button>
 
                 <Link
                   href="/profile/health"
-                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">Profil kesehatan</p>
                     <p className="mt-1 text-sm text-neutral-500">Goals, BMI, alergi</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </Link>
 
                 <Link
                   href="/profile/address"
-                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">Kelola alamat</p>
                     <p className="mt-1 text-sm text-neutral-500">Tambah, ubah, pilih utama</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </Link>
               </div>
 
@@ -294,7 +313,7 @@ export function ProfileOverviewScreen() {
                 {message ? (
                   <p
                     className={`text-sm font-medium ${
-                      message.tone === "error" ? "text-red-500" : "text-[#11af82]"
+                      message.tone === "error" ? "text-red-500" : "text-[#13b987]"
                     }`}
                   >
                     {message.text}
@@ -304,7 +323,7 @@ export function ProfileOverviewScreen() {
             </div>
 
             <div className={panelClassName}>
-              <p className="text-sm font-semibold text-[#11af82]">Settings</p>
+              <p className="text-sm font-semibold text-[#13b987]">Settings</p>
               <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
                 Account settings
               </h2>
@@ -312,7 +331,7 @@ export function ProfileOverviewScreen() {
               <div className="mt-5 space-y-3">
                 <Link
                   href="/profile/notifications"
-                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">Notifications</p>
@@ -320,12 +339,12 @@ export function ProfileOverviewScreen() {
                       Atur pengingat dan update akun
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </Link>
 
                 <Link
                   href="/profile/security"
-                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">
@@ -333,32 +352,33 @@ export function ProfileOverviewScreen() {
                     </p>
                     <p className="mt-1 text-sm text-neutral-500">Kelola keamanan akun</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </Link>
 
                 <Link
                   href="/profile/help"
-                  className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
+                  className="flex cursor-pointer items-center justify-between rounded-2xl border border-neutral-200 bg-[#fafafa] px-4 py-4 transition hover:bg-white"
                 >
                   <div>
                     <p className="text-[1rem] font-semibold text-neutral-900">Help & support</p>
                     <p className="mt-1 text-sm text-neutral-500">Butuh bantuan lebih lanjut</p>
                   </div>
-                  <span className="text-sm font-semibold text-[#11af82]"></span>
+                  <span className="text-sm font-semibold text-[#13b987]"></span>
                 </Link>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <button
+          <motion.button
+            variants={itemVariants}
             type="button"
             onClick={() => setIsLogoutConfirmOpen(true)}
             disabled={isLoggingOut}
-            className="mt-5 h-14 w-full rounded-2xl bg-[#fff1f2] text-[1rem] font-semibold text-[#e11d48] transition hover:bg-[#ffe4e8] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 h-14 cursor-pointer w-full rounded-2xl bg-[#fff1f2] text-[1rem] font-semibold text-[#e11d48] transition hover:bg-[#ffe4e8] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoggingOut ? "Logging out..." : "Log out"}
-          </button>
-        </section>
+          </motion.button>
+        </motion.section>
       </main>
 
       {isEditOpen ? (
@@ -366,7 +386,7 @@ export function ProfileOverviewScreen() {
           <div className="w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-6 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-[#11af82]">Profile</p>
+                <p className="text-sm font-semibold text-[#13b987]">Profile</p>
                 <h3 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
                   Edit profile details
                 </h3>
@@ -374,7 +394,7 @@ export function ProfileOverviewScreen() {
               <button
                 type="button"
                 onClick={closeEditDialog}
-                className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                className="rounded-2xl cursor-pointer border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
               >
                 Tutup
               </button>
@@ -422,7 +442,7 @@ export function ProfileOverviewScreen() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="h-14 w-full rounded-2xl bg-[#1abb89] text-[1.05rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] disabled:opacity-60"
+                className="h-14 cursor-pointer w-full rounded-2xl bg-[#13b987] text-[1.05rem] font-bold text-white shadow-[0_8px_16px_rgba(19,185,135,0.35)] transition hover:bg-[#0f996f] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Menyimpan..." : "Save changes"}
               </button>

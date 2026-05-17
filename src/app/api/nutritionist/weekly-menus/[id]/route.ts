@@ -1,71 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import prisma from '@/lib/prisma';
-import { getStartOfWeek } from '@/lib/week';
+import { getNutritionistWeeklyMenuById, updateNutritionistWeeklyMenu, deleteNutritionistWeeklyMenu } from '@/controllers/nutritionistController';
+import { validate } from '@/lib/validate';
+import { updateWeeklyMenuSchema } from '@/schemas';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING') return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
+  if (error === 'CONFIG_MISSING')
+    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-export async function PATCH(req: NextRequest, context: { params: any }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
-  const requestingUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { role: true },
-  });
-
-  if (!requestingUser || requestingUser.role !== 'NUTRITIONIST') {
-    return NextResponse.json({ error: 'Forbidden. Nutritionist access required.' }, { status: 403 });
+  try {
+    const result = await getNutritionistWeeklyMenuById(session.userId, params.id);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error('[NUTRITIONIST WEEKLY MENU GET ERROR]', error);
+    return NextResponse.json({ error: 'Failed to fetch weekly menu.' }, { status: 500 });
   }
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const params = await Promise.resolve(context.params);
-    const id = params.id;
     const body = await req.json();
-    
-    const { recipeId, weekStartDate } = body;
-    const normalizedWeekStart = weekStartDate ? getStartOfWeek(new Date(weekStartDate)) : undefined;
+    const parsed = validate(updateWeeklyMenuSchema, body);
+    if (!parsed.success) return parsed.response;
 
-    const updatedMenu = await prisma.weeklyMenu.update({
-      where: { id },
-      data: {
-        ...(recipeId && { recipeId }),
-        ...(normalizedWeekStart && { weekStartDate: normalizedWeekStart })
-      }
-    });
-
-    return NextResponse.json({ data: updatedMenu });
+    const result = await updateNutritionistWeeklyMenu(session.userId, params.id, parsed.data);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[NUTRITIONIST WEEKLY MENU PATCH ERROR]', error);
     return NextResponse.json({ error: 'Failed to update weekly menu.' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, context: { params: any }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
-  const requestingUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { role: true },
-  });
-
-  if (!requestingUser || requestingUser.role !== 'NUTRITIONIST') {
-    return NextResponse.json({ error: 'Forbidden. Nutritionist access required.' }, { status: 403 });
-  }
-
   try {
-    const params = await Promise.resolve(context.params);
-    const id = params.id;
-
-    await prisma.weeklyMenu.delete({
-      where: { id }
-    });
-
-    return NextResponse.json({ success: true, message: 'Weekly menu deleted.' });
+    const result = await deleteNutritionistWeeklyMenu(session.userId, params.id);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[NUTRITIONIST WEEKLY MENU DELETE ERROR]', error);
     return NextResponse.json({ error: 'Failed to delete weekly menu.' }, { status: 500 });

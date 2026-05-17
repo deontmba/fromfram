@@ -1,140 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import prisma from '@/lib/prisma';
-import { DAYS_OF_WEEK, DayKey, getEndOfWeek, getNextWeekStart, getStartOfWeek } from '@/lib/week';
+import { getWeeklyMenu, saveWeeklyMenuSelections } from '@/controllers/subscriptionController';
+import { validate } from '@/lib/validate';
+import { saveMealSelectionsSchema } from '@/schemas';
 
-function buildWeeklyBoxDates(weekStart: Date) {
-  const weekEndDate = getEndOfWeek(weekStart);
-
-  const selectionDeadline = new Date(weekStart);
-  selectionDeadline.setDate(selectionDeadline.getDate() - 1);
-  selectionDeadline.setHours(18, 0, 0, 0);
-
-  return {
-    weekEndDate,
-    selectionDeadline,
-  };
+function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
+  if (error === 'CONFIG_MISSING')
+    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
+  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-
-/**
- * GET /api/subscriptions/weekly-menu
- *
- * Returns the weekly menu for the active calendar week, grouped by day (SENIN–MINGGU).
- * Shape expected by the frontend WeeklyMenuPage:
- * {
- *   weekStartDate: string,   // ISO date string
- *   weekEndDate:   string,
- *   menu: Array<{
- *     day:     DayKey,
- *     date:    string,       // ISO date string for that specific day
- *     recipes: Recipe[],
- *   }>
- * }
- *
- * NOTE: The WeeklyMenu table stores menu entries as one row per recipe. We group
- * rows by the active calendar week and expose the same recipe catalog on every
- * day so the user can pick one recipe per day.
- */
 export async function GET(req: NextRequest) {
-  // Auth check — keep consistent with the rest of the codebase.
-  // If the page can be reached before login (onboarding flow), you can remove this block.
   const session = await getSessionUserId(req);
-  if ('error' in session) {
-    // Treat CONFIG_MISSING as 500, anything else as 401
-    const status = session.error === 'CONFIG_MISSING' ? 500 : 401;
-    return NextResponse.json({ error: 'Not authenticated.' }, { status });
-  }
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const currentWeekStart = getStartOfWeek(new Date());
-    const nextWeekStart = getNextWeekStart(currentWeekStart);
-
-    const weeklyMenus = await prisma.weeklyMenu.findMany({
-      where: {
-        weekStartDate: {
-          gte: currentWeekStart,
-          lt: nextWeekStart,
-        },
-      },
-      include: {
-        recipe: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            calories: true,
-            protein: true,
-            servings: true,
-            imageUrl: true,
-          },
-        },
-      },
-    });
-
-    if (weeklyMenus.length === 0) {
-      return NextResponse.json(
-        { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu ini.' },
-        { status: 404 }
-      );
-    }
-
-    const recipes = Array.from(
-      new Map(
-        weeklyMenus.map((wm) => [wm.recipe.id, {
-          id: wm.recipe.id,
-          name: wm.recipe.name,
-          description: wm.recipe.description ?? undefined,
-          calories: wm.recipe.calories,
-          protein: wm.recipe.protein,
-          servings: wm.recipe.servings,
-          imageUrl: wm.recipe.imageUrl ?? undefined,
-        }])
-      ).values()
-    );
-
-    // Build one entry per day — same recipe catalog on every day
-      const weekEndDate = getEndOfWeek(currentWeekStart);
-
-    const menu = DAYS_OF_WEEK.map((day, idx) => {
-        const date = new Date(currentWeekStart);
-        date.setDate(currentWeekStart.getDate() + idx);
-      return {
-        day,
-        date: date.toISOString(),
-        recipes,
-      };
-    });
-
-    return NextResponse.json({
-      weekStartDate: currentWeekStart.toISOString(),
-      weekEndDate: weekEndDate.toISOString(),
-      menu,
-    });
+    const result = await getWeeklyMenu();
+    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
-    console.error('[GET /api/subscriptions/weekly-menu]', error);
-    return NextResponse.json(
-      { error: 'Gagal mengambil weekly menu.' },
-      { status: 500 }
-    );
+    console.error('[SUBSCRIPTION WEEKLY MENU GET ERROR]', error);
+    return NextResponse.json({ error: 'Gagal mengambil weekly menu.' }, { status: 500 });
   }
 }
 
-/**
- * POST /api/subscriptions/weekly-menu
- *
- * Saves the user's meal selections for the week.
- * Body: {
- *   mealSelections: Array<{ day: DayKey; recipeId: string }>,
- *   weekStartDate:  string | Date,
- * }
- */
 export async function POST(req: NextRequest) {
   const session = await getSessionUserId(req);
-  if ('error' in session) {
-    const status = session.error === 'CONFIG_MISSING' ? 500 : 401;
-    return NextResponse.json({ error: 'Not authenticated.' }, { status });
-  }
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
     const body = (await req.json()) as {
@@ -310,12 +202,11 @@ export async function POST(req: NextRequest) {
       });
     });
 
-    return NextResponse.json({ success: true });
+    const result = await saveWeeklyMenuSelections(session.userId, parsed.data);
+    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
-    console.error('[POST /api/subscriptions/weekly-menu]', error);
-    return NextResponse.json(
-      { error: 'Gagal menyimpan meal selections.' },
-      { status: 500 }
-    );
+    console.error('[SUBSCRIPTION WEEKLY MENU POST ERROR]', error);
+    return NextResponse.json({ error: 'Gagal menyimpan meal selections.' }, { status: 500 });
   }
 }
