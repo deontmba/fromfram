@@ -10,12 +10,13 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const result = await getNutritionistRecipeById(session.userId, params.id);
+    const { id } = await params;
+    const result = await getNutritionistRecipeById(session.userId, id);
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
@@ -33,7 +34,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const parsed = validate(updateRecipeSchema, body);
     if (!parsed.success) return parsed.response;
 
-    const result = await updateNutritionistRecipe(session.userId, params.id, parsed.data);
+    const { id } = await params;
+    const result = await updateNutritionistRecipe(session.userId, id, parsed.data);
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
@@ -42,12 +44,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const result = await deleteNutritionistRecipe(session.userId, params.id);
+    const { id } = await params;
+    const result = await deleteNutritionistRecipe(session.userId, id);
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {

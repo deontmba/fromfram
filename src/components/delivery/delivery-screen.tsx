@@ -290,13 +290,33 @@ function DeliveryListSection({
   deliveries: DeliverySummaryItem[];
   emptyMessage: string;
 }) {
+  const groupedDeliveries = deliveries.reduce((acc, current) => {
+    const key = `${current.dayLabel}, ${current.dateLabel}`;
+    if (!acc[key]) {
+      acc[key] = {
+        key,
+        dayLabel: current.dayLabel,
+        dateLabel: current.dateLabel,
+        statusLabel: current.statusLabel,
+        statusTone: current.statusTone,
+        menus: [],
+      };
+    }
+    if (current.menuName) {
+      acc[key].menus.push(current.menuName);
+    }
+    return acc;
+  }, {} as Record<string, { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] }>);
+
+  const groupedArray = Object.values(groupedDeliveries);
+
   return (
     <section aria-labelledby={id}>
       <SectionHeading id={id} title={title} icon={icon} />
-      {deliveries.length > 0 ? (
+      {groupedArray.length > 0 ? (
         <div className="space-y-3">
-          {deliveries.map((delivery) => (
-            <CompactDeliveryCard key={delivery.id} delivery={delivery} />
+          {groupedArray.map((group) => (
+            <GroupedDeliveryCard key={group.key} group={group} />
           ))}
         </div>
       ) : (
@@ -308,18 +328,28 @@ function DeliveryListSection({
   );
 }
 
-function CompactDeliveryCard({ delivery }: { delivery: DeliverySummaryItem }) {
+function GroupedDeliveryCard({
+  group,
+}: {
+  group: { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] };
+}) {
   return (
-    <article className="flex min-h-[62px] items-center justify-between gap-4 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+    <article className="flex min-h-[62px] items-start justify-between gap-4 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
       <div className="min-w-0">
         <h3 className="text-sm font-bold text-neutral-950">
-          {delivery.dayLabel}, {delivery.dateLabel}
+          {group.dayLabel}, {group.dateLabel}
         </h3>
-        <p className="mt-1 truncate text-xs font-medium text-neutral-500">
-          {delivery.menuName}
-        </p>
+        <div className="mt-1 flex flex-col gap-1">
+          {group.menus.map((menu, idx) => (
+            <p key={idx} className="truncate text-xs font-medium text-neutral-500">
+              {menu}
+            </p>
+          ))}
+        </div>
       </div>
-      <StatusBadge label={delivery.statusLabel} tone={delivery.statusTone} />
+      <div className="mt-0.5 shrink-0">
+        <StatusBadge label={group.statusLabel} tone={group.statusTone} />
+      </div>
     </article>
   );
 }

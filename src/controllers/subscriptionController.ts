@@ -379,7 +379,7 @@ export async function getWeeklyMenu() {
 
 export async function saveWeeklyMenuSelections(
   userId: string,
-  input: { mealSelections: { day: DayKey; recipeId: string }[]; weekStartDate: string | Date }
+  input: { mealSelections: { day: DayKey; mealType: 'LUNCH' | 'DINNER'; serving?: number; recipeId: string }[]; weekStartDate: string | Date }
 ) {
   const { mealSelections, weekStartDate } = input;
 
@@ -471,15 +471,31 @@ export async function saveWeeklyMenuSelections(
     return { error: 'WeeklyBox gagal dipersiapkan untuk penyimpanan menu.', status: 500 };
   }
 
-  const upsertOps = mealSelections.map(({ day, recipeId }) =>
-    prisma.mealSelection.upsert({
-      where: { weeklyBoxId_dayOfWeek: { weeklyBoxId: weeklyBoxId!, dayOfWeek: day } },
-      update: { recipeId },
-      create: { weeklyBoxId: weeklyBoxId!, recipeId, dayOfWeek: day },
-    })
-  );
+  // Group selections by (day, mealType) for efficient delete+recreate
+  const dayMealKeys = [...new Set(
+    mealSelections.map(({ day, mealType }) => `${day}:${mealType}`)
+  )];
 
-  await prisma.$transaction(upsertOps);
+  await prisma.$transaction(async (tx) => {
+    // Delete existing selections for each (day, mealType) being submitted
+    for (const key of dayMealKeys) {
+      const [day, mealType] = key.split(':') as [string, string];
+      await tx.mealSelection.deleteMany({
+        where: { weeklyBoxId: weeklyBoxId!, dayOfWeek: day as never, mealType: mealType as never },
+      });
+    }
+
+    // Create all new selections with serving counts
+    await tx.mealSelection.createMany({
+      data: mealSelections.map(({ day, mealType, recipeId, serving }) => ({
+        weeklyBoxId: weeklyBoxId!,
+        recipeId,
+        dayOfWeek: day as never,
+        mealType: mealType as never,
+        serving: serving ?? 1,
+      })),
+    });
+  });
 
   return { data: { success: true }, status: 200 };
 }

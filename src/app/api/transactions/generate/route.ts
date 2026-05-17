@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/session';
-import { generateTransaction } from '@/controllers/transactionController';
+import { randomUUID } from 'crypto';
 
 function getSnapBaseUrl() {
   return process.env.MIDTRANS_IS_PRODUCTION === 'true'

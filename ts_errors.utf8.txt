@@ -1,0 +1,80 @@
+﻿.next/dev/types/validator.ts(459,31): error TS2344: Type 'typeof import("C:/Codes/zPPL/fromfram/src/app/api/nutritionist/recipes/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/nutritionist/recipes/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(req: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ error: string; }> | NextResponse<{ data: { name: string; id: string; servings: number; description: string; calories: number; protein: number; imageUrl: string | null; }; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/dev/types/validator.ts(477,31): error TS2344: Type 'typeof import("C:/Codes/zPPL/fromfram/src/app/api/nutritionist/weekly-menus/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/nutritionist/weekly-menus/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(req: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ error: string; }> | NextResponse<{ data: { recipe: { name: string; id: string; servings: number; nutritionistId: string; description: string; calories: number; protein: number; imageUrl: string | null; }; } & { ...; }; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(396,31): error TS2344: Type 'typeof import("C:/Codes/zPPL/fromfram/src/app/api/nutritionist/recipes/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/nutritionist/recipes/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(req: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ error: string; }> | NextResponse<{ data: { name: string; id: string; servings: number; description: string; calories: number; protein: number; imageUrl: string | null; }; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+.next/types/validator.ts(414,31): error TS2344: Type 'typeof import("C:/Codes/zPPL/fromfram/src/app/api/nutritionist/weekly-menus/[id]/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/nutritionist/weekly-menus/[id]">'.
+  Types of property 'GET' are incompatible.
+    Type '(req: NextRequest, { params }: { params: { id: string; }; }) => Promise<NextResponse<{ error: string; }> | NextResponse<{ data: { recipe: { name: string; id: string; servings: number; nutritionistId: string; description: string; calories: number; protein: number; imageUrl: string | null; }; } & { ...; }; }>>' is not assignable to type '(request: NextRequest, context: { params: Promise<{ id: string; }>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters '__1' and 'context' are incompatible.
+        Type '{ params: Promise<{ id: string; }>; }' is not assignable to type '{ params: { id: string; }; }'.
+          Types of property 'params' are incompatible.
+            Property 'id' is missing in type 'Promise<{ id: string; }>' but required in type '{ id: string; }'.
+src/app/api/meal-selections/[weeklyBoxId]/route.ts(5,10): error TS2724: '"@/controllers/mealSelectionController"' has no exported member named 'saveMealSelections'. Did you mean 'saveMealSelection'?
+src/app/api/meal-selections/route.ts(3,10): error TS2724: '"@/controllers/mealSelectionController"' has no exported member named 'saveMealSelections'. Did you mean 'saveMealSelection'?
+src/app/api/meal-selections/route.ts(23,32): error TS2304: Cannot find name 'DayOfWeek'.
+src/app/api/meal-selections/route.ts(33,23): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/meal-selections/route.ts(61,37): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/meal-selections/route.ts(78,7): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/meal-selections/route.ts(98,27): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(33,36): error TS2304: Cannot find name 'DayKey'.
+src/app/api/subscriptions/weekly-menu/route.ts(54,23): error TS2304: Cannot find name 'getStartOfWeek'.
+src/app/api/subscriptions/weekly-menu/route.ts(55,27): error TS2552: Cannot find name 'getNextWeekStart'. Did you mean 'nextWeekStart'?
+src/app/api/subscriptions/weekly-menu/route.ts(59,37): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(94,37): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(120,34): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(153,50): error TS2304: Cannot find name 'buildWeeklyBoxDates'.
+src/app/api/subscriptions/weekly-menu/route.ts(155,38): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(184,11): error TS18048: 'prisma' is possibly 'undefined'.
+src/app/api/subscriptions/weekly-menu/route.ts(205,67): error TS2304: Cannot find name 'parsed'.
+src/app/api/transactions/generate/route.ts(4,10): error TS2724: '"@/controllers/transactionController"' has no exported member named 'generateTransaction'. Did you mean 'createTransaction'?
+src/app/api/transactions/generate/route.ts(117,44): error TS2304: Cannot find name 'randomUUID'.
+src/app/api/transactions/route.ts(3,10): error TS2305: Module '"@/controllers/transactionController"' has no exported member 'getAllTransactions'.
+src/app/api/transactions/status/[id]/route.ts(3,10): error TS2305: Module '"@/controllers/transactionController"' has no exported member 'getTransactionStatus'.
+src/app/api/user/personalization/route.ts(24,14): error TS2339: Property 'hasCompletedOnboarding' does not exist on type '{ name: string; role: Role; id: string; email: string; password: string | null; isVerified: boolean; googleId: string | null; avatarUrl: string | null; createdAt: Date; }'.
+src/app/api/user/personalization/route.ts(38,14): error TS2339: Property 'userPersonalization' does not exist on type 'PrismaClient<{ adapter: PrismaPg; }, never, DefaultArgs>'.
+src/app/api/user/personalization/route.ts(62,17): error TS2353: Object literal may only specify known properties, and 'hasCompletedOnboarding' does not exist in type '(Without<UserUpdateInput, UserUncheckedUpdateInput> & UserUncheckedUpdateInput) | (Without<...> & UserUpdateInput)'.
+src/components/auth/auth-screen.tsx(6,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/dashboard/payment-history-screen.tsx(5,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/dashboard/payment-history-screen.tsx(6,33): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/components/landing/hero-food-decorations.tsx(4,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/landing/hero-section.tsx(3,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/landing/navbar.tsx(4,41): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/landing/navbar.tsx(6,25): error TS2307: Cannot find module 'lucide-react' or its corresponding type declarations.
+src/components/landing/pricing-section.tsx(9,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/maps/MapPicker.tsx(28,8): error TS2307: Cannot find module 'react-leaflet' or its corresponding type declarations.
+src/components/maps/MapPicker.tsx(30,54): error TS2307: Cannot find module 'leaflet' or its corresponding type declarations.
+src/components/maps/MapPicker.tsx(45,49): error TS2307: Cannot find module 'leaflet' or its corresponding type declarations.
+src/components/maps/MapPicker.tsx(190,35): error TS2307: Cannot find module 'leaflet' or its corresponding type declarations.
+src/components/maps/MapPicker.tsx(216,11): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/motion/section-reveal.tsx(3,24): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/motion/section-reveal.tsx(4,31): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/onboarding/onboarding-flow.tsx(5,41): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/profile/profile-overview-screen.tsx(6,39): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/components/ui/cta-button.tsx(6,41): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/controllers/authController.ts(56,142): error TS2339: Property 'hasCompletedOnboarding' does not exist on type '{ name: string; role: Role; id: string; email: string; password: string | null; isVerified: boolean; googleId: string | null; avatarUrl: string | null; createdAt: Date; }'.
+src/controllers/authController.ts(141,30): error TS2339: Property 'hasCompletedOnboarding' does not exist on type '{ name: string; role: Role; id: string; email: string; password: string | null; isVerified: boolean; googleId: string | null; avatarUrl: string | null; createdAt: Date; }'.
+src/controllers/authController.ts(154,81): error TS2353: Object literal may only specify known properties, and 'hasCompletedOnboarding' does not exist in type 'UserSelect<DefaultArgs>'.
+src/controllers/subscriptionController.ts(476,16): error TS2353: Object literal may only specify known properties, and 'weeklyBoxId_dayOfWeek' does not exist in type 'MealSelectionWhereUniqueInput'.
+src/controllers/subscriptionController.ts(478,7): error TS2322: Type '{ weeklyBoxId: string; recipeId: string; dayOfWeek: "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU"; }' is not assignable to type '(Without<MealSelectionCreateInput, MealSelectionUncheckedCreateInput> & MealSelectionUncheckedCreateInput) | (Without<...> & MealSelectionCreateInput)'.
+  Type '{ weeklyBoxId: string; recipeId: string; dayOfWeek: "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU"; }' is not assignable to type 'Without<MealSelectionCreateInput, MealSelectionUncheckedCreateInput> & MealSelectionUncheckedCreateInput'.
+    Property 'mealType' is missing in type '{ weeklyBoxId: string; recipeId: string; dayOfWeek: "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU"; }' but required in type 'MealSelectionUncheckedCreateInput'.
+src/lib/animations.ts(1,31): error TS2307: Cannot find module 'framer-motion' or its corresponding type declarations.
+src/schemas/index.ts(8,1): error TS2308: Module './mealSelectionSchema' has already exported a member named 'SaveMealSelectionInput'. Consider explicitly re-exporting to resolve the ambiguity.
+src/schemas/index.ts(8,1): error TS2308: Module './mealSelectionSchema' has already exported a member named 'saveMealSelectionSchema'. Consider explicitly re-exporting to resolve the ambiguity.

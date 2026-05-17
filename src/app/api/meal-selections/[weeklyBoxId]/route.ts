@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
 import { validate } from '@/lib/validate';
 import { saveMealSelectionSchema } from '@/schemas';
-import { saveMealSelections } from '@/controllers/mealSelectionController';
+import { saveMealSelection } from '@/controllers/mealSelectionController';
 import prisma from '@/lib/prisma';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'weeklyBoxId tidak cocok.' }, { status: 400 });
     }
 
-    const result = await saveMealSelections(session.userId, parsed.data);
+    const result = await saveMealSelection(session.userId, parsed.data);
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {

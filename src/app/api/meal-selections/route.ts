@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import { saveMealSelections } from '@/controllers/mealSelectionController';
+import { saveMealSelection } from '@/controllers/mealSelectionController';
 import { validate } from '@/lib/validate';
 import { saveMealSelectionSchema } from '@/schemas';
-
+import prisma from '@/lib/prisma';
+import { DayOfWeek } from '@prisma/client';
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   if (error === 'CONFIG_MISSING')
     return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     const results = await prisma.$transaction(upserts);
 
-    const result = await saveMealSelections(session.userId, parsed.data);
+    const result = await saveMealSelection(session.userId, parsed.data);
     if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {

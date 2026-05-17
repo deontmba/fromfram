@@ -20,7 +20,7 @@
     "jsonwebtoken": "^9.0.3",
     "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.16.0",
     "next": "^16.2.4",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
