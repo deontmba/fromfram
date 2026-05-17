@@ -1,8 +1,36 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import QRCode from 'qrcode';
 import prisma from '@/lib/prisma';
 import { getSessionUserId } from '@/lib/session';
+
+function getSnapBaseUrl() {
+  return process.env.MIDTRANS_IS_PRODUCTION === 'true'
+    ? 'https://app.midtrans.com'
+    : 'https://app.sandbox.midtrans.com';
+}
+
+function getSnapTransactionUrl() {
+  return `${getSnapBaseUrl()}/snap/v1/transactions`;
+}
+
+function getSnapRedirectUrl(token: string) {
+  return `${getSnapBaseUrl()}/snap/v2/vtweb/${token}`;
+}
+
+function getEnabledPayments() {
+  const configuredPayments = process.env.MIDTRANS_ENABLED_PAYMENTS;
+
+  if (!configuredPayments) {
+    return undefined;
+  }
+
+  const enabledPayments = configuredPayments
+    .split(',')
+    .map((payment) => payment.trim())
+    .filter(Boolean);
+
+  return enabledPayments.length > 0 ? enabledPayments : undefined;
+}
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   if (error === 'CONFIG_MISSING') {
@@ -23,14 +51,16 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const amount = Number(body?.amount);
+    const requestedAmount = Number(body?.amount);
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
       return NextResponse.json(
         { error: 'amount harus berupa number lebih besar dari 0.' },
         { status: 400 }
       );
     }
+
+    const amount = requestedAmount;
 
     const [currentSubscription, latestTransaction] = await Promise.all([
       prisma.subscription.findFirst({
@@ -60,22 +90,33 @@ export async function POST(req: NextRequest) {
       latestTransaction.status !== 'FAILED' &&
       latestTransaction.status !== 'COMPLETED' &&
       latestTransaction.amount === amount &&
+      latestTransaction.qrisCode !== 'PENDING_SNAP' &&
       latestTransaction.createdAt >= currentSubscription.startDate;
 
     if (canReuseLatestTransaction) {
-      const qrImageDataUrl = await QRCode.toDataURL(latestTransaction.qrisCode, {
-        errorCorrectionLevel: 'M',
-        margin: 2,
-        width: 320,
-      });
+      const snapToken = latestTransaction.qrisCode;
+      const redirectUrl = getSnapRedirectUrl(snapToken);
 
       return NextResponse.json(
         {
           message: 'Transaction reused successfully.',
-          transaction: latestTransaction,
-          qrImageDataUrl,
+          transaction: {
+            ...latestTransaction,
+            snapToken,
+            redirectUrl,
+          },
+          snapToken,
+          redirectUrl,
         },
         { status: 200 }
+      );
+    }
+
+    const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
+    if (!serverKey) {
+      return NextResponse.json(
+        { error: 'Midtrans Server Key belum dikonfigurasi untuk Snap checkout.' },
+        { status: 500 }
       );
     }
 
@@ -87,31 +128,14 @@ export async function POST(req: NextRequest) {
         userId: session.userId,
         amount,
         status: 'PENDING',
-        qrisCode: `PENDING_MIDTRANS`,
+        qrisCode: `PENDING_SNAP`,
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
     });
 
-    const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
-    const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
-    const apiUrl = isProduction ? 'https://api.midtrans.com/v2/charge' : 'https://api.sandbox.midtrans.com/v2/charge';
-
-    if (!serverKey) {
-      console.warn("Midtrans Server Key is missing. Using dummy QRIS.");
-      // Fallback to dummy QRIS if no key is provided
-      const dummyQris = `QRIS-DUMMY-${orderId}`;
-      await prisma.transaction.update({
-        where: { id: orderId },
-        data: { qrisCode: dummyQris }
-      });
-      const qrImageDataUrl = await QRCode.toDataURL(dummyQris, { errorCorrectionLevel: 'M', margin: 2, width: 320 });
-      return NextResponse.json({ message: 'Dummy transaction generated.', transaction: { ...transaction, qrisCode: dummyQris }, qrImageDataUrl }, { status: 201 });
-    }
-
-    const midtransPayload = {
-      payment_type: 'qris',
+    const midtransPayload: Record<string, unknown> = {
       transaction_details: {
         order_id: orderId,
         gross_amount: amount,
@@ -119,10 +143,23 @@ export async function POST(req: NextRequest) {
       customer_details: {
         first_name: transaction.user.name,
         email: transaction.user.email,
-      }
+      },
+      item_details: [
+        {
+          id: 'subscription-plan',
+          name: 'FromFram Subscription',
+          quantity: 1,
+          price: amount,
+        },
+      ],
     };
 
-    const midtransRes = await fetch(apiUrl, {
+    const enabledPayments = getEnabledPayments();
+    if (enabledPayments) {
+      midtransPayload.enabled_payments = enabledPayments;
+    }
+
+    const midtransRes = await fetch(getSnapTransactionUrl(), {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -134,36 +171,47 @@ export async function POST(req: NextRequest) {
 
     const midtransData = await midtransRes.json();
 
-    if (!midtransRes.ok || (midtransData.status_code !== '201' && midtransData.status_code !== '200')) {
+    if (!midtransRes.ok) {
       console.error('Midtrans Error:', midtransData);
-      throw new Error(midtransData.status_message || 'Gagal generate QRIS Midtrans');
+      throw new Error(
+        typeof midtransData.status_message === 'string' && midtransData.status_message
+          ? midtransData.status_message
+          : `Gagal generate Snap Midtrans (${midtransRes.status})`
+      );
     }
 
-    const qrString = midtransData.qr_string || midtransData.actions?.find((a: any) => a.name === 'generate-qr-code')?.url || 'ERROR';
+    const snapToken = typeof midtransData.token === 'string' ? midtransData.token : '';
+    const redirectUrl = typeof midtransData.redirect_url === 'string'
+      ? midtransData.redirect_url
+      : getSnapRedirectUrl(snapToken);
+
+    if (!snapToken) {
+      throw new Error('Snap token tidak ditemukan di response Midtrans.');
+    }
 
     const updatedTransaction = await prisma.transaction.update({
       where: { id: orderId },
-      data: { qrisCode: qrString },
-    });
-
-    const qrImageDataUrl = await QRCode.toDataURL(qrString, {
-      errorCorrectionLevel: 'M',
-      margin: 2,
-      width: 320,
+      data: { qrisCode: snapToken },
     });
 
     return NextResponse.json(
       {
         message: 'Transaction generated successfully.',
-        transaction: updatedTransaction,
-        qrImageDataUrl,
+        transaction: {
+          ...updatedTransaction,
+          snapToken,
+          redirectUrl,
+        },
+        snapToken,
+        redirectUrl,
       },
       { status: 201 }
     );
   } catch (error) {
     console.error('[TRANSACTIONS GENERATE ERROR]', error);
+    const message = error instanceof Error && error.message ? error.message : 'Gagal membuat transaction.';
     return NextResponse.json(
-      { error: 'Gagal membuat transaction.' },
+      { error: message },
       { status: 500 }
     );
   }
