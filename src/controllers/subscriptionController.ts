@@ -317,11 +317,13 @@ export async function cancelSubscription(userId: string) {
 
 export async function getWeeklyMenu() {
   const currentWeekStart = getStartOfWeek(new Date());
-  const nextWeekStart = getNextWeekStart(currentWeekStart);
+  // The user should always select menus for the NEXT week, not the current week.
+  const targetWeekStart = getNextWeekStart(currentWeekStart);
+  const nextTargetWeekStart = getNextWeekStart(targetWeekStart);
 
   const weeklyMenus = await prisma.weeklyMenu.findMany({
     where: {
-      weekStartDate: { gte: currentWeekStart, lt: nextWeekStart },
+      weekStartDate: { gte: targetWeekStart, lt: nextTargetWeekStart },
     },
     include: {
       recipe: {
@@ -339,7 +341,7 @@ export async function getWeeklyMenu() {
   });
 
   if (weeklyMenus.length === 0) {
-    return { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu ini.', status: 404 };
+    return { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu depan.', status: 404 };
   }
 
   const recipes = Array.from(
@@ -359,17 +361,17 @@ export async function getWeeklyMenu() {
     ).values()
   );
 
-  const weekEndDate = getEndOfWeek(currentWeekStart);
+  const weekEndDate = getEndOfWeek(targetWeekStart);
 
   const menu = DAYS_OF_WEEK.map((day, idx) => {
-    const date = new Date(currentWeekStart);
-    date.setDate(currentWeekStart.getDate() + idx);
+    const date = new Date(targetWeekStart);
+    date.setDate(targetWeekStart.getDate() + idx);
     return { day, date: date.toISOString(), recipes };
   });
 
   return {
     data: {
-      weekStartDate: currentWeekStart.toISOString(),
+      weekStartDate: targetWeekStart.toISOString(),
       weekEndDate: weekEndDate.toISOString(),
       menu,
     },

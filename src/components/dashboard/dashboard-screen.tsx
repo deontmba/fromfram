@@ -100,7 +100,8 @@ type DashboardDelivery = {
 type DashboardPayload = {
   user?: DashboardUser | null;
   subscription?: DashboardSubscription | null;
-  weeklyBox?: DashboardWeeklyBox | null;
+  currentWeeklyBox?: DashboardWeeklyBox | null;
+  nextWeeklyBox?: DashboardWeeklyBox | null;
   todayDelivery?: DashboardDelivery | null;
   recentDeliveries?: DashboardDelivery[] | null;
 };
@@ -481,17 +482,22 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
 
 function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardViewModel {
   const subscription = payload.subscription ?? null;
-  const weeklyBox = payload.weeklyBox ?? null;
+  const currentWeeklyBox = payload.currentWeeklyBox ?? null;
+  const nextWeeklyBox = payload.nextWeeklyBox ?? null;
   const todayDelivery = payload.todayDelivery ?? null;
   const recentDeliveries = Array.isArray(payload.recentDeliveries)
     ? payload.recentDeliveries
     : [];
-  const selectedDays = pickNumber(weeklyBox?.summary?.selectedDays) ?? 0;
-  const totalDays = pickNumber(weeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
-  const canSelectMenu = weeklyBox?.summary?.canSelectMenu === true;
-  const weeklyBoxStatus = pickString(weeklyBox?.status)?.toUpperCase() ?? null;
-  const isLockedWeeklyBox = weeklyBoxStatus === "LOCKED";
-  const isFinalizedWeeklyBox = isLockedWeeklyBox || weeklyBoxStatus === "COMPLETED";
+  
+  const currentSelectedDays = pickNumber(currentWeeklyBox?.summary?.selectedDays) ?? 0;
+  const currentTotalDays = pickNumber(currentWeeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
+
+  const nextSelectedDays = pickNumber(nextWeeklyBox?.summary?.selectedDays) ?? 0;
+  const nextTotalDays = pickNumber(nextWeeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
+  const canSelectMenu = nextWeeklyBox?.summary?.canSelectMenu === true;
+  const nextWeeklyBoxStatus = pickString(nextWeeklyBox?.status)?.toUpperCase() ?? null;
+  const isLockedNextWeeklyBox = nextWeeklyBoxStatus === "LOCKED";
+  const isFinalizedNextWeeklyBox = isLockedNextWeeklyBox || nextWeeklyBoxStatus === "COMPLETED";
 
   return {
     subscription: subscription
@@ -514,14 +520,14 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
           nextBilling: EMPTY_LABEL,
           isEmpty: true,
         },
-    todayMenu: buildTodayMenu(weeklyBox, todayDelivery),
-    currentWeek: weeklyBox
+    todayMenu: buildTodayMenu(currentWeeklyBox, todayDelivery),
+    currentWeek: currentWeeklyBox
       ? {
           title: "Minggu Ini",
-          dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-          items: buildCurrentWeekItems(weeklyBox, todayDelivery, recentDeliveries),
+          dateRange: formatDateRange(currentWeeklyBox.weekStartDate, currentWeeklyBox.weekEndDate),
+          items: buildCurrentWeekItems(currentWeeklyBox, todayDelivery, recentDeliveries),
           emptyMessage: null,
-          trackingEnabled: Boolean(todayDelivery?.id || weeklyBox.id),
+          trackingEnabled: Boolean(todayDelivery?.id || currentWeeklyBox.id),
           todayDeliveryMessage: todayDelivery
             ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
             : "Belum ada pengiriman hari ini",
@@ -534,27 +540,27 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
           trackingEnabled: false,
           todayDeliveryMessage: "Belum ada pengiriman hari ini",
         },
-    nextWeek: weeklyBox
+    nextWeek: nextWeeklyBox
       ? {
           title: "Minggu Depan",
-          dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
+          dateRange: formatDateRange(nextWeeklyBox.weekStartDate, nextWeeklyBox.weekEndDate),
           heading: canSelectMenu
             ? "Pilih Menu Sekarang"
-            : isFinalizedWeeklyBox
+            : isFinalizedNextWeeklyBox
               ? "Menu sudah dikunci"
               : "Menu belum bisa dipilih",
-          deadline: formatDateLabel(weeklyBox.selectionDeadline),
-          selectedMenu: `${selectedDays}/${totalDays} hari`,
+          deadline: formatDateLabel(nextWeeklyBox.selectionDeadline),
+          selectedMenu: `${nextSelectedDays}/${nextTotalDays} hari`,
           reminder: canSelectMenu
             ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
-            : isFinalizedWeeklyBox
+            : isFinalizedNextWeeklyBox
               ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
               : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
-          timeLeft: getTimeLeftLabel(weeklyBox.selectionDeadline),
+          timeLeft: getTimeLeftLabel(nextWeeklyBox.selectionDeadline),
           canSelectMenu,
           unavailableMessage: canSelectMenu
             ? null
-            : isFinalizedWeeklyBox
+            : isFinalizedNextWeeklyBox
               ? null
               : "Pilih Menu Sekarang belum tersedia",
         }
