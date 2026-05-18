@@ -11,6 +11,7 @@ import {
   type AddressDraft,
 } from "@/components/profile/mock-data";
 import { indonesiaRegions } from "@/lib/indonesia-regions";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 
 type ManagedAddress = Address & {
   recipientName: string;
@@ -139,6 +140,7 @@ export function DeliveryAddressScreen() {
   const [message, setMessage] = useState<StatusMessage>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const provinces = indonesiaRegions;
   const selectedProvinceData = provinces.find((p) => p.name === addressDraft.province);
@@ -176,7 +178,7 @@ export function DeliveryAddressScreen() {
     };
   }, []);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage(null);
 
@@ -200,7 +202,24 @@ export function DeliveryAddressScreen() {
       return;
     }
 
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
     setIsSaving(true);
+
+    const payload = {
+      recipientName: addressDraft.recipientName.trim() || getDefaultRecipientName(),
+      phoneNumber: addressDraft.phoneNumber.trim() || getDefaultPhoneNumber(),
+      label: addressDraft.label.trim(),
+      street: addressDraft.street.trim(),
+      city: addressDraft.city.trim(),
+      province: addressDraft.province.trim(),
+      postalCode: addressDraft.postalCode.trim(),
+      notes: addressDraft.notes.trim(),
+      isDefault: true,
+    };
 
     try {
       const endpoint = defaultAddressId
@@ -420,6 +439,16 @@ export function DeliveryAddressScreen() {
           </footer>
         </form>
       </section>
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Konfirmasi Alamat Pengiriman"
+        message={`Alamat pengiriman Anda akan disimpan di ${addressDraft.label} (${addressDraft.street}, ${addressDraft.city}). Apakah Anda ingin melanjutkan ke pemilihan menu mingguan?`}
+        confirmLabel="Ya, Lanjutkan"
+        cancelLabel="Batal"
+        isConfirming={isSaving}
+        onCancel={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+      />
     </main>
   );
 }

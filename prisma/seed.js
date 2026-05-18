@@ -15,7 +15,9 @@ const COMMON_PASSWORD = "Password123!";
 function startOfWeek(date) {
   const value = new Date(date);
   value.setHours(0, 0, 0, 0);
-  value.setDate(value.getDate() - value.getDay());
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
   return value;
 }
 
@@ -468,6 +470,7 @@ const deliverySeeds = [
     addressLabel: "Rumah",
     deliveryDate: DELIVERY_SLOT,
     status: "PREPARING",
+    mealType: "LUNCH",
   },
   {
     userEmail: "rina@fromfram.test",
@@ -477,6 +480,7 @@ const deliverySeeds = [
     status: "DELIVERED",
     shippedAt: DELIVERY_SHIPPED,
     deliveredAt: DELIVERY_COMPLETED,
+    mealType: "LUNCH",
   },
 ];
 

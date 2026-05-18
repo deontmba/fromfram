@@ -16,6 +16,13 @@ type HealthProfileResponse = {
     allergies?: string;
     medicalNotes?: string;
   };
+  personalization?: {
+    goals?: string[];
+    dietaryPrefs?: string[];
+    allergies?: string[];
+    weight?: number;
+    height?: number;
+  };
   error?: string;
 };
 
@@ -49,10 +56,12 @@ export function HealthProfileScreen() {
 
         setHealth((currentHealth) => ({
           ...currentHealth,
-          weight: String(data.profile?.weight ?? currentHealth.weight),
-          height: String(data.profile?.height ?? currentHealth.height),
-          allergies: data.profile?.allergies ?? currentHealth.allergies,
-          medicalNotes: data.profile?.medicalNotes ?? currentHealth.medicalNotes,
+          weight: String(data.profile?.weight || data.personalization?.weight || ""),
+          height: String(data.profile?.height || data.personalization?.height || ""),
+          allergies: data.profile?.allergies || data.personalization?.allergies?.join(', ') || "",
+          medicalNotes: data.profile?.medicalNotes || "",
+          goals: data.personalization?.goals?.join(', ') || "",
+          dietPreference: data.personalization?.dietaryPrefs?.join(', ') || "",
         }));
       } catch {
         // Fallback ke mock data kalau endpoint belum mengembalikan data.

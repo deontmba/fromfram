@@ -19,213 +19,213 @@ export const getDashboard = async (userId: string) => {
       todayDelivery,
       recentDeliveries,
     ] = await Promise.all([
-        // 1. Data user dasar
-        prisma.user.findUnique({
-          where: { id: userId },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            nutritionalProfile: {
-              select: {
-                weight: true,
-                height: true,
-                dailyCalorieNeed: true,
-                allergies: true,
-              },
+      // 1. Data user dasar
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          nutritionalProfile: {
+            select: {
+              weight: true,
+              height: true,
+              dailyCalorieNeed: true,
+              allergies: true,
             },
           },
-        }),
+        },
+      }),
 
-        // 2. Subscription aktif user
-        prisma.subscription.findUnique({
-          where: { userId },
-          select: {
-            id: true,
-            planType: true,
-            servings: true,
-            status: true,
-            startDate: true,
-            endDate: true,
-            pausedUntil: true,
-            goal: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                minCalories: true,
-                maxCalories: true,
-              },
+      // 2. Subscription aktif user
+      prisma.subscription.findUnique({
+        where: { userId },
+        select: {
+          id: true,
+          planType: true,
+          servings: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          pausedUntil: true,
+          goal: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              minCalories: true,
+              maxCalories: true,
             },
           },
-        }),
+        },
+      }),
 
-        // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
-        prisma.weeklyBox.findFirst({
-          where: {
-            userId,
-            weekStartDate: { lte: today },
-            weekEndDate: { gte: today },
-          },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId,
+          weekStartDate: { lte: today },
+          weekEndDate: { gte: today },
+        },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
-        }),
+        },
+      }),
 
-        // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
-        prisma.weeklyBox.findFirst({
-          where: {
-            userId,
-            weekStartDate: { gt: today },
-          },
-          orderBy: { weekStartDate: 'asc' },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId,
+          weekStartDate: { gt: today },
+        },
+        orderBy: { weekStartDate: 'asc' },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
-        }),
+        },
+      }),
 
-        // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
-        prisma.weeklyBox.findFirst({
-          where: { userId },
-          orderBy: { weekStartDate: 'desc' },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
+      prisma.weeklyBox.findFirst({
+        where: { userId },
+        orderBy: { weekStartDate: 'desc' },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
-        }),
+        },
+      }),
 
-        // 4. Delivery hari ini
-        prisma.delivery.findFirst({
-          where: {
-            userId,
-            deliveryDate: {
-              gte: today,
-              lt: tomorrow,
+      // 4. Delivery hari ini
+      prisma.delivery.findFirst({
+        where: {
+          userId,
+          deliveryDate: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+        select: {
+          id: true,
+          deliveryDate: true,
+          status: true,
+          shippedAt: true,
+          deliveredAt: true,
+          address: {
+            select: {
+              label: true,
+              street: true,
+              city: true,
+              province: true,
+              recipientName: true,
             },
           },
-          select: {
-            id: true,
-            deliveryDate: true,
-            status: true,
-            shippedAt: true,
-            deliveredAt: true,
-            address: {
-              select: {
-                label: true,
-                street: true,
-                city: true,
-                province: true,
-                recipientName: true,
-              },
-            },
-            weeklyBox: {
-              select: {
-                mealSelections: {
-                  where: {
-                    // Ambil meal selection untuk hari ini berdasarkan nama hari
-                    dayOfWeek: getDayOfWeekEnum(new Date()),
-                  },
-                  select: {
-                    recipe: {
-                      select: {
-                        name: true,
-                        calories: true,
-                        imageUrl: true,
-                      },
+          weeklyBox: {
+            select: {
+              mealSelections: {
+                where: {
+                  // Ambil meal selection untuk hari ini berdasarkan nama hari
+                  dayOfWeek: getDayOfWeekEnum(new Date()),
+                },
+                select: {
+                  recipe: {
+                    select: {
+                      name: true,
+                      calories: true,
+                      imageUrl: true,
                     },
                   },
                 },
               },
             },
           },
-        }),
+        },
+      }),
 
-        // 5. Riwayat 7 pengiriman terakhir
-        prisma.delivery.findMany({
-          where: { userId },
-          orderBy: { deliveryDate: 'desc' },
-          take: 7,
-          select: {
-            id: true,
-            deliveryDate: true,
-            status: true,
-            shippedAt: true,
-            deliveredAt: true,
-          },
-        }),
-      ]);
+      // 5. Riwayat 7 pengiriman terakhir
+      prisma.delivery.findMany({
+        where: { userId },
+        orderBy: { deliveryDate: 'desc' },
+        take: 7,
+        select: {
+          id: true,
+          deliveryDate: true,
+          status: true,
+          shippedAt: true,
+          deliveredAt: true,
+        },
+      }),
+    ]);
 
     if (!user) {
       return NextResponse.json({ message: 'User tidak ditemukan.' }, { status: 404 });

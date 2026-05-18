@@ -459,7 +459,7 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
         recentDeliveries.length > 0
           ? `${recentDeliveries.length} pengiriman terakhir`
           : "Belum ada riwayat pengiriman",
-      href: "/dashboard/order-history",
+      href: "/delivery",
       icon: "history",
       tone: "green",
     },
@@ -505,16 +505,16 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   return {
     subscription: subscription
       ? {
-          label: "Subscription",
-          plan: getPlanLabel(subscription.planType),
-          servings:
-            typeof subscription.servings === "number" && Number.isFinite(subscription.servings)
-              ? `${subscription.servings} orang`
-              : EMPTY_LABEL,
-          status: pickString(subscription.status) ?? EMPTY_LABEL,
-          nextBilling: EMPTY_LABEL,
-          isEmpty: false,
-        }
+        label: "Subscription",
+        plan: getPlanLabel(subscription.planType),
+        servings:
+          typeof subscription.servings === "number" && Number.isFinite(subscription.servings)
+            ? `${subscription.servings} orang`
+            : EMPTY_LABEL,
+        status: pickString(subscription.status) ?? EMPTY_LABEL,
+        nextBilling: EMPTY_LABEL,
+        isEmpty: false,
+      }
       : {
           label: "Subscription",
           plan: "Belum ada subscription aktif",
@@ -568,16 +568,16 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
               : "Pilih Menu Sekarang belum tersedia",
         }
       : {
-          title: "Minggu Depan",
-          dateRange: EMPTY_LABEL,
-          heading: "Menu minggu depan belum tersedia",
-          deadline: EMPTY_LABEL,
-          selectedMenu: EMPTY_LABEL,
-          reminder: "Menu minggu ini / minggu depan belum tersedia.",
-          timeLeft: EMPTY_LABEL,
-          canSelectMenu: false,
-          unavailableMessage: "Pilih Menu Sekarang belum tersedia",
-        },
+        title: "Minggu Depan",
+        dateRange: EMPTY_LABEL,
+        heading: "Menu minggu depan belum tersedia",
+        deadline: EMPTY_LABEL,
+        selectedMenu: EMPTY_LABEL,
+        reminder: "Menu minggu ini / minggu depan belum tersedia.",
+        timeLeft: EMPTY_LABEL,
+        canSelectMenu: false,
+        unavailableMessage: "Pilih Menu Sekarang belum tersedia",
+      },
     quickActions: buildQuickActions(recentDeliveries),
   };
 }

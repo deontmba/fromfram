@@ -3,11 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion, type Variants } from "framer-motion";
 import {
   ensureMySubscription,
   type ApiPlanType,
 } from "@/components/subscription/subscription-service";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 type MealPlan = {
   id: "basic" | "fitness" | "diet";
@@ -25,6 +31,10 @@ type DurationPlan = {
   popular?: boolean;
   benefits: string[];
 };
+
+/* ------------------------------------------------------------------ */
+/*  Static data                                                        */
+/* ------------------------------------------------------------------ */
 
 const mealPlans: MealPlan[] = [
   {
@@ -114,13 +124,101 @@ function CheckIcon() {
   );
 }
 
+function mapGoalsToMealCategory(goals: string[]): MealPlan["id"] {
+  const g = goals[0]?.toLowerCase() ?? "";
+  if (g.includes("loss") || g.includes("diet") || g.includes("kalori") || g.includes("berat")) {
+    return "diet";
+  }
+  if (g.includes("gain") || g.includes("fitness") || g.includes("otot") || g.includes("protein") || g.includes("atlet")) {
+    return "fitness";
+  }
+  return "basic";
+}
+
+function mapDietaryToMealCategory(dietary: string[]): MealPlan["id"] {
+  const d = dietary[0]?.toLowerCase() ?? "";
+  if (d.includes("diet") || d.includes("kalori") || d.includes("berat")) {
+    return "diet";
+  }
+  if (d.includes("fitness") || d.includes("protein") || d.includes("atlet")) {
+    return "fitness";
+  }
+  return "basic";
+}
+
+const cardContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
 export function SelectPlanScreen() {
   const router = useRouter();
   const [selectedMeal, setSelectedMeal] = useState<MealPlan["id"]>("basic");
   const [selectedDuration, setSelectedDuration] = useState<DurationPlan["id"]>("monthly");
   const [selectedServing, setSelectedServing] = useState<number>(2);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [personalizedLabel, setPersonalizedLabel] = useState<string | null>(null);
+
+  /* ---------- fetch personalization on mount ---------- */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPersonalization() {
+      try {
+        const res = await fetch("/api/profile", { cache: "no-store" });
+        if (!res.ok) return;
+
+        const json = (await res.json().catch(() => null)) as Record<string, any> | null;
+        const user = json?.user ?? json?.data;
+        if (!user || cancelled) return;
+
+        const goals: string[] = user.personalization?.goals ?? [];
+        const dietary: string[] = user.personalization?.dietaryPrefs ?? [];
+
+        if (goals.length > 0) {
+          const mapped = mapGoalsToMealCategory(goals);
+          if (!cancelled) {
+            setSelectedMeal(mapped);
+            setPersonalizedLabel(
+              `Berdasarkan tujuan "${goals[0]}", kami merekomendasikan plan ini untuk Anda`,
+            );
+          }
+        } else if (dietary.length > 0) {
+          const mapped = mapDietaryToMealCategory(dietary);
+          if (mapped && !cancelled) {
+            setSelectedMeal(mapped);
+            setPersonalizedLabel(
+              `Berdasarkan preferensi diet Anda, kami merekomendasikan plan ini`,
+            );
+          }
+        }
+      } catch {
+        // silently fall back to default
+      } finally {
+        if (!cancelled) setIsLoadingProfile(false);
+      }
+    }
+
+    void loadPersonalization();
+    return () => { cancelled = true; };
+  }, []);
 
   const selectedDurationLabel = useMemo(
     () => durationPlans.find((item) => item.id === selectedDuration)?.name,
@@ -143,7 +241,12 @@ export function SelectPlanScreen() {
     return "BULANAN";
   }
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -206,21 +309,49 @@ export function SelectPlanScreen() {
             <h2 id="meal-plan-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
               1. Pilih Kategori Meal Plan
             </h2>
+
+            {/* Personalized recommendation banner */}
+            {!isLoadingProfile && personalizedLabel ? (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="mb-5 overflow-hidden rounded-2xl border border-[#1db788]/20 bg-gradient-to-r from-[#eafff5] to-[#d4f8f5] px-5 py-3.5"
+              >
+                <p className="flex items-center gap-2.5 text-[0.92rem] font-medium text-[#0f996f]">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#1db788] text-white">
+                    <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
+                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
+                    </svg>
+                  </span>
+                  {personalizedLabel}
+                </p>
+              </motion.div>
+            ) : null}
+
             <fieldset>
               <legend className="sr-only">Kategori meal plan</legend>
-              <div className="grid gap-6 md:grid-cols-3">
+              <motion.div
+                variants={cardContainerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-6 md:grid-cols-3"
+              >
                 {mealPlans.map((plan) => {
                   const active = plan.id === selectedMeal;
                   return (
-                    <button
+                    <motion.button
                       key={plan.id}
+                      variants={cardVariants}
+                      whileHover={{ y: active ? 0 : -6, transition: { duration: 0.25 } }}
+                      whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={() => setSelectedMeal(plan.id)}
                       aria-pressed={active}
                       className={`group rounded-3xl border-2 px-7 py-6 text-center backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                         active
                           ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
-                          : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
+                          : "border-[#1db788]/30 bg-white/20 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
                       }`}
                     >
                       <div
@@ -240,10 +371,10 @@ export function SelectPlanScreen() {
                       </div>
                       <p className="text-[1.18rem] font-semibold leading-tight text-neutral-900">{plan.name}</p>
                       <p className="mt-1.5 text-[0.96rem] text-neutral-500">{plan.desc}</p>
-                    </button>
+                    </motion.button>
                   );
                 })}
-              </div>
+              </motion.div>
             </fieldset>
           </section>
 
@@ -286,21 +417,29 @@ export function SelectPlanScreen() {
             </p>
             <fieldset>
               <legend className="sr-only">Durasi langganan</legend>
-              <div className="grid gap-6 lg:grid-cols-3">
+              <motion.div
+                variants={cardContainerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid gap-6 lg:grid-cols-3"
+              >
                 {durationPlans.map((plan) => {
                   const active = plan.id === selectedDuration;
                   const price = calculatePrice(plan.basePrice, selectedServing);
                   const savingsLabel = getSavingsLabel(plan, selectedServing);
                   return (
-                    <button
+                    <motion.button
                       key={plan.id}
+                      variants={cardVariants}
+                      whileHover={{ y: active ? 0 : -6, transition: { duration: 0.25 } }}
+                      whileTap={{ scale: 0.97 }}
                       type="button"
                       onClick={() => setSelectedDuration(plan.id)}
                       aria-pressed={active}
                       className={`relative rounded-3xl border-2 px-6 pb-7 pt-6 text-left backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
                         active
                           ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_18px_35px_rgba(29,183,136,0.28)]"
-                          : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_15px_30px_rgba(29,183,136,0.15)]"
+                          : "border-[#1db788]/30 bg-white/20 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_15px_30px_rgba(29,183,136,0.15)]"
                       }`}
                     >
                       {plan.popular ? (
@@ -329,10 +468,10 @@ export function SelectPlanScreen() {
                           </li>
                         ))}
                       </ul>
-                    </button>
+                    </motion.button>
                   );
                 })}
-              </div>
+              </motion.div>
             </fieldset>
           </section>
         </div>
@@ -363,9 +502,25 @@ export function SelectPlanScreen() {
         </footer>
 
         {errorMessage ? (
-          <p className="mt-4 text-center text-sm font-medium text-red-600">{errorMessage}</p>
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4 text-center text-sm font-medium text-red-600"
+          >
+            {errorMessage}
+          </motion.p>
         ) : null}
       </section>
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Konfirmasi Pilihan Langganan"
+        message={`Anda memilih meal plan ${selectedMeal.toUpperCase()} untuk ${selectedServing} porsi dengan durasi ${selectedDurationLabel}. Total biaya adalah ${formatRupiah(currentPrice)}. Apakah Anda ingin melanjutkan ke pengaturan alamat pengiriman?`}
+        confirmLabel="Ya, Lanjutkan"
+        cancelLabel="Batal"
+        isConfirming={isSubmitting}
+        onCancel={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+      />
     </main>
   );
 }

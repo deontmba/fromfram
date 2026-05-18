@@ -101,12 +101,16 @@ export async function lockCurrentWeeklyBox(userId: string) {
     prisma.weeklyBox.findFirst({
       where: { userId, status: 'PENDING_SELECTION' },
       orderBy: { weekStartDate: 'desc' },
-      select: { id: true, status: true, weekStartDate: true },
+      include: {
+        mealSelections: true,
+      },
     }),
     prisma.weeklyBox.findFirst({
       where: { userId },
       orderBy: { weekStartDate: 'desc' },
-      select: { id: true, status: true, weekStartDate: true },
+      include: {
+        mealSelections: true,
+      },
     }),
   ]);
 
@@ -127,9 +131,62 @@ export async function lockCurrentWeeklyBox(userId: string) {
     };
   }
 
-  const updatedBox = await prisma.weeklyBox.update({
-    where: { id: box.id },
-    data: { status: 'LOCKED' },
+  // Cari alamat user untuk pengiriman
+  const address = await prisma.address.findFirst({
+    where: { userId, isDefault: true },
+  }) ?? await prisma.address.findFirst({
+    where: { userId },
+  });
+
+  if (!address) {
+    return {
+      error: 'Anda harus menambahkan alamat pengiriman di profil terlebih dahulu sebelum mengunci menu.',
+      status: 400,
+    };
+  }
+
+  const dayOffsets: Record<string, number> = {
+    SENIN: 0,
+    SELASA: 1,
+    RABU: 2,
+    KAMIS: 3,
+    JUMAT: 4,
+    SABTU: 5,
+    MINGGU: 6,
+  };
+
+  const updatedBox = await prisma.$transaction(async (tx) => {
+    // 1. Kunci weekly box
+    const updated = await tx.weeklyBox.update({
+      where: { id: box.id },
+      data: { status: 'LOCKED' },
+    });
+
+    // 2. Buat delivery untuk masing-masing meal selection
+    if (box.mealSelections.length > 0) {
+      const deliveryData = box.mealSelections.map((sel) => {
+        const offset = dayOffsets[sel.dayOfWeek] ?? 0;
+        const deliveryDate = new Date(box.weekStartDate);
+        deliveryDate.setDate(deliveryDate.getDate() + offset);
+        const isLunch = sel.mealType === 'LUNCH';
+        deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
+
+        return {
+          userId,
+          weeklyBoxId: box.id,
+          addressId: address.id,
+          deliveryDate,
+          mealType: sel.mealType,
+          status: 'PREPARING' as const,
+        };
+      });
+
+      await tx.delivery.createMany({
+        data: deliveryData,
+      });
+    }
+
+    return updated;
   });
 
   return { data: { message: 'Weekly box berhasil dikunci.', data: updatedBox }, status: 200 };

@@ -4,6 +4,10 @@ export type ProfileDetails = {
   phoneNumber: string;
   memberLabel: string;
   joinedAt: string;
+  gender: string;
+  age: string;
+  isSubscribed: boolean;
+  avatarUrl?: string;
 };
 
 export type HealthProfile = {
@@ -31,18 +35,21 @@ export type AddressDraft = Omit<Address, "id">;
 export const profileMockData: ProfileDetails = {
   fullName: "Aisha Rahman",
   email: "aisha@example.com",
-  phoneNumber: "+62 812 3456 7890",
-  memberLabel: "Premium Member",
+  phoneNumber: "",
+  memberLabel: "Reguler",
   joinedAt: "Joined Oct 2023",
+  gender: "",
+  age: "",
+  isSubscribed: false,
 };
 
 export const healthMockData: HealthProfile = {
-  weight: "65",
-  height: "168",
-  allergies: "Kacang, Seafood",
-  medicalNotes: "Kurangi gula dan hindari makanan terlalu pedas pada malam hari.",
-  goals: "Weight Loss",
-  dietPreference: "Rendah Karbohidrat",
+  weight: "",
+  height: "",
+  allergies: "",
+  medicalNotes: "",
+  goals: "",
+  dietPreference: "",
 };
 
 export const addressMockData: Address[] = [
