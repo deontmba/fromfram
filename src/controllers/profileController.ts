@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { SubscriptionStatus } from '@prisma/client';
 import { AddAddressInput, UpdateProfileInput, UpdateHealthInput } from '@/schemas';
 import { NutritionalProfileData } from '@/types';
 
@@ -23,7 +24,22 @@ const profileSelect = {
   email: true,
   name: true,
   role: true,
+  phoneNumber: true,
+  gender: true,
+  avatarUrl: true,
   createdAt: true,
+  personalization: true,
+  subscriptions: {
+    where: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.UNPAID] } },
+    take: 1,
+    select: {
+      status: true,
+      planType: true,
+      servings: true,
+      startDate: true,
+      goal: { select: { name: true } },
+    },
+  },
   nutritionalProfile: {
     select: {
       id: true,
@@ -80,6 +96,24 @@ export const updateProfile = async (userId: string, input: UpdateProfileInput) =
 
     if (isNonEmptyString(input.name)) {
       updateData.name = input.name.trim();
+    }
+    if (isNonEmptyString(input.avatarUrl)) {
+      updateData.avatarUrl = input.avatarUrl.trim();
+    }
+    if (input.phoneNumber !== undefined) {
+      updateData.phoneNumber = input.phoneNumber;
+    }
+    if (input.gender !== undefined) {
+      updateData.gender = input.gender;
+    }
+
+    if (input.age !== undefined) {
+      updateData.personalization = {
+        upsert: {
+          create: { age: input.age, goals: [], dietaryPrefs: [], allergies: [], cookingPrefs: [] },
+          update: { age: input.age },
+        }
+      };
     }
 
     const hasNutritionalPayload = (
@@ -138,20 +172,32 @@ export const updateProfile = async (userId: string, input: UpdateProfileInput) =
   }
 };
 
-export const getHealthProfile = async (userId: string) => {
+  export const getHealthProfile = async (userId: string) => {
   try {
-    const nutritionalProfile = await prisma.nutritionalProfile.findUnique({
-      where: { userId },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       select: {
-        weight: true,
-        height: true,
-        dailyCalorieNeed: true,
-        allergies: true,
-        medicalNotes: true,
+        nutritionalProfile: {
+          select: {
+            weight: true,
+            height: true,
+            dailyCalorieNeed: true,
+            allergies: true,
+            medicalNotes: true,
+          },
+        },
+        personalization: true,
       },
     });
 
-    return NextResponse.json({ profile: nutritionalProfile ?? null });
+    if (!user) {
+      return NextResponse.json({ error: 'User tidak ditemukan.' }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      profile: user.nutritionalProfile ?? null,
+      personalization: user.personalization ?? null 
+    });
   } catch (error) {
     console.error('[HEALTH GET ERROR]', error);
     return NextResponse.json({ error: 'Gagal mengambil health profile.' }, { status: 500 });
@@ -216,8 +262,6 @@ export const manageAddress = {
   add: async (userId: string, body: AddAddressInput) => {
     try {
       if (
-        !isNonEmptyString(body.recipientName) ||
-        !isNonEmptyString(body.phoneNumber) ||
         !isNonEmptyString(body.label) ||
         !isNonEmptyString(body.street) ||
         !isNonEmptyString(body.city) ||
@@ -225,14 +269,14 @@ export const manageAddress = {
         !isNonEmptyString(body.postalCode)
       ) {
         return NextResponse.json(
-          { message: 'recipientName, phoneNumber, label, street, city, province, dan postalCode wajib diisi.' },
+          { message: 'label, street, city, province, dan postalCode wajib diisi.' },
           { status: 400 }
         );
       }
 
       const payload = {
-        recipientName: body.recipientName.trim(),
-        phoneNumber: body.phoneNumber.trim(),
+        recipientName: isNonEmptyString(body.recipientName) ? body.recipientName.trim() : null,
+        phoneNumber: isNonEmptyString(body.phoneNumber) ? body.phoneNumber.trim() : null,
         label: body.label.trim(),
         street: body.street.trim(),
         city: body.city.trim(),

@@ -83,6 +83,10 @@ const benefits = [
   "Priority customer support",
 ];
 
+// ---------------------------------------------------------------------------
+// Utils
+// ---------------------------------------------------------------------------
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -93,130 +97,65 @@ function toRecord(value: unknown) {
 
 function pickString(...values: unknown[]) {
   for (const value of values) {
-    if (typeof value === "string") {
-      const trimmedValue = value.trim();
-
-      if (trimmedValue) {
-        return trimmedValue;
-      }
-    }
+    if (typeof value === "string" && value.trim()) return value.trim();
   }
-
   return null;
 }
 
 function pickNumber(...values: unknown[]) {
   for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-
+    if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
-      const parsedValue = Number.parseFloat(value.replace(/[^\d.-]/g, ""));
-
-      if (Number.isFinite(parsedValue)) {
-        return parsedValue;
-      }
+      const parsed = Number.parseFloat(value.replace(/[^\d.-]/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
     }
   }
-
   return null;
 }
 
 function formatCurrency(amount: number) {
-  return `Rp ${new Intl.NumberFormat("id-ID", {
-    maximumFractionDigits: 0,
-  }).format(amount)}`;
+  return `Rp ${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(amount)}`;
 }
 
 function normalizePlanKey(value: unknown): PlanKey | null {
-  const normalizedValue = pickString(value)?.toLowerCase();
-
-  if (!normalizedValue) {
-    return null;
-  }
-
-  if (["mingguan", "weekly", "week"].includes(normalizedValue)) {
-    return "weekly";
-  }
-
-  if (["bulanan", "monthly", "month"].includes(normalizedValue)) {
-    return "monthly";
-  }
-
-  if (["tahunan", "yearly", "annual", "year"].includes(normalizedValue)) {
-    return "yearly";
-  }
-
+  const v = pickString(value)?.toLowerCase();
+  if (!v) return null;
+  if (["mingguan", "weekly", "week"].includes(v)) return "weekly";
+  if (["bulanan", "monthly", "month"].includes(v)) return "monthly";
+  if (["tahunan", "yearly", "annual", "year"].includes(v)) return "yearly";
   return null;
 }
 
-function unwrapSubscriptionRecord(payload: unknown) {
-  const rootRecord = toRecord(payload);
-
-  if (!rootRecord) {
-    return null;
+function getSummaryFromDraft(): Partial<PaymentSummary> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = sessionStorage.getItem("fromfram_subscription_draft");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { duration?: PlanKey; servings?: number };
+    if (!parsed.duration || !(parsed.duration in PLAN_CONFIG)) return {};
+    return {
+      ...PLAN_CONFIG[parsed.duration],
+      servingLabel:
+        typeof parsed.servings === "number" ? `${parsed.servings} orang` : undefined,
+    };
+  } catch {
+    return {};
   }
-
-  const subscriptionRecord = toRecord(rootRecord.subscription);
-  if (subscriptionRecord) {
-    return subscriptionRecord;
-  }
-
-  const dataRecord = toRecord(rootRecord.data);
-  if (dataRecord) {
-    return toRecord(dataRecord.subscription) ?? dataRecord;
-  }
-
-  return rootRecord;
 }
 
 function mapSubscriptionToSummary(payload: unknown): Partial<PaymentSummary> {
-  const record = unwrapSubscriptionRecord(payload);
-
-  if (!record) {
-    return {};
-  }
-
+  const root = toRecord(payload);
+  if (!root) return {};
+  const rec =
+    toRecord(root.subscription) ??
+    toRecord(toRecord(root.data)?.subscription) ??
+    toRecord(root.data) ??
+    root;
   const planKey =
     normalizePlanKey(
-      pickString(
-        record.planType,
-        record.planName,
-        record.plan,
-        toRecord(record.plan)?.type,
-        toRecord(record.plan)?.name,
-      ),
+      pickString(rec.planType, rec.planName, rec.plan),
     ) ?? "monthly";
-  const planConfig = PLAN_CONFIG[planKey];
-  const servings = pickNumber(record.servings, record.servingSize, record.servingCount);
-  const summaryPatch: Partial<PaymentSummary> = { ...planConfig };
-
-  if (servings) {
-    summaryPatch.servingLabel = `${servings} orang`;
-  }
-
-  return summaryPatch;
-}
-
-function unwrapTransactionRecord(payload: unknown) {
-  const rootRecord = toRecord(payload);
-
-  if (!rootRecord) {
-    return null;
-  }
-
-  return toRecord(rootRecord.transaction) ?? toRecord(rootRecord.data) ?? rootRecord;
-}
-
-function mapTransaction(payload: unknown): TransactionViewModel | null {
-  const rootRecord = toRecord(payload);
-  const record = unwrapTransactionRecord(payload);
-
-  if (!record) {
-    return null;
-  }
-
+  const servings = pickNumber(rec.servings, rec.servingSize);
   return {
     id: pickString(record.id, record.transactionId),
     amount: pickNumber(record.amount, record.total, record.totalAmount),
@@ -233,115 +172,45 @@ function mapTransaction(payload: unknown): TransactionViewModel | null {
   };
 }
 
-function getSummaryFromDraft() {
-  if (typeof window === "undefined") {
-    return {} as Partial<PaymentSummary>;
+function getDefaultAddressLabel(payload: unknown): string | null {
+  const root = toRecord(payload);
+  if (!root) return null;
+  const candidates = [root.address, root.addresses, root.data];
+  let list: unknown[] = [];
+  for (const c of candidates) {
+    if (Array.isArray(c)) { list = c; break; }
+    if (isRecord(c)) { list = [c]; break; }
   }
-
-  try {
-    const rawDraft = sessionStorage.getItem("fromfram_subscription_draft");
-    if (!rawDraft) {
-      return {} as Partial<PaymentSummary>;
-    }
-
-    const parsedDraft = JSON.parse(rawDraft) as {
-      duration?: PlanKey;
-      servings?: number;
-    };
-
-    const duration = parsedDraft.duration;
-    if (!duration || !(duration in PLAN_CONFIG)) {
-      return {} as Partial<PaymentSummary>;
-    }
-
-    return {
-      ...PLAN_CONFIG[duration],
-      servingLabel:
-        typeof parsedDraft.servings === "number" && Number.isFinite(parsedDraft.servings)
-          ? `${parsedDraft.servings} orang`
-          : undefined,
-    };
-  } catch {
-    return {} as Partial<PaymentSummary>;
-  }
-}
-
-function getAddressCandidates(payload: unknown) {
-  const rootRecord = toRecord(payload);
-
-  if (!rootRecord) {
-    return [];
-  }
-
-  const candidates = [rootRecord.address, rootRecord.addresses, rootRecord.data];
-
-  for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate;
-    }
-
-    if (isRecord(candidate)) {
-      return [candidate];
-    }
-  }
-
-  return [];
-}
-
-function getDefaultAddressLabel(payload: unknown) {
-  const addresses = getAddressCandidates(payload)
-    .map((address) => toRecord(address))
-    .filter((address): address is Record<string, unknown> => Boolean(address));
-  const defaultAddress =
-    addresses.find((address) => address.isDefault === true) ?? addresses[0];
-
-  return pickString(defaultAddress?.label);
+  const addresses = list.map(toRecord).filter(Boolean) as Record<string, unknown>[];
+  const def = addresses.find((a) => a.isDefault === true) ?? addresses[0];
+  return pickString(def?.label);
 }
 
 async function lockCurrentWeeklyBox() {
-  const response = await fetch('/api/weekly-boxes/current/lock', {
-    method: 'PATCH',
-    cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch("/api/weekly-boxes/current/lock", {
+    method: "PATCH",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
   });
-
-  const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
+  const payload = await res.json().catch(() => null);
+  if (!res.ok) {
     throw new Error(
-      isRecord(payload) && typeof payload.error === 'string'
+      isRecord(payload) && typeof payload.error === "string"
         ? payload.error
-        : 'Gagal mengunci weekly box.'
+        : "Gagal mengunci weekly box.",
     );
   }
-
   return payload;
 }
 
-function QrisIcon({ className = "h-5 w-5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm11 1h2v2h-2v-2Zm4 0h1v5h-5v-1h4v-4Zm-7-3h2v2h-2v-2Zm0 5h2v3h-2v-3Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 
 function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
-      <path
-        d="m5 12 4 4L19 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -392,54 +261,61 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
     ? "https://app.midtrans.com/snap/snap.js"
     : "https://app.sandbox.midtrans.com/snap/snap.js";
 
+  // Load Snap.js script
+  useEffect(() => {
+    if (snapScriptLoaded.current) return;
+    const isProduction = process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
+    const scriptSrc = isProduction
+      ? "https://app.midtrans.com/snap/snap.js"
+      : "https://app.sandbox.midtrans.com/snap/snap.js";
+
+    const script = document.createElement("script");
+    script.src = scriptSrc;
+    script.setAttribute("data-client-key", clientKey);
+    script.async = true;
+    document.body.appendChild(script);
+    snapScriptLoaded.current = true;
+  }, []);
+
+  // Load summary + generate token
   useEffect(() => {
     let isMounted = true;
 
-    async function loadPaymentContext() {
-      const nextSummary: PaymentSummary = {
-        ...FALLBACK_SUMMARY,
-        ...getSummaryFromDraft(),
-      };
+    async function init() {
+      const nextSummary: PaymentSummary = { ...FALLBACK_SUMMARY, ...getSummaryFromDraft() };
 
       try {
-        const [subscriptionResult, addressResult] = await Promise.allSettled([
+        const [subRes, addrRes] = await Promise.allSettled([
           fetch("/api/subscriptions/me", { cache: "no-store" }),
           fetch("/api/profile/address", { cache: "no-store" }),
         ]);
 
-        if (subscriptionResult.status === "fulfilled" && subscriptionResult.value.ok) {
-          const subscriptionPayload = await subscriptionResult.value.json().catch(() => null);
-          Object.assign(nextSummary, mapSubscriptionToSummary(subscriptionPayload));
+        if (subRes.status === "fulfilled" && subRes.value.ok) {
+          const data = await subRes.value.json().catch(() => null);
+          Object.assign(nextSummary, mapSubscriptionToSummary(data));
         }
 
-        if (addressResult.status === "fulfilled" && addressResult.value.ok) {
-          const addressPayload = await addressResult.value.json().catch(() => null);
-          nextSummary.addressLabel = getDefaultAddressLabel(addressPayload) ?? nextSummary.addressLabel;
+        if (addrRes.status === "fulfilled" && addrRes.value.ok) {
+          const data = await addrRes.value.json().catch(() => null);
+          nextSummary.addressLabel = getDefaultAddressLabel(data) ?? nextSummary.addressLabel;
         }
-      } catch {
-        // fallback summary
-      }
+      } catch { /* pakai fallback */ }
 
-      if (!isMounted) {
-        return;
-      }
-
+      if (!isMounted) return;
       setSummary(nextSummary);
 
       try {
-        const response = await fetch("/api/transactions/generate", {
+        const res = await fetch("/api/transactions/generate", {
           method: "POST",
           cache: "no-store",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount: nextSummary.total }),
         });
 
-        const payload = await response.json().catch(() => null);
-        const nextTransaction = response.ok ? mapTransaction(payload) : null;
+        const payload = await res.json().catch(() => null);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         if (nextTransaction) {
           setTransaction(nextTransaction);
@@ -455,31 +331,55 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
             setStatusMessage("Checkout Midtrans siap digunakan. Pilih metode pembayaran di panel kanan.");
           }
         } else {
-          const errorMessage =
+          const errMsg =
             isRecord(payload) && typeof payload.error === "string"
               ? payload.error
               : "Gagal membuat transaksi pembayaran.";
-          setStatusMessage(errorMessage);
+          setStatusMessage(errMsg);
         }
       } catch {
-        if (isMounted) {
-          setStatusMessage("Gagal menghubungkan ke layanan transaksi.");
-        }
+        if (isMounted) setStatusMessage("Gagal menghubungkan ke layanan transaksi.");
       } finally {
-        if (isMounted) {
-          setIsPreparing(false);
-        }
+        if (isMounted) setIsPreparing(false);
       }
     }
 
-    void loadPaymentContext();
-
-    return () => {
-      isMounted = false;
-    };
+    void init();
+    return () => { isMounted = false; };
   }, []);
 
-  const paymentAmount = transaction.amount ?? summary.total;
+  const handleOpenSnap = useCallback(async () => {
+    if (!snapToken || isOpening) return;
+
+    if (!window.snap) {
+      setStatusMessage("Snap.js belum siap, coba lagi sebentar.");
+      return;
+    }
+
+    setIsOpening(true);
+    setStatusMessage("Membuka halaman pembayaran...");
+
+    window.snap.pay(snapToken, {
+      onSuccess: async () => {
+        setStatusMessage("Pembayaran berhasil! Mengarahkan ke dashboard...");
+        await lockCurrentWeeklyBox().catch(console.error);
+        router.push("/dashboard");
+      },
+      onPending: () => {
+        setStatusMessage("Pembayaran sedang diproses. Kami akan konfirmasi segera.");
+        setIsOpening(false);
+      },
+      onError: () => {
+        setStatusMessage("Pembayaran gagal. Silakan coba lagi.");
+        setIsOpening(false);
+      },
+      onClose: () => {
+        setStatusMessage("Popup ditutup. Klik tombol untuk membuka kembali.");
+        setIsOpening(false);
+      },
+    });
+  }, [snapToken, isOpening, router]);
+
   const summaryRows = useMemo(
     () => [
       { label: "Plan", value: summary.planLabel },
@@ -642,6 +542,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         </header>
 
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+          {/* Ringkasan Pesanan */}
           <section className="rounded-2xl border border-[#e0e0e0] bg-[#f8f8f8] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] sm:p-6">
             <div className="mb-5 flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-[#1db788]" />
@@ -688,9 +589,10 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
             </ul>
           </section>
 
+          {/* Panel Pembayaran */}
           <section className="rounded-2xl border border-[#e0e0e0] bg-[#f8f8f8] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] sm:p-6">
             <div className="mb-5 flex items-center gap-3">
-              <QrisIcon className="h-5 w-5 text-[#1db788]" />
+              <PaymentIcon />
               <h2 className="text-[1.15rem] font-bold text-neutral-900">Metode Pembayaran</h2>
             </div>
 
@@ -699,6 +601,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
               <span className="font-bold">Midtrans Snap</span>
             </div>
 
+            {/* Total & tombol bayar */}
             <div className="rounded-2xl border border-[#dedede] bg-white p-5 text-center">
               <p className="text-[0.9rem] text-neutral-500">Checkout Midtrans dengan QRIS, bank transfer, dan metode aktif lainnya</p>
               <p className="mt-2 text-[1.45rem] font-extrabold text-[#12af80]">
@@ -771,11 +674,12 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
 
               <button
                 type="button"
-                disabled={!canCheckStatus || isPaying}
-                onClick={() => handleCheckStatus(false)}
-                className="mt-3 inline-flex h-12 w-full items-center justify-center rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!canPay || isOpening}
+                onClick={handleOpenSnap}
+                className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPaying ? "Mengecek..." : "Cek Status Pembayaran"}
+                <PaymentIcon />
+                {isPreparing ? "Menyiapkan..." : isOpening ? "Membuka..." : "Bayar Sekarang"}
               </button>
             </div>
           </section>
@@ -791,6 +695,5 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         </div>
       </section>
     </main>
-    </>
   );
 }

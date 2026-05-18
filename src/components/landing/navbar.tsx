@@ -31,7 +31,7 @@ const NAV_LINKS = [
 ];
 
 export function Navbar() {
-  const { isAuthenticated, isLoading } = useAuthState();
+  const { isAuthenticated, isLoading, user } = useAuthState();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
@@ -68,8 +68,12 @@ export function Navbar() {
                   <Link href="/dashboard" className="px-3 py-2 text-sm font-extrabold text-black hover:text-[#13b987]">
                     Dashboard
                   </Link>
-                  <Link href="/profile" aria-label="Profil saya" className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                    <ProfileIcon />
+                  <Link href="/profile" aria-label="Profil saya" className="inline-flex h-10 w-10 overflow-hidden items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    {user?.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <ProfileIcon />
+                    )}
                   </Link>
                 </div>
               ) : (

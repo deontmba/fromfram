@@ -1,6 +1,6 @@
 export type SubscriptionPlanKey = "weekly" | "monthly" | "yearly";
 
-export type SubscriptionStatusKey = "active" | "paused" | "cancelled" | "unknown";
+export type SubscriptionStatusKey = "active" | "paused" | "cancelled" | "unpaid" | "unknown";
 
 export type FeedbackState = {
   tone: "success" | "error" | "info";
@@ -156,23 +156,31 @@ function normalizeStatus(value: unknown): SubscriptionStatusKey {
     return "cancelled";
   }
 
+  if (normalizedValue === "unpaid") {
+    return "unpaid";
+  }
+
   return "unknown";
 }
 
 function getStatusLabel(status: SubscriptionStatusKey) {
   if (status === "active") {
-    return "ACTIVE";
+    return "AKTIF";
   }
 
   if (status === "paused") {
-    return "PAUSED";
+    return "DIJEDA";
   }
 
   if (status === "cancelled") {
-    return "CANCELLED";
+    return "DIBATALKAN";
   }
 
-  return "UNKNOWN";
+  if (status === "unpaid") {
+    return "BELUM BAYAR";
+  }
+
+  return "BELUM AKTIF";
 }
 
 function formatCurrency(amount: number) {
@@ -322,7 +330,7 @@ function extractSkippableWeeklyBoxId(record: Record<string, unknown>) {
 
     const weeklyBoxStatus = pickString(weeklyBoxRecord.status)?.toLowerCase();
 
-    if (!weeklyBoxStatus || ["pending_selection", "selection_locked", "pending"].includes(weeklyBoxStatus)) {
+    if (!weeklyBoxStatus || ["pending_selection", "selection_locked", "locked", "pending"].includes(weeklyBoxStatus)) {
       return pickString(weeklyBoxRecord.id);
     }
   }
@@ -336,17 +344,17 @@ export function createPreviewSubscriptionViewModel(): ManageSubscriptionViewMode
   return {
     id: null,
     planKey: DEFAULT_PREVIEW_PLAN,
-    planLabel: `${planOption.title} Plan`,
-    priceLabel: planOption.priceLabel,
-    billingLabel: planOption.billingLabel,
-    status: "active",
-    statusLabel: "ACTIVE",
+    planLabel: `Belum ada plan`,
+    priceLabel: "Rp 0",
+    billingLabel: "",
+    status: "unknown",
+    statusLabel: "BELUM AKTIF",
     servingCount: DEFAULT_PREVIEW_SERVINGS,
-    servingLabel: `${DEFAULT_PREVIEW_SERVINGS} orang`,
-    startDateLabel: "6 Mar 2026",
-    nextBillingLabel: "6 Apr 2026",
-    shippingAddressLabel: "Jl. Sudirman No. 123, Jakarta Selatan, DKI Jakarta 12190",
-    shippingAddressMissing: false,
+    servingLabel: `—`,
+    startDateLabel: "Belum tersedia",
+    nextBillingLabel: "Belum tersedia",
+    shippingAddressLabel: "Alamat belum tersedia",
+    shippingAddressMissing: true,
     pausedUntilLabel: null,
     skippableWeeklyBoxId: null,
     isPreview: true,

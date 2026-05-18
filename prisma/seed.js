@@ -470,6 +470,7 @@ const deliverySeeds = [
     addressLabel: "Rumah",
     deliveryDate: DELIVERY_SLOT,
     status: "PREPARING",
+    mealType: "LUNCH",
   },
   {
     userEmail: "rina@fromfram.test",
@@ -479,6 +480,7 @@ const deliverySeeds = [
     status: "DELIVERED",
     shippedAt: DELIVERY_SHIPPED,
     deliveredAt: DELIVERY_COMPLETED,
+    mealType: "LUNCH",
   },
 ];
 

@@ -136,7 +136,7 @@ export async function createSubscription(
       goalId,
       planType: planType as PlanType, // cast setelah validasi di atas
       servings,
-      status: 'ACTIVE',
+      status: 'UNPAID',
     },
     select: subscriptionSelect,
   });
@@ -154,7 +154,23 @@ export async function getMySubscription(userId: string) {
     return { error: 'Subscription not found', status: 404 };
   }
 
-  return { data: subscription, status: 200 };
+  // Fetch upcoming weekly boxes for skip feature
+  const now = new Date();
+  const weeklyBoxes = await prisma.weeklyBox.findMany({
+    where: {
+      userId,
+      weekStartDate: { gte: getStartOfWeek(now) },
+      status: { in: ['PENDING_SELECTION', 'LOCKED'] },
+    },
+    orderBy: { weekStartDate: 'asc' },
+    take: 2,
+    select: { id: true, status: true, weekStartDate: true },
+  });
+
+  return {
+    data: { ...subscription, weeklyBoxes },
+    status: 200,
+  };
 }
 
 export async function updateMySubscription(
@@ -238,7 +254,7 @@ export async function pauseSubscription(userId: string, resumeDate: unknown) {
 
   const updatedSub = await prisma.subscription.update({
     where: { id: subscription.id },
-    data: { status: 'PAUSED' },
+    data: { status: 'PAUSED', pausedUntil: parsedResumeDate },
   });
 
   return {
@@ -268,7 +284,7 @@ export async function resumeSubscription(userId: string) {
 
   const updatedSub = await prisma.subscription.update({
     where: { id: subscription.id },
-    data: { status: 'ACTIVE' },
+    data: { status: 'ACTIVE', pausedUntil: null },
   });
 
   return {
@@ -303,7 +319,7 @@ export async function cancelSubscription(userId: string) {
 
   const updatedSub = await prisma.subscription.update({
     where: { id: subscription.id },
-    data: { endDate: cycleEndDate },
+    data: { status: 'CANCELLED', endDate: cycleEndDate, pausedUntil: null },
   });
 
   return {

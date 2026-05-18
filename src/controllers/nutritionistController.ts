@@ -22,7 +22,7 @@ export async function getNutritionistKPIs(userId: string) {
   const [totalRecipes, weeklyMenuWeeks, activeUsers] = await prisma.$transaction([
     prisma.recipe.count(),
     prisma.weeklyMenu.findMany({
-      select: { weekStartDate: true },
+      select: { createdAt: true },
     }),
     prisma.subscription.count({
       where: { status: 'ACTIVE' },
@@ -30,13 +30,71 @@ export async function getNutritionistKPIs(userId: string) {
   ]);
 
   const weeklyMenusCount = new Set(
-    weeklyMenuWeeks.map((menu) => getStartOfWeek(menu.weekStartDate).toISOString())
+    weeklyMenuWeeks.map((menu) => getStartOfWeek(menu.createdAt).toISOString())
   ).size;
 
   return {
     data: { data: { totalRecipes, weeklyMenusCount, activeUsers } },
     status: 200,
   };
+}
+
+export async function getNutritionistActivities(userId: string) {
+  const authError = await verifyNutritionist(userId);
+  if (authError) return authError;
+
+  const [recentRecipes, recentMenus] = await Promise.all([
+    prisma.recipe.findMany({
+      orderBy: { id: 'desc' },
+      take: 5,
+    }),
+    prisma.weeklyMenu.findMany({
+      include: { recipe: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    }),
+  ]);
+
+  const activities: Array<{ type: string; text: string; time: string }> = [];
+
+  for (const recipe of recentRecipes) {
+    activities.push({
+      type: 'recipe',
+      text: `Resep ditambahkan: ${recipe.name}`,
+      time: new Date().toISOString(),
+    });
+  }
+
+  for (const menu of recentMenus) {
+    activities.push({
+      type: 'menu',
+      text: `Menu mingguan diatur: ${menu.recipe.name} (${getStartOfWeek(menu.weekStartDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })})`,
+      time: menu.createdAt.toISOString(),
+    });
+  }
+
+  activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  const result = activities.slice(0, 5).map((a) => ({
+    type: a.type,
+    text: a.text,
+    time: formatRelativeTime(new Date(a.time)),
+  }));
+
+  return { data: { data: result }, status: 200 };
+}
+
+function formatRelativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Baru saja';
+  if (diffMins < 60) return `${diffMins} menit lalu`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} hari lalu`;
+  const diffWeeks = Math.floor(diffDays / 7);
+  return `${diffWeeks} minggu lalu`;
 }
 
 export async function getNutritionistRecipes(userId: string) {

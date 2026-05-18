@@ -23,6 +23,8 @@ type KpiItem = {
 type ActivityItem = {
   text: string;
   time: string;
+  type: "user" | "subscription" | "delivered" | "shipped";
+  timestamp: string;
   icon: ReactNode;
 };
 
@@ -44,8 +46,10 @@ type DeliveryRow = {
   id: string;
   user: string;
   userId: string;
+  mealType: "LUNCH" | "DINNER";
   menu: string;
   address: string;
+  plan: string | null;
   deliveryDate: string;
   status: "PREPARING" | "SHIPPED" | "DELIVERED";
   shippedAt: string | null;
@@ -64,6 +68,14 @@ type UserRow = {
   goal: string | null;
   joinedAt: string;
   nextDelivery: string | null;
+  totalDeliveries: number;
+};
+
+type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
 
 type RecipeRow = {
@@ -95,14 +107,13 @@ type GoalOption = {
   id: string;
   name: string;
 };
+
 type RoleConfig = {
   title: string;
   subtitle: string;
   tabs: TabItem[];
   heroTitle: Record<string, string>;
   heroSubtitle: Record<string, string>;
-  kpis: Record<string, KpiItem[]>;
-  activities: Record<string, ActivityItem[]>;
   actions: ActionItem[];
   accentStrong: string;
   accentMid: string;
@@ -342,6 +353,7 @@ const statusClass: Record<string, string> = {
   ACTIVE: styles.tagGreen,
   PAUSED: styles.tagAmber,
   CANCELLED: styles.tagRed,
+  UNPAID: styles.tagAmber,
   Mudah: styles.tagBlue,
   Sedang: styles.tagAmber,
   Sulit: styles.tagRed,
@@ -349,6 +361,13 @@ const statusClass: Record<string, string> = {
   "Needs Review": styles.tagRed,
   Valid: styles.tagGreen,
   Review: styles.tagAmber,
+};
+
+const activityIconMap: Record<ActivityItem["type"], ReactNode> = {
+  user: <PeopleIcon />,
+  subscription: <ChartArrowIcon />,
+  delivered: <CheckCircleIcon />,
+  shipped: <TruckIcon />,
 };
 
 function clsx(...tokens: Array<string | false | null | undefined>) {
@@ -361,23 +380,19 @@ function formatWeekRangeLabel(weekStartDate: string, weekEndDate: string) {
     month: "short",
     year: "numeric",
   });
-
   return `${formatter.format(new Date(weekStartDate))} - ${formatter.format(new Date(weekEndDate))}`;
 }
 
 function formatMonthLabel(monthIndex: number) {
-  return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(new Date(2026, monthIndex, 1));
+  return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(
+    new Date(2026, monthIndex, 1)
+  );
 }
 
-function getMonthIndexFromIsoDate(dateString: string) {
-  return new Date(dateString).getMonth();
-}
-
-function getYearFromIsoDate(dateString: string) {
-  return new Date(dateString).getFullYear();
-}
-
-function buildGoalPreview(row: WeeklyMenuItem, goalOverrides: Record<string, string[]>) {
+function buildGoalPreview(
+  row: WeeklyMenuItem,
+  goalOverrides: Record<string, string[]>
+) {
   return goalOverrides[row.id] ?? row.suitableGoals;
 }
 
@@ -385,20 +400,46 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const config = role === "admin" ? adminConfig : nutritionConfig;
   const [activeTab, setActiveTab] = useState(config.tabs[0].id);
 
-  // Real data states
+  // ── Admin: Dashboard state ──────────────────────────────────────────────
+  const [dashboardKpis, setDashboardKpis] = useState<KpiItem[] | null>(null);
+  const [dashboardActivities, setDashboardActivities] = useState<ActivityItem[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+
+  // ── Admin: Deliveries state ─────────────────────────────────────────────
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [deliveryPagination, setDeliveryPagination] = useState<Pagination | null>(null);
+  const [deliveryPage, setDeliveryPage] = useState(1);
+  const [deliverySearch, setDeliverySearch] = useState("");
+  const [deliveryStatusFilter, setDeliveryStatusFilter] = useState("all");
+  const [deliveryAreaFilter, setDeliveryAreaFilter] = useState("all");
+  const [deliveryDateFilter, setDeliveryDateFilter] = useState("");
+  const [deliveryMealTypeFilter, setDeliveryMealTypeFilter] = useState("all");
+  const [deliveriesLoading, setDeliveriesLoading] = useState(false);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
 
-  // Nutritionist states
+  // ── Admin: Users state ──────────────────────────────────────────────────
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [userPagination, setUserPagination] = useState<Pagination | null>(null);
+  const [userPage, setUserPage] = useState(1);
+  const [userSearch, setUserSearch] = useState("");
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [usersLoading, setUsersLoading] = useState(false);
+
+  // ── Shared error ────────────────────────────────────────────────────────
+  const [error, setError] = useState("");
+
+  // ── Nutritionist states (tidak diubah) ──────────────────────────────────
   const [nutritionKpis, setNutritionKpis] = useState<KpiItem[] | null>(null);
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [weeklyMenus, setWeeklyMenus] = useState<WeeklyMenuGroup[]>([]);
   const [weeklyGoals, setWeeklyGoals] = useState<GoalOption[]>([]);
-  const [weeklyYearFilter, setWeeklyYearFilter] = useState<string>(String(new Date().getFullYear()));
-  const [weeklyMonthFilter, setWeeklyMonthFilter] = useState<string>(String(new Date().getMonth()));
+  const [weeklyYearFilter, setWeeklyYearFilter] = useState<string>(
+    String(new Date().getFullYear())
+  );
+  const [weeklyMonthFilter, setWeeklyMonthFilter] = useState<string>(
+    String(new Date().getMonth())
+  );
   const [expandedWeekStartDate, setExpandedWeekStartDate] = useState<string | null>(null);
   const [goalEditorMenuId, setGoalEditorMenuId] = useState<string | null>(null);
   const [goalOverrides, setGoalOverrides] = useState<Record<string, string[]>>({});
@@ -483,37 +524,113 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     "--accent-soft": config.accentSoft,
   } as CSSProperties;
 
-  // Fetch deliveries
+  // ── Fetch: Dashboard KPIs & Activities ─────────────────────────────────
+  const fetchDashboard = useCallback(async () => {
+    setDashboardLoading(true);
+    setError("");
+    try {
+      const [kpisRes, activitiesRes] = await Promise.all([
+        fetch("/api/admin/dashboard/kpis", { credentials: "include" }),
+        fetch("/api/admin/dashboard/activities?limit=8", { credentials: "include" }),
+      ]);
+
+      if (!kpisRes.ok) throw new Error("Gagal mengambil KPI dashboard");
+      if (!activitiesRes.ok) throw new Error("Gagal mengambil aktivitas");
+
+      const kpisData = await kpisRes.json();
+      const activitiesData = await activitiesRes.json();
+
+      setDashboardKpis([
+        {
+          label: "Total Users",
+          value: String(kpisData.totalUsers ?? 0),
+          delta: "Realtime",
+          icon: <PeopleIcon />,
+        },
+        {
+          label: "Active Subscriptions",
+          value: String(kpisData.activeSubscriptions ?? 0),
+          delta: "Realtime",
+          icon: <ChartArrowIcon />,
+        },
+        {
+          label: "Deliveries Today",
+          value: String(kpisData.deliveriesToday ?? 0),
+          delta: "Hari ini",
+          icon: <BoxIcon />,
+        },
+      ]);
+
+      const rawActivities: ActivityItem[] = (activitiesData.activities ?? []).map(
+        (a: { text: string; type: ActivityItem["type"]; time: string; timestamp: string }) => ({
+          text: a.text,
+          type: a.type,
+          time: a.time,
+          timestamp: a.timestamp,
+          icon: activityIconMap[a.type] ?? <BoxIcon />,
+        })
+      );
+      setDashboardActivities(rawActivities);
+    } catch (err) {
+      console.error("[FETCH DASHBOARD]", err);
+      setError("Gagal memuat data dashboard");
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, []);
+
+  // ── Fetch: Deliveries ───────────────────────────────────────────────────
   const fetchDeliveries = useCallback(async () => {
+    setDeliveriesLoading(true);
+    setError("");
     try {
       const params = new URLSearchParams();
       if (deliveryStatusFilter !== "all") params.set("status", deliveryStatusFilter.toUpperCase());
       if (deliveryAreaFilter !== "all") params.set("area", deliveryAreaFilter);
+      if (deliveryDateFilter) params.set("date", deliveryDateFilter);
+      if (deliveryMealTypeFilter !== "all") params.set("mealType", deliveryMealTypeFilter.toUpperCase());
+      if (deliverySearch) params.set("search", deliverySearch);
+      params.set("page", String(deliveryPage));
 
       const res = await fetch(`/api/admin/deliveries?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Gagal mengambil data pengiriman");
       const data = await res.json();
-      setDeliveries(data.data || []);
+      setDeliveries(data.data ?? []);
+      setDeliveryPagination(data.pagination ?? null);
     } catch (err) {
       console.error("[FETCH DELIVERIES]", err);
       setError("Gagal memuat data deliveries");
+    } finally {
+      setDeliveriesLoading(false);
     }
-  }, [deliveryStatusFilter, deliveryAreaFilter]);
+  }, [
+    deliveryStatusFilter,
+    deliveryAreaFilter,
+    deliveryDateFilter,
+    deliveryMealTypeFilter,
+    deliverySearch,
+    deliveryPage,
+  ]);
 
-  // Fetch users
+  // ── Fetch: Users ────────────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/admin/users", { credentials: "include" });
       if (!res.ok) throw new Error("Gagal mengambil data pengguna");
       const data = await res.json();
-      setUsers(data.data || []);
+      setUsers(data.data ?? []);
+      setUserPagination(data.pagination ?? null);
     } catch (err) {
       console.error("[FETCH USERS]", err);
       setError("Gagal memuat data users");
+    } finally {
+      setUsersLoading(false);
     }
-  }, []);
+  }, [userSearch, userStatusFilter, userPlanFilter, userPage]);
 
-  // Fetch Nutrition KPIs
+  // ── Nutritionist fetchers (tidak diubah) ────────────────────────────────
   const fetchNutritionKpis = useCallback(async () => {
     try {
       const res = await fetch("/api/nutritionist/dashboard/kpis", { credentials: "include" });
@@ -616,7 +733,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     }
   }, []);
 
-  // Load data when tab changes or filters change
+  // ── Load data saat tab aktif berubah ────────────────────────────────────
   useEffect(() => {
     setLoading(true);
     setError("");
@@ -658,7 +775,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     fetchNutritionActivities,
   ]);
 
-  // Advance delivery status
+  // ── Advance Delivery ────────────────────────────────────────────────────
   async function advanceDelivery(id: string) {
     setAdvancingId(id);
     setError("");
@@ -668,16 +785,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         credentials: "include",
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to advance delivery");
-      }
-
-      // Refresh the list
+      if (!res.ok) throw new Error(data.error || "Failed to advance delivery");
       await fetchDeliveries();
     } catch (err: unknown) {
       console.error("[ADVANCE DELIVERY]", err);
-      const message = err instanceof Error ? err.message : "Gagal memajukan status delivery";
+      const message =
+        err instanceof Error ? err.message : "Gagal memajukan status delivery";
       setError(message);
     } finally {
       setAdvancingId(null);
@@ -809,7 +922,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     await confirmDeleteDelivery(action.id);
   }
 
-  // CRUD Functions
+  // ── CRUD Nutritionist ───────────────────────────────────────────────────
   async function handleSaveRecipe(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
@@ -831,7 +944,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       }
 
       const method = recipeForm.id ? "PATCH" : "POST";
-      const url = recipeForm.id ? `/api/nutritionist/recipes/${recipeForm.id}` : "/api/nutritionist/recipes";
+      const url = recipeForm.id
+        ? `/api/nutritionist/recipes/${recipeForm.id}`
+        : "/api/nutritionist/recipes";
       const body = {
         name: recipeForm.name,
         description: recipeForm.description,
@@ -840,14 +955,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         servings: parseInt(recipeForm.servings) || 6,
         ...(finalImageUrl ? { imageUrl: finalImageUrl } : {}),
       };
-
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: "include"
+        credentials: "include",
       });
-
       if (!res.ok) throw new Error("Gagal menyimpan resep");
       await fetchRecipes();
       setShowRecipeForm(false);
@@ -879,7 +992,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
   async function handleDeleteRecipe(id: string) {
     try {
-      const res = await fetch(`/api/nutritionist/recipes/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`/api/nutritionist/recipes/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Gagal menghapus resep");
       await fetchRecipes();
       setCustomAlert({
@@ -928,9 +1044,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipeId: menuForm.recipeId,
-          weekStartDate: menuForm.weekStartDate || new Date().toISOString()
+          weekStartDate: menuForm.weekStartDate || new Date().toISOString(),
         }),
-        credentials: "include"
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Gagal menambah menu");
       await fetchWeeklyMenus();
@@ -1073,64 +1189,81 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     ];
   }, [deliveries]);
 
-  const userKpis = useMemo(() => {
-    const total = users.length;
+  const userKpis = useMemo<KpiItem[]>(() => {
+    const total = userPagination?.total ?? users.length;
     const active = users.filter((u) => u.subscriptionStatus === "ACTIVE").length;
     const pausedCancelled = users.filter(
-      (u) => u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
+      (u) =>
+        u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
     ).length;
     return [
       { label: "Total Pengguna", value: String(total), delta: "", icon: undefined },
       { label: "Aktif", value: String(active), delta: "", icon: undefined },
       { label: "Ditangguhkan/Dibatalkan", value: String(pausedCancelled), delta: "", icon: undefined },
     ];
-  }, [users]);
+  }, [users, userPagination]);
 
   const weeklyPeriods = useMemo(() => {
     const seen = new Map<string, { year: number; month: number }>();
-
     for (const week of weeklyMenus) {
       const date = new Date(week.weekStartDate);
       const key = `${date.getFullYear()}-${date.getMonth()}`;
-
       if (!seen.has(key)) {
         seen.set(key, { year: date.getFullYear(), month: date.getMonth() });
       }
     }
-
-    return Array.from(seen.values()).sort((a, b) => (b.year - a.year) || (b.month - a.month));
+    return Array.from(seen.values()).sort(
+      (a, b) => b.year - a.year || b.month - a.month
+    );
   }, [weeklyMenus]);
 
   const weeklyYearOptions = useMemo(() => {
-    return Array.from(new Set(weeklyPeriods.map((period) => period.year))).sort((a, b) => b - a);
+    return Array.from(new Set(weeklyPeriods.map((p) => p.year))).sort(
+      (a, b) => b - a
+    );
   }, [weeklyPeriods]);
 
   const weeklyMonthOptions = useMemo(() => {
-    const scopedPeriods = weeklyYearFilter === "all"
-      ? weeklyPeriods
-      : weeklyPeriods.filter((period) => period.year === Number(weeklyYearFilter));
-
-    return Array.from(new Set(scopedPeriods.map((period) => period.month))).sort((a, b) => a - b);
+    const scopedPeriods =
+      weeklyYearFilter === "all"
+        ? weeklyPeriods
+        : weeklyPeriods.filter((p) => p.year === Number(weeklyYearFilter));
+    return Array.from(new Set(scopedPeriods.map((p) => p.month))).sort(
+      (a, b) => a - b
+    );
   }, [weeklyMonthFilter, weeklyPeriods, weeklyYearFilter]);
 
   const visibleWeeklyMenus = useMemo(() => {
     return weeklyMenus.filter((week) => {
       const weekDate = new Date(week.weekStartDate);
-      const matchesYear = weeklyYearFilter === "all" || weekDate.getFullYear() === Number(weeklyYearFilter);
-      const matchesMonth = weeklyMonthFilter === "all" || weekDate.getMonth() === Number(weeklyMonthFilter);
+      const matchesYear =
+        weeklyYearFilter === "all" ||
+        weekDate.getFullYear() === Number(weeklyYearFilter);
+      const matchesMonth =
+        weeklyMonthFilter === "all" ||
+        weekDate.getMonth() === Number(weeklyMonthFilter);
       return matchesYear && matchesMonth;
     });
   }, [weeklyMenus, weeklyMonthFilter, weeklyYearFilter]);
 
-  const weeklyMenuKpis = useMemo(() => {
+  const weeklyMenuKpis = useMemo<KpiItem[]>(() => {
     const visibleGoals = weeklyGoals.length;
     const validatedSlots = visibleWeeklyMenus.reduce((count, week) => {
-      return count + week.menus.filter((menu) => buildGoalPreview(menu, goalOverrides).length > 0).length;
+      return (
+        count +
+        week.menus.filter(
+          (menu) => buildGoalPreview(menu, goalOverrides).length > 0
+        ).length
+      );
     }, 0);
     const pendingReview = visibleWeeklyMenus.reduce((count, week) => {
-      return count + week.menus.filter((menu) => buildGoalPreview(menu, goalOverrides).length === 0).length;
+      return (
+        count +
+        week.menus.filter(
+          (menu) => buildGoalPreview(menu, goalOverrides).length === 0
+        ).length
+      );
     }, 0);
-
     return [
       { label: "Kelompok Tujuan", value: String(visibleGoals), delta: "Aktif", icon: <TargetIcon /> },
       { label: "Slot Tervalidasi", value: String(validatedSlots), delta: "Aman", icon: <CheckCircleIcon /> },
@@ -1139,22 +1272,21 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   }, [goalOverrides, visibleWeeklyMenus, weeklyGoals.length]);
 
   useEffect(() => {
-    if (role !== "nutritionist" || activeTab !== "weekly-menu") {
-      return;
-    }
-
+    if (role !== "nutritionist" || activeTab !== "weekly-menu") return;
     if (visibleWeeklyMenus.length === 0) {
       setExpandedWeekStartDate(null);
       return;
     }
-
-    const preferredWeek = visibleWeeklyMenus.find((week) => week.isActiveWeek) ?? visibleWeeklyMenus[0];
-
+    const preferredWeek =
+      visibleWeeklyMenus.find((week) => week.isActiveWeek) ??
+      visibleWeeklyMenus[0];
     setExpandedWeekStartDate((current) => {
-      if (current && visibleWeeklyMenus.some((week) => week.weekStartDate === current)) {
+      if (
+        current &&
+        visibleWeeklyMenus.some((week) => week.weekStartDate === current)
+      ) {
         return current;
       }
-
       return preferredWeek.weekStartDate;
     });
   }, [activeTab, role, visibleWeeklyMenus]);
@@ -1409,7 +1541,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       <div className={styles.page}>
         <header className={styles.topbar}>
           <div className={styles.brand}>
-            <span className={styles.brandIcon}>{role === "admin" ? <ShieldIcon /> : <PulseIcon />}</span>
+            <span className={styles.brandIcon}>
+              {role === "admin" ? <ShieldIcon /> : <PulseIcon />}
+            </span>
             <div>
               <h1 className={styles.brandTitle}>{config.title}</h1>
               <p className={styles.brandSub}>{config.subtitle}</p>
@@ -1430,7 +1564,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               <button
                 key={tab.id}
                 type="button"
-                className={clsx(styles.tabButton, activeTab === tab.id && styles.tabButtonActive)}
+                className={clsx(
+                  styles.tabButton,
+                  activeTab === tab.id && styles.tabButtonActive
+                )}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
@@ -1443,15 +1580,28 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
             <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
 
             {error && (
-              <div className={styles.notice} style={{ background: "#fee2e2", borderColor: "#ef4444" }}>
-                <p className={styles.noticeTitle} style={{ color: "#dc2626" }}>Error:</p>
+              <div
+                className={styles.notice}
+                style={{ background: "#fee2e2", borderColor: "#ef4444" }}
+              >
+                <p
+                  className={styles.noticeTitle}
+                  style={{ color: "#dc2626" }}
+                >
+                  Error:
+                </p>
                 <p style={{ color: "#dc2626" }}>{error}</p>
               </div>
             )}
 
+            {/* KPI Cards */}
             <div className={styles.kpiGrid}>
               {currentKpis.map((kpi, index) => (
-                <article key={kpi.label} className={styles.kpiCard} style={{ animationDelay: `${index * 80}ms` }}>
+                <article
+                  key={kpi.label}
+                  className={styles.kpiCard}
+                  style={{ animationDelay: `${index * 80}ms` }}
+                >
                   <div className={styles.kpiRow}>
                     {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : <span />}
                     {kpi.delta ? <span className={styles.deltaBadge}>{kpi.delta}</span> : <span />}
@@ -1462,13 +1612,14 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               ))}
             </div>
 
-            {loading && (
+            {isLoading && (
               <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
                 Memuat data...
               </div>
             )}
 
-            {role === "admin" && activeTab === "deliveries" && !loading ? (
+            {/* ── ADMIN: DELIVERIES TAB ─────────────────────────────────── */}
+            {role === "admin" && activeTab === "deliveries" && !deliveriesLoading ? (
               <>
                 {/* add button moved next to area select */}
 
@@ -1524,6 +1675,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </form>
                 )}
 
+                {/* Search & Filter */}
                 <div className={styles.searchRow}>
                   <input
                     className={styles.input}
@@ -1543,6 +1695,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </select>
                   <select
                     className={styles.select}
+                    value={deliveryMealTypeFilter}
+                    onChange={(e) => setDeliveryMealTypeFilter(e.target.value)}
+                  >
+                    <option value="all">Semua meal</option>
+                    <option value="lunch">Makan Siang</option>
+                    <option value="dinner">Makan Malam</option>
+                  </select>
+                  <select
+                    className={styles.select}
                     value={deliveryAreaFilter}
                     onChange={(e) => setDeliveryAreaFilter(e.target.value)}
                   >
@@ -1559,6 +1720,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </div>
                 </div>
 
+                {/* Table */}
                 <div className={styles.tableShell}>
                   <table className={styles.table}>
                     <thead>
@@ -1574,7 +1736,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <tbody>
                       {paginatedDeliveries.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                          <td
+                            colSpan={9}
+                            style={{ textAlign: "center", padding: "2rem", color: "#666" }}
+                          >
                             Tidak ada data delivery
                           </td>
                         </tr>
@@ -1757,7 +1922,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 </div>
 
                 <div className={styles.notice}>
-                  <p className={styles.noticeTitle}>Force Advance Status (Demo UI):</p>
+                  <p className={styles.noticeTitle}>
+                    Force Advance Status:
+                  </p>
                   <ul>
                     <li>Menyiapkan -&gt; Dikirim -&gt; Terkirim</li>
                     <li>Digunakan untuk testing flow logistik massal.</li>
@@ -1767,7 +1934,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
-            {role === "admin" && activeTab === "users" && !loading ? (
+            {/* ── ADMIN: USERS TAB ──────────────────────────────────────── */}
+            {role === "admin" && activeTab === "users" && !usersLoading ? (
               <>
                 <div className={styles.searchRow}>
                   <input
@@ -1815,7 +1983,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <tbody>
                       {paginatedUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
+                          <td
+                            colSpan={10}
+                            style={{ textAlign: "center", padding: "2rem", color: "#666" }}
+                          >
                             Tidak ada data user
                           </td>
                         </tr>
@@ -1825,8 +1996,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                             <td>{row.name}</td>
                             <td>
                               {row.email}
-                              {row.phoneNumber && <br />}
-                              {row.phoneNumber}
+                              {row.phoneNumber && (
+                                <>
+                                  <br />
+                                  {row.phoneNumber}
+                                </>
+                              )}
                             </td>
                             <td>{row.address || "-"}</td>
                             <td>
@@ -1834,14 +2009,24 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                 {row.plan || "-"}
                               </span>
                             </td>
-                            <td>{row.servings ? `${row.servings} orang` : "-"}</td>
                             <td>
                               <span className={clsx(styles.tag, statusClass[row.subscriptionStatus || ""])}>
                                 {formatSubscriptionStatusLabel(row.subscriptionStatus)}
                               </span>
                             </td>
-                            <td>{new Date(row.joinedAt).toLocaleDateString("id-ID")}</td>
-                            <td>{row.nextDelivery ? new Date(row.nextDelivery).toLocaleDateString("id-ID") : "-"}</td>
+                            <td style={{ textAlign: "center" }}>
+                              {row.totalDeliveries}
+                            </td>
+                            <td>
+                              {new Date(row.joinedAt).toLocaleDateString("id-ID")}
+                            </td>
+                            <td>
+                              {row.nextDelivery
+                                ? new Date(row.nextDelivery).toLocaleDateString(
+                                    "id-ID"
+                                  )
+                                : "-"}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -1891,9 +2076,17 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 <div className={styles.notice}>
                   <p className={styles.noticeTitle}>User Management:</p>
                   <ul>
-                    <li>Informasi user dan subscription ditampilkan langsung dalam satu tabel.</li>
-                    <li>Status otomatis mengikuti lifecycle subscription user.</li>
-                    <li>Kolom next delivery membantu tim operasional prioritas jadwal.</li>
+                    <li>
+                      Informasi user dan subscription ditampilkan langsung dalam
+                      satu tabel.
+                    </li>
+                    <li>
+                      Status otomatis mengikuti lifecycle subscription user.
+                    </li>
+                    <li>
+                      Kolom next delivery membantu tim operasional prioritas
+                      jadwal.
+                    </li>
                   </ul>
                 </div>
               </>
@@ -1956,7 +2149,14 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
             {role === "nutritionist" && activeTab === "recipes" ? (
               <>
-                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div
+                  className={styles.notice}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <div>
                     <p className={styles.noticeTitle}>Daftar Resep Sistem</p>
                     <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
@@ -2009,7 +2209,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </form>
                 )}
 
-                {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
+                {nutritionistLoading ? (
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    Memuat...
+                  </div>
+                ) : (
                   <div className={styles.tableShell}>
                     <table className={styles.table}>
                       <thead>
@@ -2024,12 +2228,27 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       </thead>
                       <tbody>
                         {recipes.length === 0 ? (
-                          <tr><td colSpan={6} style={{textAlign: "center", padding: "2rem", color: "#666"}}>Tidak ada data resep</td></tr>
+                          <tr>
+                            <td
+                              colSpan={6}
+                              style={{
+                                textAlign: "center",
+                                padding: "2rem",
+                                color: "#666",
+                              }}
+                            >
+                              Tidak ada data resep
+                            </td>
+                          </tr>
                         ) : (
                           recipes.map((row) => (
                             <tr key={row.id}>
                               <td>{row.name}</td>
-                              <td>{row.description ? row.description.slice(0, 50) + "..." : "-"}</td>
+                              <td>
+                                {row.description
+                                  ? row.description.slice(0, 50) + "..."
+                                  : "-"}
+                              </td>
                               <td>{row.calories} kcal</td>
                               <td>{row.protein} g</td>
                               <td>{row.servings}</td>
@@ -2065,9 +2284,18 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
+            {/* ── NUTRITIONIST: WEEKLY MENU TAB ────────────────────────── */}
             {role === "nutritionist" && activeTab === "weekly-menu" ? (
               <>
-                <div className={styles.notice} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+                <div
+                  className={styles.notice}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "1rem",
+                  }}
+                >
                   <div>
                     <p className={styles.noticeTitle}>Menu Minggu Ini:</p>
                     <p>Setiap kartu mewakili satu minggu kalender. Label <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
@@ -2082,7 +2310,13 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </button>
                 </div>
 
-                <div className={styles.searchRow} style={{ marginTop: "1rem", gridTemplateColumns: "1fr 1fr 1fr" }}>
+                <div
+                  className={styles.searchRow}
+                  style={{
+                    marginTop: "1rem",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                  }}
+                >
                   <select
                     className={styles.select}
                     value={weeklyYearFilter}
@@ -2090,21 +2324,25 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   >
                     <option value="all">Semua Tahun</option>
                     {weeklyYearOptions.map((year) => (
-                      <option key={year} value={String(year)}>{year}</option>
+                      <option key={year} value={String(year)}>
+                        {year}
+                      </option>
                     ))}
                   </select>
-
                   <select
                     className={styles.select}
                     value={weeklyMonthFilter}
-                    onChange={(event) => setWeeklyMonthFilter(event.target.value)}
+                    onChange={(event) =>
+                      setWeeklyMonthFilter(event.target.value)
+                    }
                   >
                     <option value="all">Semua Bulan</option>
                     {weeklyMonthOptions.map((month) => (
-                      <option key={month} value={String(month)}>{formatMonthLabel(month)}</option>
+                      <option key={month} value={String(month)}>
+                        {formatMonthLabel(month)}
+                      </option>
                     ))}
                   </select>
-
                   <button
                     type="button"
                     className={styles.tabButton}
@@ -2122,7 +2360,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <form onSubmit={handleAddMenu} className={styles.weeklyMenuForm}>
                     <select className={styles.select} required value={menuForm.recipeId} onChange={e => setMenuForm({...menuForm, recipeId: e.target.value})}>
                       <option value="">-- Pilih Resep --</option>
-                      {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      {recipes.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
                     </select>
                     <input className={styles.input} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({...menuForm, weekStartDate: e.target.value})} />
                     <div className={styles.weeklyMenuFormActions}>
@@ -2133,17 +2375,29 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   </form>
                 )}
 
-                {loading ? <div style={{ textAlign: "center", padding: "2rem" }}>Memuat...</div> : (
+                {nutritionistLoading ? (
+                  <div style={{ textAlign: "center", padding: "2rem" }}>
+                    Memuat...
+                  </div>
+                ) : (
                   <div style={{ display: "grid", gap: "1rem" }}>
                     {visibleWeeklyMenus.length === 0 ? (
-                      <div className={styles.notice} style={{ marginBottom: 0 }}>
-                        <p className={styles.noticeTitle}>Belum ada menu pada periode ini.</p>
-                        <p>Coba ubah filter bulan/tahun, atau tambahkan resep ke minggu ini lewat kartu minggu yang tersedia.</p>
+                      <div
+                        className={styles.notice}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <p className={styles.noticeTitle}>
+                          Belum ada menu pada periode ini.
+                        </p>
+                        <p>
+                          Coba ubah filter bulan/tahun, atau tambahkan resep ke
+                          minggu ini lewat kartu minggu yang tersedia.
+                        </p>
                       </div>
                     ) : (
                       visibleWeeklyMenus.map((week) => {
-                        const isExpanded = expandedWeekStartDate === week.weekStartDate;
-
+                        const isExpanded =
+                          expandedWeekStartDate === week.weekStartDate;
                         return (
                           <section
                             key={week.weekStartDate}
@@ -2175,7 +2429,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setMenuForm({ recipeId: "", weekStartDate: week.weekStartDate.slice(0, 10) });
+                                      setMenuForm({
+                                        recipeId: "",
+                                        weekStartDate:
+                                          week.weekStartDate.slice(0, 10),
+                                      });
                                       setShowMenuForm(true);
                                     }}
                                   >
@@ -2196,16 +2454,27 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                     </thead>
                                     <tbody>
                                       {week.menus.map((row) => {
-                                        const previewGoals = buildGoalPreview(row, goalOverrides);
-                                        const isEditingGoal = goalEditorMenuId === row.id;
-
+                                        const previewGoals = buildGoalPreview(
+                                          row,
+                                          goalOverrides
+                                        );
+                                        const isEditingGoal =
+                                          goalEditorMenuId === row.id;
                                         return (
                                           <tr key={row.id}>
                                             <td>{row.recipeName}</td>
                                             <td>{row.calories} kcal</td>
                                             <td>{row.protein} g</td>
                                             <td>
-                                              <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
+                                              <div
+                                                style={{
+                                                  position: "relative",
+                                                  display: "inline-flex",
+                                                  alignItems: "center",
+                                                  gap: "0.45rem",
+                                                  flexWrap: "wrap",
+                                                }}
+                                              >
                                                 {previewGoals.length > 0 ? (
                                                   previewGoals.map((goal) => (
                                                     <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{formatGoalLabel(goal)}</span>
@@ -2213,13 +2482,18 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                 ) : (
                                                   <button
                                                     type="button"
-                                                    className={styles.goalLinkButton}
-                                                    onClick={() => setGoalEditorMenuId(row.id)}
+                                                    className={
+                                                      styles.goalLinkButton
+                                                    }
+                                                    onClick={() =>
+                                                      setGoalEditorMenuId(
+                                                        row.id
+                                                      )
+                                                    }
                                                   >
                                                     + Hubungkan tujuan
                                                   </button>
                                                 )}
-
                                                 <button
                                                   type="button"
                                                   className={styles.goalEditButton}
@@ -2228,7 +2502,6 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                 >
                                                   ✎
                                                 </button>
-
                                                 {isEditingGoal && (
                                                   <div className={styles.goalPopover}>
                                                     <div className={styles.goalPopoverTitle}>Hubungkan tujuan kesehatan</div>
@@ -2258,11 +2531,36 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                                                         );
                                                       })}
                                                     </div>
-                                                    <div className={styles.goalPopoverActions}>
-                                                      <button type="button" className={styles.tabButton} onClick={() => setGoalEditorMenuId(null)}>
+                                                    <div
+                                                      className={
+                                                        styles.goalPopoverActions
+                                                      }
+                                                    >
+                                                      <button
+                                                        type="button"
+                                                        className={
+                                                          styles.tabButton
+                                                        }
+                                                        onClick={() =>
+                                                          setGoalEditorMenuId(
+                                                            null
+                                                          )
+                                                        }
+                                                      >
                                                         Tutup
                                                       </button>
-                                                      <button type="button" className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => setGoalEditorMenuId(null)}>
+                                                      <button
+                                                        type="button"
+                                                        className={clsx(
+                                                          styles.tabButton,
+                                                          styles.tabButtonActive
+                                                        )}
+                                                        onClick={() =>
+                                                          setGoalEditorMenuId(
+                                                            null
+                                                          )
+                                                        }
+                                                      >
                                                         Simpan tampilan
                                                       </button>
                                                     </div>
@@ -2309,6 +2607,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               </>
             ) : null}
 
+            {/* ── DASHBOARD TAB: Activities & Actions ──────────────────── */}
             {activeTab === "dashboard" ? (
               <>
                 <section className={styles.activityCard}>
@@ -2619,3 +2918,6 @@ function TargetIcon() {
     </svg>
   );
 }
+
+// Suppress unused warning — MapPinIcon dipakai di activityIconMap extension future
+void MapPinIcon;
