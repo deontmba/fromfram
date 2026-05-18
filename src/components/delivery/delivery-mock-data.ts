@@ -127,6 +127,8 @@ type DashboardDelivery = DeliveryApiItem & {
 
 type DashboardPayload = {
   weeklyBox?: DashboardWeeklyBox | null;
+  currentWeeklyBox?: DashboardWeeklyBox | null;
+  nextWeeklyBox?: DashboardWeeklyBox | null;
   todayDelivery?: DashboardDelivery | null;
   recentDeliveries?: DashboardDelivery[] | null;
   user?: {
@@ -667,7 +669,7 @@ function mapDashboardSelectionToDelivery(
 function mapDashboardPayloadToDeliveryViewModel(
   payload: DashboardPayload,
 ): DeliveryTrackingViewModel {
-  const weeklyBox = payload.weeklyBox ?? null;
+  const weeklyBox = payload.currentWeeklyBox ?? payload.nextWeeklyBox ?? payload.weeklyBox ?? null;
   const mealSelections = Array.isArray(weeklyBox?.mealSelections)
     ? weeklyBox.mealSelections
     : [];

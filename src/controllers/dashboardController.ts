@@ -234,7 +234,8 @@ export const getDashboard = async (userId: string) => {
     const totalDays = 7;
     const calculateSummary = (box: typeof currentWeeklyBox) => {
       if (!box) return null;
-      const selectedDays = box.mealSelections?.length ?? 0;
+      const uniqueDays = new Set(box.mealSelections?.map(m => m.dayOfWeek));
+      const selectedDays = uniqueDays.size;
       const remainingDays = Math.max(0, totalDays - selectedDays);
       const selectionDeadline = box.selectionDeadline ? new Date(box.selectionDeadline) : null;
       const canSelectMenu = box.status === 'PENDING_SELECTION' && selectionDeadline !== null && selectionDeadline > new Date();

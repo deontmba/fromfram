@@ -499,6 +499,9 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   const isLockedNextWeeklyBox = nextWeeklyBoxStatus === "LOCKED";
   const isFinalizedNextWeeklyBox = isLockedNextWeeklyBox || nextWeeklyBoxStatus === "COMPLETED";
 
+  const accordionBox = currentWeeklyBox ?? nextWeeklyBox;
+  const isAccordionNextWeek = !currentWeeklyBox && !!nextWeeklyBox;
+
   return {
     subscription: subscription
       ? {
@@ -521,13 +524,13 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
           isEmpty: true,
         },
     todayMenu: buildTodayMenu(currentWeeklyBox, todayDelivery),
-    currentWeek: currentWeeklyBox
+    currentWeek: accordionBox
       ? {
-          title: "Minggu Ini",
-          dateRange: formatDateRange(currentWeeklyBox.weekStartDate, currentWeeklyBox.weekEndDate),
-          items: buildCurrentWeekItems(currentWeeklyBox, todayDelivery, recentDeliveries),
+          title: isAccordionNextWeek ? "Minggu Depan" : "Minggu Ini",
+          dateRange: formatDateRange(accordionBox.weekStartDate, accordionBox.weekEndDate),
+          items: buildCurrentWeekItems(accordionBox, todayDelivery, recentDeliveries),
           emptyMessage: null,
-          trackingEnabled: Boolean(todayDelivery?.id || currentWeeklyBox.id),
+          trackingEnabled: Boolean(todayDelivery?.id || accordionBox.id),
           todayDeliveryMessage: todayDelivery
             ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
             : "Belum ada pengiriman hari ini",
