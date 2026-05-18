@@ -163,9 +163,9 @@ async function getSubscriptionViewModel(signal?: AbortSignal) {
 }
 
 export function ManageSubscriptionScreen() {
-  const [subscription, setSubscription] = useState(createPreviewSubscriptionViewModel());
-  const [selectedPlan, setSelectedPlan] = useState(subscription.planKey);
-  const [selectedServing, setSelectedServing] = useState(subscription.servingCount);
+  const [subscription, setSubscription] = useState<ManageSubscriptionViewModel | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<ManageSubscriptionViewModel["planKey"]>("monthly");
+  const [selectedServing, setSelectedServing] = useState<number>(2);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -184,13 +184,11 @@ export function ManageSubscriptionScreen() {
         setSelectedServing(mappedSubscription.servingCount);
         setFeedback(null);
       } catch (error) {
-        const previewSubscription = createPreviewSubscriptionViewModel();
-        setSubscription(previewSubscription);
-        setSelectedPlan(previewSubscription.planKey);
-        setSelectedServing(previewSubscription.servingCount);
+        // Tidak set subscription — biarkan null agar tampilkan empty state
+        setSubscription(null);
         setFeedback({
           tone: "info",
-          message: "Data subscription belum tersedia untuk akun ini.",
+          message: "Belum ada subscription untuk akun ini.",
           note: getErrorMessage(error),
         });
       } finally {
@@ -231,7 +229,7 @@ export function ManageSubscriptionScreen() {
   };
 
   const handleSkip = async () => {
-    if (!subscription.skippableWeeklyBoxId) {
+    if (!subscription?.skippableWeeklyBoxId) {
       setFeedback({
         tone: "error",
         message: "Weekly box belum tersedia untuk di-skip.",
@@ -243,7 +241,7 @@ export function ManageSubscriptionScreen() {
     setFeedback(null);
 
     try {
-      const response = await skipWeeklyBox(subscription.skippableWeeklyBoxId);
+      const response = await skipWeeklyBox(subscription!.skippableWeeklyBoxId!);
       await refreshAfterAction().catch(() => undefined);
       setFeedback({
         tone: "success",
@@ -329,7 +327,7 @@ export function ManageSubscriptionScreen() {
   };
 
   const disableUpdate = true;
-  const disableActions = subscription.isPreview || pendingAction !== null;
+  const disableActions = !subscription || subscription.isPreview || pendingAction !== null;
 
   return (
     <>
@@ -355,28 +353,34 @@ export function ManageSubscriptionScreen() {
             </Link>
           </div>
 
-          <SummarySection subscription={subscription} />
+          {/* Tampilkan SummarySection hanya jika ada subscription nyata */}
+          {!isLoading && subscription && !subscription.isPreview ? (
+            <SummarySection subscription={subscription} />
+          ) : !isLoading && !subscription ? (
+            <div className="mt-6 rounded-[18px] bg-neutral-100 px-6 py-8 text-center border border-dashed border-neutral-300">
+              <p className="text-[1.1rem] font-bold text-neutral-500">Belum ada subscription aktif</p>
+              <p className="mt-2 text-sm text-neutral-400">
+                Buat subscription dari halaman Select Plan untuk mulai menerima meal kit.
+              </p>
+              <Link
+                href="/subscription/select-plan"
+                className="mt-5 inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-6 text-sm font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
+              >
+                Mulai Berlangganan →
+              </Link>
+            </div>
+          ) : isLoading ? (
+            <div className="mt-6 animate-pulse rounded-[18px] bg-neutral-100 px-6 py-8">
+              <div className="h-5 w-1/3 rounded bg-neutral-200" />
+              <div className="mt-3 h-8 w-1/2 rounded bg-neutral-200" />
+              <div className="mt-4 h-24 rounded bg-neutral-200" />
+            </div>
+          ) : null}
 
           {feedback ? (
             <div className={`mt-5 rounded-2xl px-4 py-4 ${feedbackClassName(feedback.tone)}`}>
               <p className="font-semibold">{feedback.message}</p>
               {feedback.note ? <p className="mt-1 text-sm opacity-80">{feedback.note}</p> : null}
-            </div>
-          ) : null}
-
-          {isLoading ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-neutral-300 bg-white px-4 py-4 text-sm text-neutral-500">
-              Memuat data subscription...
-            </div>
-          ) : null}
-
-          {!isLoading && subscription.isPreview ? (
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
-              <p className="font-semibold">Belum ada subscription aktif untuk akun ini.</p>
-              <p className="mt-2">
-                Buat subscription dulu dari halaman select plan supaya aksi kelola bisa berjalan
-                penuh.
-              </p>
             </div>
           ) : null}
 
@@ -462,15 +466,17 @@ export function ManageSubscriptionScreen() {
               </div>
             </div>
 
-            <ActionsSection
-              subscription={subscription}
-              pendingAction={pendingAction}
-              disableActions={disableActions}
-              onSkip={handleSkip}
-              onPause={() => setIsPauseDialogOpen(true)}
-              onResume={handleResume}
-              onCancel={() => setIsCancelDialogOpen(true)}
-            />
+            {subscription ? (
+              <ActionsSection
+                subscription={subscription}
+                pendingAction={pendingAction}
+                disableActions={disableActions}
+                onSkip={handleSkip}
+                onPause={() => setIsPauseDialogOpen(true)}
+                onResume={handleResume}
+                onCancel={() => setIsCancelDialogOpen(true)}
+              />
+            ) : null}
           </div>
         </section>
       </main>

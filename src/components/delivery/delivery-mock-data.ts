@@ -127,6 +127,8 @@ type DashboardDelivery = DeliveryApiItem & {
 
 type DashboardPayload = {
   weeklyBox?: DashboardWeeklyBox | null;
+  currentWeeklyBox?: DashboardWeeklyBox | null;
+  nextWeeklyBox?: DashboardWeeklyBox | null;
   todayDelivery?: DashboardDelivery | null;
   recentDeliveries?: DashboardDelivery[] | null;
   user?: {
@@ -298,18 +300,6 @@ function normalizeDayOfWeek(value: unknown) {
 }
 
 function parseDateAtLocalNoon(value: unknown) {
-  if (!value) {
-    return null;
-  }
-
-  const rawValue = value instanceof Date ? value.toISOString() : String(value);
-  const dateMatch = rawValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
-
-  if (dateMatch) {
-    const [, year, month, day] = dateMatch;
-    return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0, 0);
-  }
-
   const parsedDate = parseDate(value);
 
   if (!parsedDate) {
@@ -667,7 +657,7 @@ function mapDashboardSelectionToDelivery(
 function mapDashboardPayloadToDeliveryViewModel(
   payload: DashboardPayload,
 ): DeliveryTrackingViewModel {
-  const weeklyBox = payload.weeklyBox ?? null;
+  const weeklyBox = payload.currentWeeklyBox ?? payload.nextWeeklyBox ?? payload.weeklyBox ?? null;
   const mealSelections = Array.isArray(weeklyBox?.mealSelections)
     ? weeklyBox.mealSelections
     : [];

@@ -333,11 +333,13 @@ export async function cancelSubscription(userId: string) {
 
 export async function getWeeklyMenu() {
   const currentWeekStart = getStartOfWeek(new Date());
-  const nextWeekStart = getNextWeekStart(currentWeekStart);
+  // The user should always select menus for the NEXT week, not the current week.
+  const targetWeekStart = getNextWeekStart(currentWeekStart);
+  const nextTargetWeekStart = getNextWeekStart(targetWeekStart);
 
   const weeklyMenus = await prisma.weeklyMenu.findMany({
     where: {
-      weekStartDate: { gte: currentWeekStart, lt: nextWeekStart },
+      weekStartDate: { gte: targetWeekStart, lt: nextTargetWeekStart },
     },
     include: {
       recipe: {
@@ -355,7 +357,7 @@ export async function getWeeklyMenu() {
   });
 
   if (weeklyMenus.length === 0) {
-    return { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu ini.', status: 404 };
+    return { error: 'Ahli gizi kamu belum menyiapkan menu untuk minggu depan.', status: 404 };
   }
 
   const recipes = Array.from(
@@ -375,17 +377,17 @@ export async function getWeeklyMenu() {
     ).values()
   );
 
-  const weekEndDate = getEndOfWeek(currentWeekStart);
+  const weekEndDate = getEndOfWeek(targetWeekStart);
 
   const menu = DAYS_OF_WEEK.map((day, idx) => {
-    const date = new Date(currentWeekStart);
-    date.setDate(currentWeekStart.getDate() + idx);
+    const date = new Date(targetWeekStart);
+    date.setDate(targetWeekStart.getDate() + idx);
     return { day, date: date.toISOString(), recipes };
   });
 
   return {
     data: {
-      weekStartDate: currentWeekStart.toISOString(),
+      weekStartDate: targetWeekStart.toISOString(),
       weekEndDate: weekEndDate.toISOString(),
       menu,
     },
@@ -395,7 +397,7 @@ export async function getWeeklyMenu() {
 
 export async function saveWeeklyMenuSelections(
   userId: string,
-  input: { mealSelections: { day: DayKey; recipeId: string }[]; weekStartDate: string | Date }
+  input: { mealSelections: { day: DayKey; mealType: 'LUNCH' | 'DINNER'; serving?: number; recipeId: string }[]; weekStartDate: string | Date }
 ) {
   const { mealSelections, weekStartDate } = input;
 
@@ -487,15 +489,31 @@ export async function saveWeeklyMenuSelections(
     return { error: 'WeeklyBox gagal dipersiapkan untuk penyimpanan menu.', status: 500 };
   }
 
-  const upsertOps = mealSelections.map(({ day, recipeId }) =>
-    prisma.mealSelection.upsert({
-      where: { weeklyBoxId_dayOfWeek: { weeklyBoxId: weeklyBoxId!, dayOfWeek: day } },
-      update: { recipeId },
-      create: { weeklyBoxId: weeklyBoxId!, recipeId, dayOfWeek: day },
-    })
-  );
+  // Group selections by (day, mealType) for efficient delete+recreate
+  const dayMealKeys = [...new Set(
+    mealSelections.map(({ day, mealType }) => `${day}:${mealType}`)
+  )];
 
-  await prisma.$transaction(upsertOps);
+  await prisma.$transaction(async (tx) => {
+    // Delete existing selections for each (day, mealType) being submitted
+    for (const key of dayMealKeys) {
+      const [day, mealType] = key.split(':') as [string, string];
+      await tx.mealSelection.deleteMany({
+        where: { weeklyBoxId: weeklyBoxId!, dayOfWeek: day as never, mealType: mealType as never },
+      });
+    }
+
+    // Create all new selections with serving counts
+    await tx.mealSelection.createMany({
+      data: mealSelections.map(({ day, mealType, recipeId, serving }) => ({
+        weeklyBoxId: weeklyBoxId!,
+        recipeId,
+        dayOfWeek: day as never,
+        mealType: mealType as never,
+        serving: serving ?? 1,
+      })),
+    });
+  });
 
   return { data: { success: true }, status: 200 };
 }

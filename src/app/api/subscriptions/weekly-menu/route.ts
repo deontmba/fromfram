@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const parsed = validate(saveMealSelectionsSchema, body);
-    if (!parsed.success) return parsed.response;
+    
+    if (!parsed.success) {
+      return parsed.response;
+    }
 
     const result = await saveWeeklyMenuSelections(session.userId, parsed.data);
     if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });

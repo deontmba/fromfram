@@ -56,7 +56,6 @@ enum DayOfWeek {
   MINGGU
 }
 
-// ← BARU: membedakan makan siang dan makan malam
 enum MealType {
   LUNCH
   DINNER
@@ -273,14 +272,14 @@ model MealSelection {
   weeklyBoxId String
   recipeId    String
   dayOfWeek   DayOfWeek
-  // ← BARU: membedakan pilihan makan siang vs makan malam per hari
   mealType    MealType
+  serving     Int       @default(1)
+  date        DateTime?
 
-  weeklyBox   WeeklyBox @relation(fields: [weeklyBoxId], references: [id])
+  weeklyBox   WeeklyBox @relation(fields:[weeklyBoxId], references: [id])
   recipe      Recipe    @relation(fields: [recipeId], references: [id])
 
-  // ← DIUBAH: satu box boleh punya 2 entry per hari (LUNCH + DINNER)
-  @@unique([weeklyBoxId, dayOfWeek, mealType])
+  @@unique([weeklyBoxId, dayOfWeek, mealType, recipeId])
 }
 
 model Delivery {

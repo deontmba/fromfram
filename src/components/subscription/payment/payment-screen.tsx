@@ -2,25 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-// Deklarasi global untuk Snap.js
-declare global {
-  interface Window {
-    snap?: {
-      pay: (
-        token: string,
-        options: {
-          onSuccess?: (result: unknown) => void;
-          onPending?: (result: unknown) => void;
-          onError?: (result: unknown) => void;
-          onClose?: () => void;
-        },
-      ) => void;
-    };
-  }
-}
+import type { ReactNode } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 
 type PlanKey = "weekly" | "monthly" | "yearly";
 
@@ -33,6 +19,29 @@ type PaymentSummary = {
   discount: number;
   total: number;
 };
+
+type TransactionViewModel = {
+  id: string | null;
+  amount: number | null;
+  status: string | null;
+  qrisCode: string | null;
+  qrImageDataUrl: string | null;
+  snapToken: string | null;
+  redirectUrl: string | null;
+};
+
+type PaymentScreenProps = {
+  midtransClientKey?: string | null;
+  isMidtransProduction?: boolean;
+};
+
+declare global {
+  interface Window {
+    snap?: {
+      embed: (token: string, options: { embedId: string; onSuccess?: () => void; onPending?: () => void; onError?: () => void; onClose?: () => void }) => void;
+    };
+  }
+}
 
 const FALLBACK_SUMMARY: PaymentSummary = {
   planLabel: "Bulanan",
@@ -148,8 +157,18 @@ function mapSubscriptionToSummary(payload: unknown): Partial<PaymentSummary> {
     ) ?? "monthly";
   const servings = pickNumber(rec.servings, rec.servingSize);
   return {
-    ...PLAN_CONFIG[planKey],
-    ...(servings ? { servingLabel: `${servings} orang` } : {}),
+    id: pickString(record.id, record.transactionId),
+    amount: pickNumber(record.amount, record.total, record.totalAmount),
+    status: pickString(record.status),
+    qrisCode: pickString(
+      record.qrisCode,
+      record.qris,
+      record.paymentCode,
+      toRecord(record.payment)?.qrisCode,
+    ),
+    qrImageDataUrl: pickString(rootRecord?.qrImageDataUrl, record.qrImageDataUrl),
+    snapToken: pickString(rootRecord?.snapToken, record.snapToken, record.qrisCode),
+    redirectUrl: pickString(rootRecord?.redirectUrl, record.redirectUrl),
   };
 }
 
@@ -196,28 +215,51 @@ function CheckIcon() {
   );
 }
 
-function PaymentIcon() {
+function SnapPlaceholder({ message, action }: { message: string; action?: ReactNode }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M2 10h20" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
+    <div className="mx-auto grid min-h-[560px] w-full place-items-center rounded-2xl border border-dashed border-[#d7d7d7] bg-[#f8f8f8] px-6 py-8 text-center">
+      <div className="max-w-sm">
+        <div className="mx-auto mb-4 h-14 w-14 rounded-2xl bg-[#e6faf3]" />
+        <p className="text-[1rem] font-bold text-neutral-900">Midtrans Snap belum siap</p>
+        <p className="mt-2 text-[0.9rem] leading-6 text-neutral-500">{message}</p>
+        {action ? <div className="mt-4">{action}</div> : null}
+      </div>
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
-export function PaymentScreen() {
+export function PaymentScreen({ midtransClientKey, isMidtransProduction }: PaymentScreenProps) {
   const router = useRouter();
+  const snapContainerRef = useRef<HTMLDivElement | null>(null);
+  const embeddedSnapTokenRef = useRef<string | null>(null);
   const [summary, setSummary] = useState<PaymentSummary>(FALLBACK_SUMMARY);
-  const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [snapToken, setSnapToken] = useState<string | null>(null);
+  const [transaction, setTransaction] = useState<TransactionViewModel>({
+    id: null,
+    amount: null,
+    status: null,
+    qrisCode: null,
+    qrImageDataUrl: null,
+    snapToken: null,
+    redirectUrl: null,
+  });
   const [isPreparing, setIsPreparing] = useState(true);
-  const [isOpening, setIsOpening] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran...");
-  const snapScriptLoaded = useRef(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran Midtrans Snap...");
+  const [autoPoll, setAutoPoll] = useState(true);
+  const [isSnapScriptLoaded, setIsSnapScriptLoaded] = useState(false);
+  const [snapScriptError, setSnapScriptError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+
+  const resolvedMidtransClientKey = midtransClientKey ?? process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? null;
+  const resolvedIsMidtransProduction = isMidtransProduction ?? process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+  const snapScriptSrc = resolvedIsMidtransProduction
+    ? "https://app.midtrans.com/snap/snap.js"
+    : "https://app.sandbox.midtrans.com/snap/snap.js";
 
   // Load Snap.js script
   useEffect(() => {
@@ -275,14 +317,19 @@ export function PaymentScreen() {
 
         if (!isMounted) return;
 
-        if (res.ok && isRecord(payload) && typeof payload.snapToken === "string") {
-          setSnapToken(payload.snapToken);
-          const txId = pickString(
-            toRecord(payload.transaction)?.id,
-            payload.transactionId,
-          );
-          setTransactionId(txId);
-          setStatusMessage("Klik tombol di bawah untuk membuka halaman pembayaran.");
+        if (nextTransaction) {
+          setTransaction(nextTransaction);
+          const normalizedStatus = nextTransaction.status?.toUpperCase();
+          if (normalizedStatus === "COMPLETED") {
+            setStatusMessage("Pembayaran sudah selesai.");
+            await lockCurrentWeeklyBox().catch((error) => {
+              console.error("[lock weekly box after completed payment]", error);
+            });
+          } else if (normalizedStatus === "PENDING") {
+            setStatusMessage("Checkout Midtrans siap digunakan. Pilih metode pembayaran di panel kanan.");
+          } else {
+            setStatusMessage("Checkout Midtrans siap digunakan. Pilih metode pembayaran di panel kanan.");
+          }
         } else {
           const errMsg =
             isRecord(payload) && typeof payload.error === "string"
@@ -343,9 +390,142 @@ export function PaymentScreen() {
     [summary],
   );
 
-  const canPay = !isPreparing && Boolean(snapToken);
+  const handleCheckStatus = useCallback(async (silent = false) => {
+    if (isPaying || !transaction.id) {
+      return;
+    }
+
+    if (!silent) {
+      setIsPaying(true);
+      setStatusMessage("Mengecek status pembayaran...");
+    }
+
+    try {
+      const response = await fetch(
+        `/api/transactions/status/${encodeURIComponent(transaction.id)}`,
+        {
+          method: "GET",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (!silent) {
+          const errorMessage =
+            isRecord(payload) && typeof payload.error === "string"
+              ? payload.error
+              : "Gagal mengecek status pembayaran.";
+          setStatusMessage(errorMessage);
+        }
+        return;
+      }
+
+      const latestTransaction = mapTransaction(payload);
+      if (latestTransaction) {
+        setTransaction((prev) => ({
+          ...prev,
+          ...latestTransaction,
+          qrImageDataUrl: prev.qrImageDataUrl,
+        }));
+        if (latestTransaction.status?.toUpperCase() === "COMPLETED") {
+          setAutoPoll(false);
+          setStatusMessage("Pembayaran terverifikasi. Mengarahkan ke dashboard...");
+          await lockCurrentWeeklyBox().catch((error) => {
+            console.error("[lock weekly box after payment status check]", error);
+          });
+          router.push("/dashboard");
+          return;
+        }
+      }
+
+      if (!silent) setStatusMessage("Status transaksi masih PENDING. Selesaikan pembayaran lalu cek lagi.");
+    } catch {
+      if (!silent) setStatusMessage("Gagal mengecek status pembayaran.");
+    } finally {
+      if (!silent) setIsPaying(false);
+    }
+  }, [isPaying, router, transaction.id]);
+
+  const canCheckStatus = !isPreparing && Boolean(transaction.id);
+
+  useEffect(() => {
+    if (!transaction.snapToken || !isSnapScriptLoaded || snapScriptError) {
+      return;
+    }
+
+    if (embeddedSnapTokenRef.current === transaction.snapToken) {
+      return;
+    }
+
+    if (!window.snap?.embed || !snapContainerRef.current) {
+      setStatusMessage("Midtrans Snap belum siap dimuat.");
+      return;
+    }
+
+    snapContainerRef.current.innerHTML = "";
+    window.snap.embed(transaction.snapToken, {
+      embedId: snapContainerRef.current.id,
+      onSuccess: () => {
+        setStatusMessage("Pembayaran berhasil diproses. Memeriksa status transaksi...");
+        void handleCheckStatus(true);
+      },
+      onPending: () => {
+        setStatusMessage("Pembayaran masih pending. Selesaikan proses di panel Midtrans.");
+        void handleCheckStatus(true);
+      },
+      onError: () => {
+        setStatusMessage("Checkout Midtrans mengalami kendala. Coba muat ulang atau gunakan tautan cadangan.");
+      },
+      onClose: () => {
+        setStatusMessage("Checkout Midtrans ditutup. Kamu bisa lanjutkan pembayaran kapan saja.");
+      },
+    });
+    embeddedSnapTokenRef.current = transaction.snapToken;
+  }, [handleCheckStatus, isSnapScriptLoaded, snapScriptError, transaction.snapToken]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (canCheckStatus && transaction.status !== 'COMPLETED' && autoPoll) {
+      intervalId = setInterval(() => {
+        void handleCheckStatus(true);
+      }, 5000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [canCheckStatus, transaction.status, autoPoll, handleCheckStatus]);
+
+  if (!isMounted) {
+    return (
+      <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 inline-flex items-center gap-2 text-[#10b981]">
+            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} priority />
+            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
+          </div>
+          <p className="text-neutral-500 font-semibold animate-pulse text-[0.98rem]">
+            Menyiapkan halaman pembayaran...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
+    <>
+      {resolvedMidtransClientKey ? (
+        <Script
+          src={snapScriptSrc}
+          data-client-key={resolvedMidtransClientKey}
+          strategy="afterInteractive"
+          onLoad={() => setIsSnapScriptLoaded(true)}
+          onError={() => setSnapScriptError("Gagal memuat Snap.js dari Midtrans.")}
+        />
+      ) : null}
     <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10">
       <section className="mx-auto w-full max-w-[980px]">
         <header className="mb-8 text-center">
@@ -357,7 +537,7 @@ export function PaymentScreen() {
             Pembayaran
           </h1>
           <p className="mt-2 text-[0.98rem] text-neutral-500 sm:text-[1rem]">
-            Pilih metode pembayaran favoritmu
+            Selesaikan checkout Midtrans di panel kanan lalu cek status pembayaran
           </p>
         </header>
 
@@ -416,40 +596,80 @@ export function PaymentScreen() {
               <h2 className="text-[1.15rem] font-bold text-neutral-900">Metode Pembayaran</h2>
             </div>
 
-            {/* Info metode yang tersedia */}
-            <div className="mb-5 rounded-2xl border border-[#dedede] bg-white p-5">
-              <p className="mb-3 text-[0.88rem] text-neutral-500">Tersedia via Midtrans:</p>
-              <div className="flex flex-wrap gap-2">
-                {["Transfer Bank", "QRIS", "GoPay", "OVO", "Kartu Kredit", "Indomaret", "Alfamart"].map(
-                  (method) => (
-                    <span
-                      key={method}
-                      className="rounded-lg border border-[#d4f0e5] bg-[#f0faf6] px-3 py-1 text-[0.82rem] font-medium text-[#12a880]"
-                    >
-                      {method}
-                    </span>
-                  ),
-                )}
-              </div>
+            <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#12a880] px-4 py-3 text-white shadow-[0_8px_18px_rgba(18,168,128,0.22)]">
+              <QrisIcon />
+              <span className="font-bold">Midtrans Snap</span>
             </div>
 
             {/* Total & tombol bayar */}
             <div className="rounded-2xl border border-[#dedede] bg-white p-5 text-center">
-              <p className="text-[0.9rem] text-neutral-500">Total pembayaran</p>
-              <p className="mt-2 text-[1.8rem] font-extrabold text-[#12af80]">
-                {formatCurrency(summary.total)}
+              <p className="text-[0.9rem] text-neutral-500">Checkout Midtrans dengan QRIS, bank transfer, dan metode aktif lainnya</p>
+              <p className="mt-2 text-[1.45rem] font-extrabold text-[#12af80]">
+                {formatCurrency(paymentAmount)}
               </p>
 
-              {transactionId && (
-                <p className="mt-2 text-[0.78rem] text-neutral-400">
-                  ID Transaksi: {transactionId}
+              <div className="mt-5">
+                {transaction.snapToken ? (
+                  <div className="mx-auto w-full overflow-hidden rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] p-2 text-left shadow-[0_4px_10px_rgba(0,0,0,0.04)]">
+                    <div
+                      id="snap-container"
+                      ref={snapContainerRef}
+                      className="min-h-[560px] w-full"
+                    />
+                  </div>
+                ) : (
+                  <SnapPlaceholder
+                    message={
+                      snapScriptError ??
+                      (resolvedMidtransClientKey
+                        ? "Menunggu token Snap dari backend."
+                        : "MIDTRANS_CLIENT_KEY belum diatur di server, jadi Snap belum dapat dimuat.")
+                    }
+                    action={
+                      !resolvedMidtransClientKey && transaction.redirectUrl ? (
+                        <a
+                          href={transaction.redirectUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center rounded-xl border border-[#12af80] px-4 py-2 text-sm font-semibold text-[#12af80] transition hover:bg-[#eefaf5]"
+                        >
+                          Buka halaman pembayaran Midtrans
+                        </a>
+                      ) : null
+                    }
+                  />
+                )}
+              </div>
+
+              <p className="mt-4 text-[0.82rem] text-neutral-500">Token checkout berlaku selama 24 jam atau sesuai aturan Midtrans</p>
+              {transaction.id ? (
+                <p className="mt-1 px-2 text-[0.78rem] font-medium leading-snug text-neutral-400">
+                  Nomor pesanan: {transaction.id}
                 </p>
-              )}
+              ) : null}
+              {transaction.status ? (
+                <p className="mt-1 text-[0.78rem] font-semibold text-neutral-500">
+                  Status: {transaction.status}
+                </p>
+              ) : null}
+              {transaction.redirectUrl ? (
+                <a
+                  href={transaction.redirectUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex items-center justify-center rounded-xl border border-[#12af80] px-4 py-2 text-sm font-semibold text-[#12af80] transition hover:bg-[#eefaf5]"
+                >
+                  Buka halaman pembayaran Midtrans
+                </a>
+              ) : null}
             </div>
 
             <div className="mt-5 border-t border-[#d8d8d8] pt-5">
-              <p className="min-h-5 text-[0.84rem] font-medium text-neutral-500">
-                {isPreparing ? "Menyiapkan sesi pembayaran..." : statusMessage}
+              <p className="text-[0.9rem] text-neutral-500">
+                Setelah menyelesaikan pembayaran di Snap, klik tombol di bawah untuk cek status transaksi.
+              </p>
+              <p className="mt-2 min-h-5 text-[0.84rem] font-medium text-neutral-500">
+                {isPreparing ? "Menghubungkan ke layanan transaksi..." : statusMessage}
               </p>
 
               <button

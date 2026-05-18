@@ -25,9 +25,8 @@ type MealPlan = {
 type DurationPlan = {
   id: "weekly" | "monthly" | "yearly";
   name: string;
-  price: string;
+  basePrice: number;
   unit: string;
-  savings: string;
   popular?: boolean;
   benefits: string[];
 };
@@ -64,110 +63,57 @@ const durationPlans: DurationPlan[] = [
   {
     id: "weekly",
     name: "Mingguan",
-    price: "Rp 350.000",
-    unit: "",
-    savings: "Fleksibel, bisa cancel kapan saja",
+    basePrice: 350000,
+    unit: "/minggu",
     benefits: ["7 hari meal kit", "Gratis ongkir", "Bisa skip minggu depan"],
   },
   {
     id: "monthly",
     name: "Bulanan",
-    price: "Rp 1.200.000",
-    unit: "",
-    savings: "Hemat 14% dari plan mingguan",
+    basePrice: 1200000,
+    unit: "/bulan",
     popular: true,
-    benefits: ["28 hari meal kit", "Gratis ongkir", "Priority support", "Discount 14%"],
+    benefits: ["28 hari meal kit", "Gratis ongkir", "Priority support", "Hemat vs mingguan"],
   },
   {
     id: "yearly",
     name: "Tahunan",
-    price: "Rp 12.000.000",
-    unit: "",
-    savings: "Hemat 29% dari plan mingguan",
-    benefits: ["365 hari meal kit", "Gratis ongkir", "Priority support", "Discount 29%", "1 minggu gratis"],
+    basePrice: 12000000,
+    unit: "/tahun",
+    benefits: ["365 hari meal kit", "Gratis ongkir", "Priority support", "Hemat terbesar", "1 minggu gratis"],
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Personalization → meal category mapping                            */
-/* ------------------------------------------------------------------ */
-
-function mapGoalsToMealCategory(goals: string[]): MealPlan["id"] {
-  const joined = goals.map((g) => g.toLowerCase()).join(" ");
-
-  if (/(weight\s*loss|diet|penurunan|turun\s*berat|rendah\s*kalori)/.test(joined)) {
-    return "diet";
-  }
-  if (/(muscle|fitness|bulking|atlet|athlete|high\s*protein|tinggi\s*protein)/.test(joined)) {
-    return "fitness";
-  }
-  return "basic";
+/** Harga = base + (porsi - 1) * 65% * base */
+function calculatePrice(basePrice: number, servings: number): number {
+  return basePrice + (servings - 1) * 0.65 * basePrice;
 }
 
-function mapDietaryToMealCategory(prefs: string[]): MealPlan["id"] | null {
-  const joined = prefs.map((p) => p.toLowerCase()).join(" ");
-  if (/(high\s*protein|tinggi\s*protein)/.test(joined)) return "fitness";
-  if (/(low\s*sugar|rendah\s*gula|rendah\s*kalori)/.test(joined)) return "diet";
-  return null;
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Animation variants                                                 */
-/* ------------------------------------------------------------------ */
-
-const pageVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
-  },
-};
-
-const headerVariants: Variants = {
-  hidden: { opacity: 0, y: -24 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const sectionVariants: Variants = {
-  hidden: { opacity: 0, y: 32 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const cardContainerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-};
-
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 24, scale: 0.96 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const footerVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut", delay: 0.3 },
-  },
-};
-
-/* ------------------------------------------------------------------ */
-/*  Tiny SVG icon                                                      */
-/* ------------------------------------------------------------------ */
+function getSavingsLabel(plan: DurationPlan, servings: number): string {
+  const price = calculatePrice(plan.basePrice, servings);
+  if (plan.id === "weekly") {
+    return "Fleksibel, bisa cancel kapan saja";
+  }
+  if (plan.id === "monthly") {
+    const weeklyMonthEquiv = calculatePrice(350000, servings) * 4;
+    const savePct = Math.round(((weeklyMonthEquiv - price) / weeklyMonthEquiv) * 100);
+    return savePct > 0 ? `Hemat ${savePct}% dari plan mingguan` : "Hemat dari plan mingguan";
+  }
+  if (plan.id === "yearly") {
+    const weeklyYearEquiv = calculatePrice(350000, servings) * 52;
+    const savePct = Math.round(((weeklyYearEquiv - price) / weeklyYearEquiv) * 100);
+    return savePct > 0 ? `Hemat ${savePct}% dari plan mingguan` : "Hemat dari plan mingguan";
+  }
+  return "";
+}
 
 function CheckIcon() {
   return (
@@ -240,6 +186,16 @@ export function SelectPlanScreen() {
     [selectedDuration],
   );
 
+  const selectedPlan = useMemo(
+    () => durationPlans.find((item) => item.id === selectedDuration),
+    [selectedDuration],
+  );
+
+  const currentPrice = useMemo(
+    () => (selectedPlan ? calculatePrice(selectedPlan.basePrice, selectedServing) : 0),
+    [selectedPlan, selectedServing],
+  );
+
   function mapDurationToPlanType(duration: DurationPlan["id"]): ApiPlanType {
     if (duration === "weekly") return "MINGGUAN";
     if (duration === "yearly") return "TAHUNAN";
@@ -257,6 +213,7 @@ export function SelectPlanScreen() {
         mealCategory: selectedMeal,
         duration: selectedDuration,
         servings: selectedServing,
+        price: currentPrice,
         savedAt: new Date().toISOString(),
       };
       sessionStorage.setItem("fromfram_subscription_draft", JSON.stringify(draft));
@@ -288,14 +245,8 @@ export function SelectPlanScreen() {
       <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
       <div className="absolute top-0 left-1/2 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-white/40 to-[#1db788]/5 blur-3xl" />
 
-      <motion.section
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-        className="mx-auto w-full max-w-[1020px] px-5 py-7 sm:px-8 sm:py-9"
-      >
-        {/* ---------- Header ---------- */}
-        <motion.header variants={headerVariants} className="mb-8 text-center">
+      <section className="mx-auto w-full max-w-[1020px] px-5 py-7 sm:px-8 sm:py-9">
+        <header className="mb-8 text-center">
           <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
             <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
             <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
@@ -304,15 +255,15 @@ export function SelectPlanScreen() {
             Atur Langganan Anda
           </h1>
           <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
-            Sesuaikan kategori meal plan dan durasi berlangganan
+            Sesuaikan kategori meal plan, jumlah porsi, dan durasi berlangganan
           </p>
         </motion.header>
 
         <div className="space-y-12">
-          {/* ---------- Meal Plan Section ---------- */}
-          <motion.section variants={sectionVariants} aria-labelledby="meal-plan-title">
+          {/* STEP 1: Meal Category */}
+          <section aria-labelledby="meal-plan-title">
             <h2 id="meal-plan-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
-              Pilih Kategori Meal Plan
+              1. Pilih Kategori Meal Plan
             </h2>
 
             {/* Personalized recommendation banner */}
@@ -383,11 +334,43 @@ export function SelectPlanScreen() {
             </fieldset>
           </motion.section>
 
-          {/* ---------- Duration Section ---------- */}
-          <motion.section variants={sectionVariants} aria-labelledby="duration-title">
-            <h2 id="duration-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
-              Pilih Durasi Langganan
+          {/* STEP 2: Porsi — dipindah sebelum durasi agar harga langsung reflect saat memilih plan */}
+          <section aria-labelledby="serving-title">
+            <h2 id="serving-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
+              2. Pilih Jumlah Porsi
             </h2>
+            <div className="grid gap-4 grid-cols-3 sm:grid-cols-6">
+              {[1, 2, 3, 4, 5, 6].map((serving) => {
+                const active = serving === selectedServing;
+                return (
+                  <button
+                    key={serving}
+                    type="button"
+                    onClick={() => setSelectedServing(serving)}
+                    aria-pressed={active}
+                    className={`rounded-3xl border-2 px-4 py-5 text-center backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
+                      active
+                        ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
+                        : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
+                    }`}
+                  >
+                    <p className="text-[1.4rem] font-bold text-neutral-900">{serving}</p>
+                    <p className="mt-0.5 text-[0.78rem] text-neutral-500">orang</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* STEP 3: Duration — harga sudah reflect porsi terpilih */}
+          <section aria-labelledby="duration-title">
+            <h2 id="duration-title" className="mb-1 text-[1.35rem] font-semibold text-neutral-900">
+              3. Pilih Durasi Langganan
+            </h2>
+            <p className="mb-4 text-[0.9rem] text-neutral-500">
+              Harga dihitung untuk{" "}
+              <span className="font-semibold text-[#1db788]">{selectedServing} orang</span>
+            </p>
             <fieldset>
               <legend className="sr-only">Durasi langganan</legend>
               <motion.div
@@ -398,6 +381,8 @@ export function SelectPlanScreen() {
               >
                 {durationPlans.map((plan) => {
                   const active = plan.id === selectedDuration;
+                  const price = calculatePrice(plan.basePrice, selectedServing);
+                  const savingsLabel = getSavingsLabel(plan, selectedServing);
                   return (
                     <motion.button
                       key={plan.id}
@@ -420,11 +405,13 @@ export function SelectPlanScreen() {
                       ) : null}
                       <article>
                         <h3 className="text-center text-[1.1rem] font-semibold text-neutral-900">{plan.name}</h3>
-                        <p className="mt-2 text-center text-[1.05rem] font-bold leading-tight">
-                          <span className="block bg-gradient-to-r from-[#1db788] to-[#0ea5a5] bg-clip-text text-[1.75rem] leading-none text-transparent">{plan.price}</span>
-                          <span className="mt-1 block text-[0.96rem] font-medium text-neutral-600">{plan.unit}</span>
+                        <p className="mt-2 text-center">
+                          <span className="block bg-gradient-to-r from-[#1db788] to-[#0ea5a5] bg-clip-text text-[1.75rem] font-bold leading-none text-transparent">
+                            {formatRupiah(price)}
+                          </span>
+                          <span className="mt-1 block text-[0.9rem] font-medium text-neutral-500">{plan.unit}</span>
                         </p>
-                        <p className="mt-3 text-center text-[0.95rem] text-neutral-500">{plan.savings}</p>
+                        <p className="mt-3 text-center text-[0.9rem] text-neutral-500">{savingsLabel}</p>
                       </article>
 
                       <ul className="mt-4 space-y-2.5 text-[0.96rem] text-neutral-700">
@@ -437,8 +424,7 @@ export function SelectPlanScreen() {
                           </li>
                         ))}
                       </ul>
-
-                    </motion.button>
+                    </button>
                   );
                 })}
               </motion.div>
@@ -446,45 +432,7 @@ export function SelectPlanScreen() {
           </motion.section>
         </div>
 
-        {/* ---------- Serving Section ---------- */}
-        <motion.section variants={sectionVariants} aria-labelledby="serving-title" className="mt-9">
-          <h2 id="serving-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
-            Pilih Porsi
-          </h2>
-          <motion.div
-            variants={cardContainerVariants}
-            initial="hidden"
-            animate="visible"
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-          >
-            {[1, 2, 3, 4, 5, 6].map((serving) => {
-              const active = serving === selectedServing;
-
-              return (
-                <motion.button
-                  key={serving}
-                  variants={cardVariants}
-                  whileHover={{ y: active ? 0 : -6, transition: { duration: 0.25 } }}
-                  whileTap={{ scale: 0.97 }}
-                  type="button"
-                  onClick={() => setSelectedServing(serving)}
-                  aria-pressed={active}
-                  className={`rounded-3xl border-2 px-6 py-5 text-left backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
-                    active
-                      ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
-                      : "border-[#1db788]/30 bg-white/20 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
-                  }`}
-                >
-                  <p className="text-[1.1rem] font-semibold text-neutral-900">{serving} orang</p>
-                  <p className="mt-1 text-sm text-neutral-500">Jumlah porsi subscription</p>
-                </motion.button>
-              );
-            })}
-          </motion.div>
-        </motion.section>
-
-        {/* ---------- Footer ---------- */}
-        <motion.footer variants={footerVariants} className="mt-12 flex items-center justify-between gap-6">
+        <footer className="mt-12 flex items-center justify-between gap-6">
           <Link
             href="/subscription"
             className="rounded-2xl border-2 border-[#1db788]/30 bg-white/20 px-7 py-3 text-[1rem] font-semibold text-neutral-700 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/30 hover:shadow-[0_10px_20px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40"
@@ -493,7 +441,8 @@ export function SelectPlanScreen() {
           </Link>
 
           <p className="flex-1 text-center text-sm text-neutral-600">
-            {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang
+            {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang ·{" "}
+            <span className="font-semibold text-[#1db788]">{formatRupiah(currentPrice)}</span>
           </p>
 
           <button

@@ -15,7 +15,9 @@ const COMMON_PASSWORD = "Password123!";
 function startOfWeek(date) {
   const value = new Date(date);
   value.setHours(0, 0, 0, 0);
-  value.setDate(value.getDate() - value.getDay());
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
   return value;
 }
 
@@ -258,6 +260,9 @@ const ingredientSeeds = [
   { name: "Madu", origin: "Mojokerto, Jawa Timur", supplierName: "Madu Alami", isAllergen: false },
   { name: "Bawang Putih", origin: "Banyuwangi, Jawa Timur", supplierName: "Bumbu Asli", isAllergen: false },
   { name: "Wortel", origin: "Cianjur, Jawa Barat", supplierName: "Sayur Segar", isAllergen: false },
+  { name: "Daging Sapi", origin: "Lembang, Jawa Barat", supplierName: "Daging Premium", isAllergen: false },
+  { name: "Apel", origin: "Malang, Jawa Timur", supplierName: "Buah Segar", isAllergen: false },
+  { name: "Jahe", origin: "Sumedang, Jawa Barat", supplierName: "Rempah Asli", isAllergen: false },
 ];
 
 const recipeSeeds = [
@@ -269,7 +274,7 @@ const recipeSeeds = [
     calories: 560,
     protein: 42,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049326330-446246016.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -279,7 +284,7 @@ const recipeSeeds = [
     calories: 610,
     protein: 38,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049315758-772803481.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -289,7 +294,7 @@ const recipeSeeds = [
     calories: 430,
     protein: 18,
     servings: 1,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049305602-318426786.jpg",
   },
   {
     nutritionistEmail: "sari@fromfram.test",
@@ -299,7 +304,37 @@ const recipeSeeds = [
     calories: 520,
     protein: 35,
     servings: 2,
-    imageUrl: null,
+    imageUrl: "/uploads/recipe-1779049285426-883874412.jpg",
+  },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Steak Sapi Diet",
+    description:
+      "Potongan daging sapi tanpa lemak dengan kentang panggang dan buncis, kaya protein.",
+    calories: 580,
+    protein: 45,
+    servings: 2,
+    imageUrl: "/uploads/recipe-1779049269845-784928288.jpg",
+  },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Salad Buah Segar",
+    description:
+      "Kombinasi apel, anggur, melon, dan yogurt rendah lemak untuk camilan sehat.",
+    calories: 250,
+    protein: 5,
+    servings: 1,
+    imageUrl: "/uploads/recipe-1779049259738-862778987.jpg",
+  },
+  {
+    nutritionistEmail: "sari@fromfram.test",
+    name: "Sup Ayam Jahe",
+    description:
+      "Sup kaldu ayam bening dengan jahe dan sayuran segar, sangat baik untuk pemulihan.",
+    calories: 320,
+    protein: 28,
+    servings: 3,
+    imageUrl: "/uploads/recipe-1779049245659-781862858.jpg",
   },
 ];
 
@@ -324,13 +359,16 @@ const recipeIngredientSeeds = [
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Brokoli", quantity: "90 g" },
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Wortel", quantity: "60 g" },
   { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Bawang Putih", quantity: "2 siung" },
+  { recipeName: "Steak Sapi Diet", ingredientName: "Daging Sapi", quantity: "200 g" },
+  { recipeName: "Salad Buah Segar", ingredientName: "Apel", quantity: "1 buah" },
+  { recipeName: "Sup Ayam Jahe", ingredientName: "Jahe", quantity: "1 ruas" },
 ];
 
 const WEEK_BLUEPRINTS = [
-  { offset: -4, recipes: ["Oatmeal Pisang Greek Yogurt"] },
-  { offset: -3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat"] },
-  { offset: -2, recipes: ["Nasi Merah Ayam Brokoli", "Ayam Panggang Quinoa"] },
-  { offset: -1, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+  { offset: -4, recipes: ["Oatmeal Pisang Greek Yogurt", "Sup Ayam Jahe"] },
+  { offset: -3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Steak Sapi Diet"] },
+  { offset: -2, recipes: ["Nasi Merah Ayam Brokoli", "Ayam Panggang Quinoa", "Salad Buah Segar"] },
+  { offset: -1, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli", "Sup Ayam Jahe"] },
   {
     offset: 0,
     recipes: [
@@ -338,12 +376,15 @@ const WEEK_BLUEPRINTS = [
       "Ayam Panggang Quinoa",
       "Salmon Bowl Sehat",
       "Nasi Merah Ayam Brokoli",
+      "Steak Sapi Diet",
+      "Salad Buah Segar",
+      "Sup Ayam Jahe"
     ],
   },
-  { offset: 1, recipes: ["Ayam Panggang Quinoa", "Nasi Merah Ayam Brokoli"] },
-  { offset: 2, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt"] },
-  { offset: 3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Nasi Merah Ayam Brokoli"] },
-  { offset: 4, recipes: ["Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli"] },
+  { offset: 1, recipes: ["Ayam Panggang Quinoa", "Nasi Merah Ayam Brokoli", "Steak Sapi Diet", "Salad Buah Segar"] },
+  { offset: 2, recipes: ["Salmon Bowl Sehat", "Oatmeal Pisang Greek Yogurt", "Sup Ayam Jahe"] },
+  { offset: 3, recipes: ["Ayam Panggang Quinoa", "Salmon Bowl Sehat", "Nasi Merah Ayam Brokoli", "Steak Sapi Diet"] },
+  { offset: 4, recipes: ["Oatmeal Pisang Greek Yogurt", "Nasi Merah Ayam Brokoli", "Salad Buah Segar"] },
 ];
 
 const weeklyMenuSeeds = WEEK_BLUEPRINTS.flatMap(({ offset, recipes }) => {
@@ -381,105 +422,45 @@ const weeklyBoxSeeds = [
   },
 ];
 
+const DAYS = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"];
+
+// Helper: build entries for one user per day
+// Budi has 3 servings → 3 recipe slots per mealType, split across multiple recipes
+// e.g. Monday Lunch: Recipe A (1 serving) + Recipe B (1 serving) + Recipe C (1 serving)
+const allRecipes = [
+  "Ayam Panggang Quinoa",
+  "Salmon Bowl Sehat",
+  "Nasi Merah Ayam Brokoli",
+  "Oatmeal Pisang Greek Yogurt",
+  "Steak Sapi Diet",
+  "Salad Buah Segar",
+  "Sup Ayam Jahe",
+];
+
+function buildMealSeeds(userEmail, servings) {
+  const seeds = [];
+  DAYS.forEach((day, di) => {
+    ["LUNCH", "DINNER"].forEach((mealType, mi) => {
+      for (let s = 0; s < servings; s++) {
+        // Rotate through recipes so each slot gets variety
+        const recipeIdx = (di * 2 + mi + s) % allRecipes.length;
+        seeds.push({
+          userEmail,
+          weekStartDate: ACTIVE_WEEK_START,
+          dayOfWeek: day,
+          mealType,
+          recipeName: allRecipes[recipeIdx],
+          serving: 1,
+        });
+      }
+    });
+  });
+  return seeds;
+}
+
 const mealSelectionSeeds = [
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SENIN",
-    recipeName: "Ayam Panggang Quinoa",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SELASA",
-    recipeName: "Nasi Merah Ayam Brokoli",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "RABU",
-    recipeName: "Salmon Bowl Sehat",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "KAMIS",
-    recipeName: "Ayam Panggang Quinoa",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "JUMAT",
-    recipeName: "Nasi Merah Ayam Brokoli",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SABTU",
-    recipeName: "Salmon Bowl Sehat",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "budi@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "MINGGU",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SENIN",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SELASA",
-    recipeName: "Salmon Bowl Sehat",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "RABU",
-    recipeName: "Ayam Panggang Quinoa",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "KAMIS",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "JUMAT",
-    recipeName: "Salmon Bowl Sehat",
-    mealType: "LUNCH"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "SABTU",
-    recipeName: "Ayam Panggang Quinoa",
-    mealType: "DINNER"
-  },
-  {
-    userEmail: "rina@fromfram.test",
-    weekStartDate: ACTIVE_WEEK_START,
-    dayOfWeek: "MINGGU",
-    recipeName: "Oatmeal Pisang Greek Yogurt",
-    mealType: "LUNCH"
-  },
+  ...buildMealSeeds("budi@fromfram.test", 3),  // 3 servings
+  ...buildMealSeeds("rina@fromfram.test", 2),   // 2 servings
 ];
 
 const deliverySeeds = [
@@ -634,12 +615,13 @@ async function main() {
     );
 
     await tx.mealSelection.createMany({
-      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, ...mealSelection }) => ({
+      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, serving, ...mealSelection }) => ({
         ...mealSelection,
         weeklyBoxId: weeklyBoxByKey[
           `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
         ].id,
         recipeId: recipeByName[recipeName].id,
+        serving: serving ?? 1,
       })),
     });
 

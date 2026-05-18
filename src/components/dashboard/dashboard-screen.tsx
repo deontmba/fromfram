@@ -40,9 +40,13 @@ type DashboardSubscription = {
   } | null;
 };
 
+type MealType = "LUNCH" | "DINNER";
+
 type MealSelection = {
   id?: string;
   dayOfWeek?: DayOfWeek | string | null;
+  mealType?: MealType | string | null;
+  serving?: number | null;
   recipe?: {
     id?: string;
     name?: string | null;
@@ -96,7 +100,8 @@ type DashboardDelivery = {
 type DashboardPayload = {
   user?: DashboardUser | null;
   subscription?: DashboardSubscription | null;
-  weeklyBox?: DashboardWeeklyBox | null;
+  currentWeeklyBox?: DashboardWeeklyBox | null;
+  nextWeeklyBox?: DashboardWeeklyBox | null;
   todayDelivery?: DashboardDelivery | null;
   recentDeliveries?: DashboardDelivery[] | null;
 };
@@ -108,9 +113,13 @@ type DashboardApiResponse = {
   error?: string;
 };
 
+type MealEntry = { name: string; serving: number; calories: number | null };
+
 type CurrentWeekItem = {
   day: string;
-  menu: string;
+  dayKey: string;
+  lunch: MealEntry[];
+  dinner: MealEntry[];
   status: DeliveryStatus;
   statusLabel: string;
 };
@@ -131,6 +140,14 @@ type DashboardViewModel = {
     status: string;
     nextBilling: string;
     isEmpty: boolean;
+  };
+  todayMenu: {
+    recipeName: string | null;
+    calories: number | null;
+    protein: number | null;
+    deliveryStatus: DeliveryStatus;
+    deliveryStatusLabel: string;
+    hasMenu: boolean;
   };
   currentWeek: {
     title: string;
@@ -362,33 +379,72 @@ function getDeliveryStatusByDate(
   return statusByDate;
 }
 
+function getTodayDayOfWeek(): DayOfWeek {
+  const days: DayOfWeek[] = ["MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"];
+  return days[new Date().getDay()];
+}
+
+function buildTodayMenu(
+  weeklyBox: DashboardWeeklyBox | null | undefined,
+  todayDelivery: DashboardDelivery | null | undefined,
+): DashboardViewModel["todayMenu"] {
+  const todayDay = getTodayDayOfWeek();
+  const mealSelections = Array.isArray(weeklyBox?.mealSelections) ? weeklyBox!.mealSelections : [];
+  const todaySelection = mealSelections.find(
+    (s) => normalizeDayOfWeek(s.dayOfWeek) === todayDay,
+  );
+
+  const { status, label } = mapDeliveryStatus(todayDelivery?.status);
+
+  return {
+    recipeName: pickString(todaySelection?.recipe?.name),
+    calories: pickNumber(todaySelection?.recipe?.calories),
+    protein: pickNumber(todaySelection?.recipe?.protein),
+    deliveryStatus: status,
+    deliveryStatusLabel: label,
+    hasMenu: !!todaySelection?.recipe?.name,
+  };
+}
+
 function buildCurrentWeekItems(
   weeklyBox: DashboardWeeklyBox,
   todayDelivery: DashboardDelivery | null | undefined,
   recentDeliveries: DashboardDelivery[],
 ) {
-  const selectionsByDay = new Map<DayOfWeek, MealSelection>();
+  // Group by day+mealType → array of MealEntry (multiple recipes per slot)
+  const selectionsByDayMeal = new Map<string, MealEntry[]>();
   const mealSelections = Array.isArray(weeklyBox.mealSelections) ? weeklyBox.mealSelections : [];
   const statusByDate = getDeliveryStatusByDate(todayDelivery, recentDeliveries);
   const weekStartDate = parseDate(weeklyBox.weekStartDate);
 
   for (const selection of mealSelections) {
     const day = normalizeDayOfWeek(selection.dayOfWeek);
+    const mealType = pickString(selection.mealType)?.toUpperCase();
 
-    if (day) {
-      selectionsByDay.set(day, selection);
+    if (day && mealType && selection.recipe?.name) {
+      const key = `${day}:${mealType}`;
+      const existing = selectionsByDayMeal.get(key) ?? [];
+      existing.push({
+        name: selection.recipe.name,
+        serving: typeof selection.serving === "number" ? selection.serving : 1,
+        calories: pickNumber(selection.recipe.calories),
+      });
+      selectionsByDayMeal.set(key, existing);
     }
   }
 
   return daysOfWeek.map((day, index) => {
-    const selection = selectionsByDay.get(day.key);
+    const lunch = selectionsByDayMeal.get(`${day.key}:LUNCH`) ?? [];
+    const dinner = selectionsByDayMeal.get(`${day.key}:DINNER`) ?? [];
     const dayDate = weekStartDate ? addDays(weekStartDate, index) : null;
     const deliveryStatus = dayDate ? statusByDate.get(toDateKey(dayDate) ?? "") : null;
     const mappedStatus = mapDeliveryStatus(deliveryStatus);
 
     return {
       day: day.label,
-      menu: pickString(selection?.recipe?.name) ?? MENU_NOT_SELECTED_LABEL,
+      dayKey: day.key,
+      lunch,
+      dinner,
       status: mappedStatus.status,
       statusLabel: mappedStatus.label,
     };
@@ -426,17 +482,25 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
 
 function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardViewModel {
   const subscription = payload.subscription ?? null;
-  const weeklyBox = payload.weeklyBox ?? null;
+  const currentWeeklyBox = payload.currentWeeklyBox ?? null;
+  const nextWeeklyBox = payload.nextWeeklyBox ?? null;
   const todayDelivery = payload.todayDelivery ?? null;
   const recentDeliveries = Array.isArray(payload.recentDeliveries)
     ? payload.recentDeliveries
     : [];
-  const selectedDays = pickNumber(weeklyBox?.summary?.selectedDays) ?? 0;
-  const totalDays = pickNumber(weeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
-  const canSelectMenu = weeklyBox?.summary?.canSelectMenu === true;
-  const weeklyBoxStatus = pickString(weeklyBox?.status)?.toUpperCase() ?? null;
-  const isLockedWeeklyBox = weeklyBoxStatus === "LOCKED";
-  const isFinalizedWeeklyBox = isLockedWeeklyBox || weeklyBoxStatus === "COMPLETED";
+  
+  const currentSelectedDays = pickNumber(currentWeeklyBox?.summary?.selectedDays) ?? 0;
+  const currentTotalDays = pickNumber(currentWeeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
+
+  const nextSelectedDays = pickNumber(nextWeeklyBox?.summary?.selectedDays) ?? 0;
+  const nextTotalDays = pickNumber(nextWeeklyBox?.summary?.totalDays) ?? daysOfWeek.length;
+  const canSelectMenu = nextWeeklyBox?.summary?.canSelectMenu === true;
+  const nextWeeklyBoxStatus = pickString(nextWeeklyBox?.status)?.toUpperCase() ?? null;
+  const isLockedNextWeeklyBox = nextWeeklyBoxStatus === "LOCKED";
+  const isFinalizedNextWeeklyBox = isLockedNextWeeklyBox || nextWeeklyBoxStatus === "COMPLETED";
+
+  const accordionBox = currentWeeklyBox ?? nextWeeklyBox;
+  const isAccordionNextWeek = !currentWeeklyBox && !!nextWeeklyBox;
 
   return {
     subscription: subscription
@@ -452,56 +516,57 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
         isEmpty: false,
       }
       : {
-        label: "Subscription",
-        plan: "Belum ada subscription aktif",
-        servings: EMPTY_LABEL,
-        status: EMPTY_LABEL,
-        nextBilling: EMPTY_LABEL,
-        isEmpty: true,
-      },
-    currentWeek: weeklyBox
+          label: "Subscription",
+          plan: "Belum ada subscription aktif",
+          servings: EMPTY_LABEL,
+          status: EMPTY_LABEL,
+          nextBilling: EMPTY_LABEL,
+          isEmpty: true,
+        },
+    todayMenu: buildTodayMenu(currentWeeklyBox, todayDelivery),
+    currentWeek: accordionBox
       ? {
-        title: "Minggu Ini",
-        dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-        items: buildCurrentWeekItems(weeklyBox, todayDelivery, recentDeliveries),
-        emptyMessage: null,
-        trackingEnabled: Boolean(todayDelivery?.id || weeklyBox.id),
-        todayDeliveryMessage: todayDelivery
-          ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
-          : "Belum ada pengiriman hari ini",
-      }
+          title: isAccordionNextWeek ? "Minggu Depan" : "Minggu Ini",
+          dateRange: formatDateRange(accordionBox.weekStartDate, accordionBox.weekEndDate),
+          items: buildCurrentWeekItems(accordionBox, todayDelivery, recentDeliveries),
+          emptyMessage: null,
+          trackingEnabled: Boolean(todayDelivery?.id || accordionBox.id),
+          todayDeliveryMessage: todayDelivery
+            ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
+            : "Belum ada pengiriman hari ini",
+        }
       : {
-        title: "Minggu Ini",
-        dateRange: EMPTY_LABEL,
-        items: [],
-        emptyMessage: "Menu minggu ini belum tersedia",
-        trackingEnabled: false,
-        todayDeliveryMessage: "Belum ada pengiriman hari ini",
-      },
-    nextWeek: weeklyBox
+          title: "Minggu Ini",
+          dateRange: EMPTY_LABEL,
+          items: [],
+          emptyMessage: "Menu minggu ini belum tersedia",
+          trackingEnabled: false,
+          todayDeliveryMessage: "Belum ada pengiriman hari ini",
+        },
+    nextWeek: nextWeeklyBox
       ? {
-        title: "Minggu Depan",
-        dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-        heading: canSelectMenu
-          ? "Pilih Menu Sekarang"
-          : isFinalizedWeeklyBox
-            ? "Menu sudah dikunci"
-            : "Menu belum bisa dipilih",
-        deadline: formatDateLabel(weeklyBox.selectionDeadline),
-        selectedMenu: `${selectedDays}/${totalDays} hari`,
-        reminder: canSelectMenu
-          ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
-          : isFinalizedWeeklyBox
-            ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
-            : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
-        timeLeft: getTimeLeftLabel(weeklyBox.selectionDeadline),
-        canSelectMenu,
-        unavailableMessage: canSelectMenu
-          ? null
-          : isFinalizedWeeklyBox
+          title: "Minggu Depan",
+          dateRange: formatDateRange(nextWeeklyBox.weekStartDate, nextWeeklyBox.weekEndDate),
+          heading: canSelectMenu
+            ? "Pilih Menu Sekarang"
+            : isFinalizedNextWeeklyBox
+              ? "Menu sudah dikunci"
+              : "Menu belum bisa dipilih",
+          deadline: formatDateLabel(nextWeeklyBox.selectionDeadline),
+          selectedMenu: `${nextSelectedDays}/${nextTotalDays} hari`,
+          reminder: canSelectMenu
+            ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
+            : isFinalizedNextWeeklyBox
+              ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
+              : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
+          timeLeft: getTimeLeftLabel(nextWeeklyBox.selectionDeadline),
+          canSelectMenu,
+          unavailableMessage: canSelectMenu
             ? null
-            : "Pilih Menu Sekarang belum tersedia",
-      }
+            : isFinalizedNextWeeklyBox
+              ? null
+              : "Pilih Menu Sekarang belum tersedia",
+        }
       : {
         title: "Minggu Depan",
         dateRange: EMPTY_LABEL,
@@ -762,6 +827,10 @@ export function DashboardScreen() {
   const [dashboard, setDashboard] = useState<DashboardViewModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
+
+  const toggleDay = (dayKey: string) =>
+    setExpandedDay((prev) => (prev === dayKey ? null : dayKey));
 
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -876,40 +945,153 @@ export function DashboardScreen() {
               {dashboard.currentWeek.todayDeliveryMessage}
             </p>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-2">
               {dashboard.currentWeek.emptyMessage ? (
                 <div className="rounded-lg border border-dashed border-neutral-300 bg-[#f8f8f7] px-4 py-8 text-center text-sm text-neutral-500">
                   {dashboard.currentWeek.emptyMessage}
                 </div>
               ) : (
-                dashboard.currentWeek.items.map((item) => (
-                  <article
-                    key={item.day}
-                    className="flex min-h-14 items-center justify-between gap-4 rounded-lg border border-neutral-200 bg-[#f3f3f2] px-4"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-[#14af84]">
-                        <ChefHatIcon />
-                      </span>
-                      <div className="min-w-0">
-                        <h3 className="truncate text-sm font-bold text-neutral-950">{item.day}</h3>
-                        <p className="truncate text-sm text-neutral-500">{item.menu}</p>
-                      </div>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-lg px-3 py-1 text-xs font-bold ${statusStyles[item.status]}`}
-                    >
-                      {item.statusLabel}
-                    </span>
-                  </article>
-                ))
+                dashboard.currentWeek.items.map((item) => {
+                  const isToday = item.dayKey === getTodayDayOfWeek();
+                  const isOpen = expandedDay === item.dayKey || (isToday && expandedDay === null);
+                  const hasLunch = item.lunch.length > 0;
+                  const hasDinner = item.dinner.length > 0;
+                  const hasAnyMenu = hasLunch || hasDinner;
+                  const totalItems = item.lunch.length + item.dinner.length;
+
+                  return (
+                    <article key={item.day} className={`rounded-xl border overflow-hidden transition-all ${
+                      isToday
+                        ? "border-[#14af84] shadow-[0_2px_8px_rgba(20,175,132,0.15)]"
+                        : "border-neutral-200"
+                    }`}>
+                      {/* ── Accordion header (clickable) ── */}
+                      <button
+                        type="button"
+                        onClick={() => toggleDay(item.dayKey)}
+                        className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
+                          isOpen
+                            ? isToday ? "bg-[#f0fdf8]" : "bg-[#f8f8f7]"
+                            : "bg-white hover:bg-[#f8f8f7]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[0.65rem] font-bold ${
+                            isToday ? "bg-[#12b886] text-white" : "bg-neutral-100 text-neutral-500"
+                          }`}>
+                            {item.day.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className={`text-sm font-bold ${isToday ? "text-[#0a7c5c]" : "text-neutral-800"}`}>
+                            {item.day}
+                            {isToday && (
+                              <span className="ml-2 rounded-full bg-[#12b886] px-2 py-0.5 text-[0.6rem] font-bold text-white">
+                                Hari ini
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Status badge only for today */}
+                          {isToday && item.status !== "unknown" && (
+                            <span className={`rounded-lg px-2.5 py-0.5 text-[0.68rem] font-bold ${statusStyles[item.status]}`}>
+                              {item.statusLabel}
+                            </span>
+                          )}
+                          {/* Item count chip */}
+                          {hasAnyMenu && (
+                            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[0.68rem] font-semibold text-neutral-500">
+                              {totalItems} menu
+                            </span>
+                          )}
+                          {/* Chevron */}
+                          <svg
+                            viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                            className={`h-4 w-4 text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                          >
+                            <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* ── Accordion body ── */}
+                      {isOpen && (
+                        <div className="border-t border-neutral-100 bg-white px-4 pb-4 pt-3 space-y-3">
+
+                          {/* Lunch section */}
+                          <div>
+                            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-amber-600">
+                              <span>☀️</span> Makan Siang
+                            </p>
+                            {hasLunch ? (
+                              <div className="space-y-1.5 pl-5">
+                                {item.lunch.map((entry, i) => (
+                                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+                                    <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {entry.calories && (
+                                        <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
+                                      )}
+                                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                                        ×{entry.serving}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="pl-5 text-xs italic text-neutral-400">Belum dipilih</p>
+                            )}
+                          </div>
+
+                          {/* Dinner section */}
+                          <div>
+                            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600">
+                              <span>🌙</span> Makan Malam
+                            </p>
+                            {hasDinner ? (
+                              <div className="space-y-1.5 pl-5">
+                                {item.dinner.map((entry, i) => (
+                                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2">
+                                    <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {entry.calories && (
+                                        <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
+                                      )}
+                                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700">
+                                        ×{entry.serving}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="pl-5 text-xs italic text-neutral-400">Belum dipilih</p>
+                            )}
+                          </div>
+
+                          {/* CTA if nothing selected */}
+                          {!hasAnyMenu && (
+                            <Link
+                              href="/subscription/weekly-menu"
+                              className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-[#12b886] hover:underline"
+                            >
+                              <span>+</span> Pilih menu untuk hari ini →
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })
               )}
             </div>
+
 
             {dashboard.currentWeek.trackingEnabled ? (
               <Link
                 href="/delivery"
-                className="mt-7 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#12b886] px-4 text-sm font-bold text-white shadow-[0_8px_16px_rgba(18,184,134,0.25)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+                className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#12b886] px-4 text-sm font-bold text-white shadow-[0_8px_16px_rgba(18,184,134,0.25)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
               >
                 Lihat Detail Tracking
               </Link>
@@ -917,7 +1099,7 @@ export function DashboardScreen() {
               <button
                 type="button"
                 disabled
-                className="mt-7 inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-4 text-sm font-bold text-neutral-500"
+                className="mt-5 inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-4 text-sm font-bold text-neutral-500"
               >
                 Tracking belum tersedia
               </button>

@@ -16,6 +16,8 @@ export const updateWeeklyMenuSchema = z.object({
 export const saveMealSelectionsSchema = z.object({
   mealSelections: z.array(z.object({
     day: z.enum(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU']),
+    mealType: z.enum(['LUNCH', 'DINNER']).default('LUNCH'),
+    serving: z.number().min(1).default(1),
     recipeId: z.string().min(1, 'recipeId wajib diisi.'),
   })).min(1, 'Minimal satu meal selection harus diisi.'),
   weekStartDate: z.string().min(1, 'weekStartDate wajib diisi.'),

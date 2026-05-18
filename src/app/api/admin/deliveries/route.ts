@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import { getAdminDeliveries } from '@/controllers/adminController';
+import { getAdminDeliveries, createAdminDelivery } from '@/controllers/adminController';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   if (error === 'CONFIG_MISSING') {
@@ -40,5 +40,24 @@ export async function GET(req: NextRequest) {
       { error: 'Gagal mengambil data deliveries.' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
+
+  try {
+    const body = await req.json();
+    const result = await createAdminDelivery(session.userId, body);
+
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error('[ADMIN DELIVERIES POST ERROR]', error);
+    return NextResponse.json({ error: 'Gagal membuat delivery baru.' }, { status: 500 });
   }
 }

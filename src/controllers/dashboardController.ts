@@ -61,99 +61,111 @@ export const getDashboard = async (userId: string) => {
         },
       }),
 
-      // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
-      prisma.weeklyBox.findFirst({
-        where: {
-          userId,
-          weekStartDate: { lte: today },
-          weekEndDate: { gte: today },
-        },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
+        // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
+        prisma.weeklyBox.findFirst({
+          where: {
+            userId,
+            weekStartDate: { lte: today },
+            weekEndDate: { gte: today },
+          },
+          select: {
+            id: true,
+            weekStartDate: true,
+            weekEndDate: true,
+            selectionDeadline: true,
+            isAutoSelected: true,
+            status: true,
+            mealSelections: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                mealType: true,
+                serving: true,
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    calories: true,
+                    protein: true,
+                    imageUrl: true,
+                  },
                 },
               },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
             orderBy: { dayOfWeek: 'asc' },
           },
         },
       }),
 
-      // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
-      prisma.weeklyBox.findFirst({
-        where: {
-          userId,
-          weekStartDate: { gt: today },
-        },
-        orderBy: { weekStartDate: 'asc' },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
+        // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
+        prisma.weeklyBox.findFirst({
+          where: {
+            userId,
+            weekStartDate: { gt: today },
+          },
+          orderBy: { weekStartDate: 'asc' },
+          select: {
+            id: true,
+            weekStartDate: true,
+            weekEndDate: true,
+            selectionDeadline: true,
+            isAutoSelected: true,
+            status: true,
+            mealSelections: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                mealType: true,
+                serving: true,
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    calories: true,
+                    protein: true,
+                    imageUrl: true,
+                  },
                 },
               },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
             orderBy: { dayOfWeek: 'asc' },
           },
         },
       }),
 
-      // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
-      prisma.weeklyBox.findFirst({
-        where: { userId },
-        orderBy: { weekStartDate: 'desc' },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
+        // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
+        prisma.weeklyBox.findFirst({
+          where: { userId },
+          orderBy: { weekStartDate: 'desc' },
+          select: {
+            id: true,
+            weekStartDate: true,
+            weekEndDate: true,
+            selectionDeadline: true,
+            isAutoSelected: true,
+            status: true,
+            mealSelections: {
+              select: {
+                id: true,
+                dayOfWeek: true,
+                mealType: true,
+                serving: true,
+                recipe: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    calories: true,
+                    protein: true,
+                    imageUrl: true,
+                  },
                 },
               },
+              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
             orderBy: { dayOfWeek: 'asc' },
           },
@@ -225,37 +237,29 @@ export const getDashboard = async (userId: string) => {
       return NextResponse.json({ message: 'User tidak ditemukan.' }, { status: 404 });
     }
 
-    // Hitung summary meal selections minggu ini
-    const selectedWeeklyBox = currentWeeklyBox ?? nextWeeklyBox ?? latestWeeklyBox ?? null;
-
     const totalDays = 7;
-    const selectedDays = selectedWeeklyBox?.mealSelections?.length ?? 0;
-    const remainingDays = Math.max(0, totalDays - selectedDays);
+    const calculateSummary = (box: typeof currentWeeklyBox) => {
+      if (!box) return null;
+      const uniqueDays = new Set(box.mealSelections?.map(m => m.dayOfWeek));
+      const selectedDays = uniqueDays.size;
+      const remainingDays = Math.max(0, totalDays - selectedDays);
+      const selectionDeadline = box.selectionDeadline ? new Date(box.selectionDeadline) : null;
+      const canSelectMenu = box.status === 'PENDING_SELECTION' && selectionDeadline !== null && selectionDeadline > new Date();
+      return { totalDays, selectedDays, remainingDays, canSelectMenu };
+    };
 
-    // Cek apakah deadline pemilihan menu masih bisa dilakukan
-    const selectionDeadline = selectedWeeklyBox?.selectionDeadline
-      ? new Date(selectedWeeklyBox.selectionDeadline)
-      : null;
-    const canSelectMenu =
-      selectedWeeklyBox?.status === 'PENDING_SELECTION' &&
-      selectionDeadline !== null &&
-      selectionDeadline > new Date();
+    const currentBox = currentWeeklyBox ?? (latestWeeklyBox && latestWeeklyBox.weekEndDate < today ? latestWeeklyBox : null);
 
     return NextResponse.json({
       status: 'success',
       data: {
         user,
         subscription,
-        weeklyBox: selectedWeeklyBox
-          ? {
-            ...selectedWeeklyBox,
-            summary: {
-              totalDays,
-              selectedDays,
-              remainingDays,
-              canSelectMenu,
-            },
-          }
+        currentWeeklyBox: currentBox
+          ? { ...currentBox, summary: calculateSummary(currentBox) }
+          : null,
+        nextWeeklyBox: nextWeeklyBox
+          ? { ...nextWeeklyBox, summary: calculateSummary(nextWeeklyBox) }
           : null,
         todayDelivery,
         recentDeliveries,
