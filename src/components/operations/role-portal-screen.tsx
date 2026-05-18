@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import styles from "./role-portal-screen.module.css";
@@ -402,6 +402,18 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const [expandedWeekStartDate, setExpandedWeekStartDate] = useState<string | null>(null);
   const [goalEditorMenuId, setGoalEditorMenuId] = useState<string | null>(null);
   const [goalOverrides, setGoalOverrides] = useState<Record<string, string[]>>({});
+  // Dynamic Real-time Dashboard States
+  const [adminStats, setAdminStats] = useState<{
+    totalUsers: number;
+    activeSubscriptions: number;
+    todayDeliveries: number;
+  } | null>(null);
+  const [adminActivities, setAdminActivities] = useState<any[]>([]);
+  const [adminReportData, setAdminReportData] = useState<{
+    trends: any[];
+    highlights: any[];
+  } | null>(null);
+  const [nutritionActivities, setNutritionActivities] = useState<any[]>([]);
 
   // CRUD states
   const [showRecipeForm, setShowRecipeForm] = useState(false);
@@ -410,12 +422,34 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const [showMenuForm, setShowMenuForm] = useState(false);
   const [menuForm, setMenuForm] = useState({ recipeId: "", weekStartDate: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Generic custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+    variant?: "default" | "destructive" | "admin" | "nutritionist";
+    hideCancel?: boolean;
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
   
   // Delivery CRUD UI states (admin)
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
   const [deliveryForm, setDeliveryForm] = useState({ id: "", userId: "", menu: "", address: "", deliveryDate: "", status: "PREPARING" });
   const [isDeliverySubmitting, setIsDeliverySubmitting] = useState(false);
   const [isDeletingDeliveryId, setIsDeletingDeliveryId] = useState<string | null>(null);
+  const [expandedDeliveryKeys, setExpandedDeliveryKeys] = useState<Set<string>>(new Set());
+
+  const toggleExpandDelivery = (key: string) => {
+    setExpandedDeliveryKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
   // Action dropdown state for table rows
   const [openActionMenu, setOpenActionMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [pendingDeliveryAction, setPendingDeliveryAction] = useState<
@@ -495,6 +529,67 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     }
   }, []);
 
+  // Fetch Admin Dashboard Stats & Dynamic Activities
+  const fetchAdminDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/dashboard", { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengambil data dashboard");
+      const data = await res.json();
+      setAdminStats({
+        totalUsers: data.totalUsers,
+        activeSubscriptions: data.activeSubscriptions,
+        todayDeliveries: data.todayDeliveries,
+      });
+
+      const mapped = (data.activities || []).map((act: any) => {
+        let icon = <PeopleIcon />;
+        if (act.icon === "🚚") icon = <BoxIcon />;
+        if (act.icon === "💳") icon = <ChartArrowIcon />;
+        return {
+          text: act.text,
+          time: act.time,
+          icon,
+        };
+      });
+      setAdminActivities(mapped);
+    } catch (err) {
+      console.error("[FETCH ADMIN DASHBOARD]", err);
+    }
+  }, []);
+
+  // Fetch Admin Reports live trends and highlights
+  const fetchAdminReports = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/reports", { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengambil data laporan");
+      const data = await res.json();
+      setAdminReportData(data);
+    } catch (err) {
+      console.error("[FETCH ADMIN REPORTS]", err);
+    }
+  }, []);
+
+  // Fetch Nutritionist Dashboard dynamic activities
+  const fetchNutritionActivities = useCallback(async () => {
+    try {
+      const res = await fetch("/api/nutritionist/dashboard/activity", { credentials: "include" });
+      if (!res.ok) throw new Error("Gagal mengambil aktivitas ahli gizi");
+      const data = await res.json();
+      const mapped = (data.activities || []).map((act: any) => {
+        let icon = <BookIcon />;
+        if (act.icon === "CalendarIcon") icon = <CalendarIcon />;
+        return {
+          text: act.text,
+          time: act.time,
+          icon,
+        };
+      });
+      setNutritionActivities(mapped);
+    } catch (err) {
+      console.error("[FETCH NUTRITIONIST ACTIVITIES]", err);
+    }
+  }, []);
+
   const fetchRecipes = useCallback(async () => {
     try {
       const res = await fetch("/api/nutritionist/recipes", { credentials: "include" });
@@ -528,21 +623,40 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
     const load = async () => {
       if (role === "admin") {
-        if (activeTab === "deliveries") {
+        if (activeTab === "dashboard") {
+          await fetchAdminDashboardStats();
+        } else if (activeTab === "deliveries") {
           await Promise.all([fetchUsers(), fetchDeliveries()]);
         } else if (activeTab === "users") {
           await fetchUsers();
+        } else if (activeTab === "reports") {
+          await fetchAdminReports();
         }
       } else if (role === "nutritionist") {
-        if (activeTab === "dashboard") await fetchNutritionKpis();
-        else if (activeTab === "recipes") await fetchRecipes();
-        else if (activeTab === "weekly-menu") await fetchWeeklyMenus();
+        if (activeTab === "dashboard") {
+          await Promise.all([fetchNutritionKpis(), fetchNutritionActivities()]);
+        } else if (activeTab === "recipes") {
+          await fetchRecipes();
+        } else if (activeTab === "weekly-menu") {
+          await fetchWeeklyMenus();
+        }
       }
       setLoading(false);
     };
 
     load();
-  }, [role, activeTab, fetchDeliveries, fetchUsers, fetchNutritionKpis, fetchRecipes, fetchWeeklyMenus]);
+  }, [
+    role,
+    activeTab,
+    fetchDeliveries,
+    fetchUsers,
+    fetchNutritionKpis,
+    fetchRecipes,
+    fetchWeeklyMenus,
+    fetchAdminDashboardStats,
+    fetchAdminReports,
+    fetchNutritionActivities,
+  ]);
 
   // Advance delivery status
   async function advanceDelivery(id: string) {
@@ -638,7 +752,14 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       setPendingDeliveryAction(null);
     } catch (err) {
       console.error(err);
-      alert("Error saving delivery");
+      setCustomAlert({
+        title: "Gagal Menyimpan",
+        message: "Terjadi kesalahan saat menyimpan data pengiriman (delivery).",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } finally {
       setIsDeliverySubmitting(false);
     }
@@ -652,7 +773,14 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       await fetchDeliveries();
     } catch (err) {
       console.error(err);
-      alert("Error deleting delivery");
+      setCustomAlert({
+        title: "Gagal Menghapus",
+        message: "Terjadi kesalahan saat menghapus data pengiriman (delivery).",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } finally {
       setIsDeletingDeliveryId(null);
     }
@@ -723,11 +851,27 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       if (!res.ok) throw new Error("Gagal menyimpan resep");
       await fetchRecipes();
       setShowRecipeForm(false);
+      const savedName = recipeForm.name;
       setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6", imageUrl: "" });
       setRecipeImageFile(null);
+      setCustomAlert({
+        title: "Resep Disimpan",
+        message: `Resep "${savedName}" berhasil disimpan ke dalam database.`,
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menyimpan resep");
+      setCustomAlert({
+        title: "Gagal Menyimpan Resep",
+        message: "Terjadi kesalahan saat menyimpan data resep. Pastikan semua field sudah diisi dengan benar.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -738,9 +882,24 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       const res = await fetch(`/api/nutritionist/recipes/${id}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) throw new Error("Gagal menghapus resep");
       await fetchRecipes();
+      setCustomAlert({
+        title: "Resep Dihapus",
+        message: "Resep berhasil dihapus dari database.",
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat menghapus resep");
+      setCustomAlert({
+        title: "Gagal Menghapus Resep",
+        message: "Terjadi kesalahan saat menghapus resep dari database.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     }
   }
 
@@ -777,34 +936,106 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       await fetchWeeklyMenus();
       setShowMenuForm(false);
       setMenuForm({ recipeId: "", weekStartDate: "" });
+      setCustomAlert({
+        title: "Menu Ditambahkan",
+        message: "Resep berhasil dijadwalkan ke menu mingguan.",
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } catch (err) {
       console.error(err);
-      alert("Error adding menu");
+      setCustomAlert({
+        title: "Gagal Menambahkan Menu",
+        message: "Terjadi kesalahan saat menambahkan resep ke jadwal menu mingguan.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleDeleteMenu(id: string) {
-    if (!confirm("Hapus dari jadwal minggu ini?")) return;
+  async function handleAutoGenerateNextWeek() {
+    setIsGenerating(true);
     try {
-      const res = await fetch(`/api/nutritionist/weekly-menus/${id}`, { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw new Error("Gagal menghapus menu");
-      setGoalEditorMenuId((current) => (current === id ? null : current));
-      setGoalOverrides((prev) => {
-        if (!(id in prev)) {
-          return prev;
-        }
-
-        const next = { ...prev };
-        delete next[id];
-        return next;
+      const res = await fetch("/api/nutritionist/weekly-menus/auto-generate", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal meng-generate menu");
+      
+      setCustomAlert({
+        title: "Generasi Berhasil",
+        message: data.message || "Berhasil meng-generate menu minggu depan.",
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
       });
       await fetchWeeklyMenus();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error deleting menu");
+      setCustomAlert({
+        title: "Gagal Meng-generate",
+        message: err.message || "Terjadi kesalahan saat meng-generate resep untuk minggu depan.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
+    } finally {
+      setIsGenerating(false);
     }
+  }
+
+  async function handleDeleteMenu(id: string) {
+    setCustomAlert({
+      title: "Hapus Menu Mingguan",
+      message: "Apakah Anda yakin ingin menghapus resep ini dari jadwal menu?",
+      confirmLabel: "Ya, Hapus",
+      cancelLabel: "Batal",
+      variant: "destructive",
+      hideCancel: false,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/nutritionist/weekly-menus/${id}`, { method: "DELETE", credentials: "include" });
+          if (!res.ok) throw new Error("Gagal menghapus menu");
+          setGoalEditorMenuId((current) => (current === id ? null : current));
+          setGoalOverrides((prev) => {
+            if (!(id in prev)) {
+              return prev;
+            }
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+          await fetchWeeklyMenus();
+          setCustomAlert({
+            title: "Menu Dihapus",
+            message: "Menu berhasil dihapus dari jadwal mingguan.",
+            confirmLabel: "OK",
+            variant: "nutritionist",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        } catch (err) {
+          console.error(err);
+          setCustomAlert({
+            title: "Gagal Menghapus Menu",
+            message: "Terjadi kesalahan saat menghapus menu dari jadwal.",
+            confirmLabel: "Tutup",
+            variant: "destructive",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        }
+      }
+    });
   }
 
   function openEditMenu(menuId: string) {
@@ -928,24 +1159,75 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     });
   }, [activeTab, role, visibleWeeklyMenus]);
 
-  // Filtered deliveries
-  const filteredDeliveries = useMemo(() => {
-    return deliveries.filter((d) => {
+  // Filtered & Grouped deliveries by User + Week Monday
+  const groupedDeliveries = useMemo(() => {
+    const filtered = deliveries.filter((d) => {
       const matchesSearch =
         deliverySearch === "" ||
         d.id.toLowerCase().includes(deliverySearch.toLowerCase()) ||
         d.user.toLowerCase().includes(deliverySearch.toLowerCase()) ||
-        d.menu.toLowerCase().includes(deliverySearch.toLowerCase());
+        d.menu.toLowerCase().includes(deliverySearch.toLowerCase()) ||
+        d.address.toLowerCase().includes(deliverySearch.toLowerCase());
       return matchesSearch;
+    });
+
+    const groups: Record<string, {
+      key: string;
+      userId: string;
+      user: string;
+      address: string;
+      weekStart: string;
+      weekEnd: string;
+      deliveries: DeliveryRow[];
+    }> = {};
+
+    filtered.forEach((d) => {
+      const date = new Date(d.deliveryDate);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(date.setDate(diff));
+      monday.setHours(0, 0, 0, 0);
+      const weekStartStr = monday.toISOString().split("T")[0];
+
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const weekEndStr = sunday.toISOString().split("T")[0];
+
+      const groupKey = `${d.userId}_${weekStartStr}`;
+
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          key: groupKey,
+          userId: d.userId,
+          user: d.user,
+          address: d.address,
+          weekStart: weekStartStr,
+          weekEnd: weekEndStr,
+          deliveries: [],
+        };
+      }
+      groups[groupKey].deliveries.push(d);
+    });
+
+    // Sort deliveries within each group by deliveryDate ascending
+    Object.values(groups).forEach((g) => {
+      g.deliveries.sort((a, b) => new Date(a.deliveryDate).getTime() - new Date(b.deliveryDate).getTime());
+    });
+
+    // Convert to array and sort by weekStart descending, then by user name
+    return Object.values(groups).sort((a, b) => {
+      const timeDiff = new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return a.user.localeCompare(b.user);
     });
   }, [deliveries, deliverySearch]);
 
-  const totalDeliveryPages = Math.max(1, Math.ceil(filteredDeliveries.length / deliveryPageSize));
+  const totalDeliveryPages = Math.max(1, Math.ceil(groupedDeliveries.length / deliveryPageSize));
 
   const paginatedDeliveries = useMemo(() => {
     const startIndex = (deliveryPage - 1) * deliveryPageSize;
-    return filteredDeliveries.slice(startIndex, startIndex + deliveryPageSize);
-  }, [filteredDeliveries, deliveryPage, deliveryPageSize]);
+    return groupedDeliveries.slice(startIndex, startIndex + deliveryPageSize);
+  }, [groupedDeliveries, deliveryPage, deliveryPageSize]);
 
   useEffect(() => {
     setDeliveryPage(1);
@@ -978,7 +1260,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         title: "Konfirmasi Edit Resep",
         message: "Apakah Anda yakin ingin mengedit resep ini?",
         confirmLabel: "Ya, Edit",
-        variant: "default" as const,
+        variant: "nutritionist" as const,
       };
     }
 
@@ -1020,7 +1302,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
           ? "Pastikan detail delivery sudah benar sebelum perubahan disimpan."
           : "Pastikan detail delivery sudah benar sebelum delivery baru dibuat.",
         confirmLabel: deliveryForm.id ? "Ya, Simpan" : "Ya, Buat Delivery",
-        variant: "default" as const,
+        variant: "admin" as const,
       };
     }
 
@@ -1029,7 +1311,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         title: "Konfirmasi Advance Status",
         message: "Apakah Anda yakin ingin memajukan status delivery ini?",
         confirmLabel: "Ya, Advance",
-        variant: "default" as const,
+        variant: "admin" as const,
       };
     }
 
@@ -1084,17 +1366,42 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
   const openActionRow = useMemo(() => {
     if (!openActionMenu) return null;
-    return filteredDeliveries.find((row) => row.id === openActionMenu.id) || null;
-  }, [filteredDeliveries, openActionMenu]);
+    return deliveries.find((row) => row.id === openActionMenu.id) || null;
+  }, [deliveries, openActionMenu]);
 
   // Get KPIs based on active tab
   const currentKpis = useMemo(() => {
+    if (role === "admin" && activeTab === "dashboard" && adminStats) {
+      return [
+        { label: "Total Pengguna", value: String(adminStats.totalUsers), delta: "Live", icon: <PeopleIcon /> },
+        { label: "Langganan Aktif", value: String(adminStats.activeSubscriptions), delta: "Live", icon: <ChartArrowIcon /> },
+        { label: "Pengiriman Hari Ini", value: String(adminStats.todayDeliveries), delta: "Live", icon: <BoxIcon /> },
+      ];
+    }
     if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
     if (role === "admin" && activeTab === "users") return userKpis;
+    if (role === "admin" && activeTab === "reports" && adminReportData && adminReportData.trends) {
+      return [
+        { label: "Volume Pesanan", value: adminReportData.trends[0]?.value || "0 porsi", delta: adminReportData.trends[0]?.delta || "", icon: <ChartArrowIcon /> },
+        { label: "Tepat Waktu", value: adminReportData.trends[1]?.value || "100%", delta: adminReportData.trends[1]?.delta || "", icon: <CheckCircleIcon /> },
+        { label: "Tingkat Kendala", value: adminReportData.trends[2]?.value || "0%", delta: adminReportData.trends[2]?.delta || "", icon: <AlertIcon /> },
+      ];
+    }
     if (role === "nutritionist" && activeTab === "dashboard" && nutritionKpis) return nutritionKpis;
     if (role === "nutritionist" && activeTab === "weekly-menu") return weeklyMenuKpis;
     return config.kpis[activeTab] || [];
-  }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis, weeklyMenuKpis]);
+  }, [role, activeTab, config.kpis, deliveryKpis, userKpis, nutritionKpis, weeklyMenuKpis, adminStats, adminReportData]);
+
+  // Get Activities based on active tab
+  const currentActivities = useMemo(() => {
+    if (role === "admin" && activeTab === "dashboard") {
+      return adminActivities.length > 0 ? adminActivities : config.activities[activeTab] || [];
+    }
+    if (role === "nutritionist" && activeTab === "dashboard") {
+      return nutritionActivities.length > 0 ? nutritionActivities : config.activities[activeTab] || [];
+    }
+    return config.activities[activeTab] || [];
+  }, [role, activeTab, config.activities, adminActivities, nutritionActivities]);
 
   return (
     <>
@@ -1272,39 +1579,139 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                           </td>
                         </tr>
                       ) : (
-                        paginatedDeliveries.map((row) => (
-                          <tr key={row.id}>
-                            <td className={styles.tableKey}>{row.id.slice(0, 8)}...</td>
-                            <td>{row.user}</td>
-                            <td>{row.menu}</td>
-                            <td>{row.address}</td>
-                            <td>
-                              <span className={clsx(styles.tag, statusClass[row.status])}>{formatDeliveryStatusLabel(row.status)}</span>
-                            </td>
-                            <td style={{ position: "relative", width: "1%" }}>
-                              <button
-                                type="button"
-                                className={styles.actionCard}
-                                onClick={(event) => {
-                                  const rect = event.currentTarget.getBoundingClientRect();
-                                  setOpenActionMenu((current) => {
-                                    if (current?.id === row.id) return null;
-                                    return {
-                                      id: row.id,
-                                      top: rect.bottom + 8,
-                                      left: Math.max(12, rect.right - 152),
-                                    };
-                                  });
-                                }}
-                                aria-expanded={openActionMenu?.id === row.id}
-                                aria-controls={`actions-${row.id}`}
-                                style={{ padding: "0.45rem 0.7rem" }}
-                              >
-                                Aksi
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        paginatedDeliveries.map((row) => {
+                          const total = row.deliveries.length;
+                          const delivered = row.deliveries.filter(d => d.status === 'DELIVERED').length;
+                          const shipped = row.deliveries.filter(d => d.status === 'SHIPPED').length;
+                          const preparing = row.deliveries.filter(d => d.status === 'PREPARING').length;
+
+                          let statusText = "Menyiapkan";
+                          let statusVariant: "PREPARING" | "SHIPPED" | "DELIVERED" = "PREPARING";
+                          if (delivered === total) {
+                            statusText = "Terkirim Semua";
+                            statusVariant = "DELIVERED";
+                          } else if (delivered > 0 || shipped > 0) {
+                            statusText = `Proses (${delivered}/${total} Terkirim)`;
+                            statusVariant = "SHIPPED";
+                          }
+
+                          const weekLabel = new Date(row.weekStart).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short'
+                          }) + " - " + new Date(row.weekEnd).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          });
+
+                          const isExpanded = expandedDeliveryKeys.has(row.key);
+
+                          return (
+                            <Fragment key={row.key}>
+                              <tr style={{ cursor: "pointer", borderBottom: isExpanded ? "none" : "1px solid #e2e8f0" }} onClick={() => toggleExpandDelivery(row.key)}>
+                                <td className={styles.tableKey}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontWeight: 700 }}>
+                                    <span style={{ fontSize: "0.6rem", transition: "transform 0.2s", transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", color: "var(--accent-strong)" }}>▶</span>
+                                    Pekan {new Date(row.weekStart).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                </td>
+                                <td style={{ fontWeight: 600 }}>{row.user}</td>
+                                <td style={{ fontWeight: 700, color: "var(--accent-strong)" }}>{total} Menu</td>
+                                <td style={{ fontSize: "0.92rem", color: "#475569" }}>{row.address}</td>
+                                <td>
+                                  <span className={clsx(styles.tag, statusClass[statusVariant])}>
+                                    {statusText}
+                                  </span>
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className={styles.tabButton}
+                                    style={{ padding: "0.35rem 0.65rem", fontSize: "0.82rem" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpandDelivery(row.key);
+                                    }}
+                                  >
+                                    {isExpanded ? "Tutup" : "Lihat Detail"}
+                                  </button>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr style={{ background: "#f8fafc" }}>
+                                  <td colSpan={6} style={{ padding: "1.2rem 1.6rem 1.6rem", borderTop: "none" }}>
+                                    <div style={{ display: 'grid', gap: '0.8rem' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                                        <p style={{ margin: 0, fontWeight: 800, color: 'var(--accent-strong)', fontSize: '0.94rem' }}>
+                                          Detail Jadwal Pengiriman Harian ({weekLabel})
+                                        </p>
+                                        <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+                                          Total: <span style={{ color: '#0f172a' }}>{total}</span> | Menyiapkan: <span style={{ color: '#d97706' }}>{preparing}</span> | Dikirim: <span style={{ color: '#2563eb' }}>{shipped}</span> | Terkirim: <span style={{ color: '#16a34a' }}>{delivered}</span>
+                                        </div>
+                                      </div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
+                                        {row.deliveries.map((d) => {
+                                          const dateLabel = new Date(d.deliveryDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+                                          return (
+                                            <div key={d.id} style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.9rem', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', position: 'relative' }}>
+                                              <div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{dateLabel}</span>
+                                                  <span className={clsx(styles.tag, statusClass[d.status])} style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
+                                                    {formatDeliveryStatusLabel(d.status)}
+                                                  </span>
+                                                </div>
+                                                <p style={{ margin: 0, fontWeight: 800, color: '#0f172a', fontSize: '0.92rem', lineHeight: 1.3 }}>{d.menu}</p>
+                                                <p style={{ margin: '0.25rem 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>ID Pengiriman: {d.id.slice(0, 8)}...</p>
+                                              </div>
+                                              <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '0.7rem' }}>
+                                                <button
+                                                  type="button"
+                                                  className={styles.actionCard}
+                                                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px' }}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openEditDelivery(d);
+                                                  }}
+                                                >
+                                                  Ubah
+                                                </button>
+                                                {d.status !== 'DELIVERED' && (
+                                                  <button
+                                                    type="button"
+                                                    className={styles.actionCard}
+                                                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px', background: 'var(--accent-strong)', color: '#ffffff', border: 'none' }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setPendingDeliveryAction({ type: "advance", id: d.id });
+                                                    }}
+                                                  >
+                                                    {d.status === 'PREPARING' ? 'Kirim' : 'Selesai'}
+                                                  </button>
+                                                )}
+                                                <button
+                                                  type="button"
+                                                  className={clsx(styles.actionCard, styles.deliveryCancelButton)}
+                                                  style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px' }}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPendingDeliveryAction({ type: "delete", id: d.id });
+                                                  }}
+                                                >
+                                                  Hapus
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1312,8 +1719,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
                 <div className={styles.paginationBar}>
                   <p className={styles.paginationInfo}>
-                    Menampilkan {filteredDeliveries.length === 0 ? 0 : (deliveryPage - 1) * deliveryPageSize + 1}
-                    -{Math.min(deliveryPage * deliveryPageSize, filteredDeliveries.length)} dari {filteredDeliveries.length} delivery
+                    Menampilkan {groupedDeliveries.length === 0 ? 0 : (deliveryPage - 1) * deliveryPageSize + 1}
+                    -{Math.min(deliveryPage * deliveryPageSize, groupedDeliveries.length)} dari {groupedDeliveries.length} batch mingguan
                   </p>
                   <div className={styles.paginationControls}>
                     <select
@@ -1505,7 +1912,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <section className={styles.activityCard} style={{ marginTop: 0 }}>
                     <h3 className={styles.activityHeader}>Sinyal Tren</h3>
                     <div style={{ display: "grid", gap: "0.9rem" }}>
-                      {adminReportTrends.map((item) => (
+                      {(adminReportData?.trends || adminReportTrends).map((item) => (
                         <article key={item.label} style={{ border: "1px solid #e8edf4", borderRadius: "14px", padding: "0.9rem", background: "#f8fafc" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
                             <div>
@@ -1528,7 +1935,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <section className={styles.activityCard} style={{ marginTop: 0 }}>
                     <h3 className={styles.activityHeader}>Ringkasan Operasional</h3>
                     <div style={{ display: "grid", gap: "0.75rem" }}>
-                      {adminReportHighlights.map((item) => (
+                      {(adminReportData?.highlights || adminReportHighlights).map((item) => (
                         <div key={item.label} style={{ padding: "0.85rem", borderRadius: "14px", background: "#f8fafc", border: "1px solid #e8edf4" }}>
                           <p style={{ margin: 0, color: "#64748b", fontSize: "0.82rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
                           <p style={{ margin: "0.28rem 0 0", color: "#0f172a", fontSize: "1rem", fontWeight: 800 }}>{item.value}</p>
@@ -1665,6 +2072,14 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <p className={styles.noticeTitle}>Menu Minggu Ini:</p>
                     <p>Setiap kartu mewakili satu minggu kalender. Label <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
                   </div>
+                  <button
+                    type="button"
+                    className={clsx(styles.tabButton, styles.tabButtonActive)}
+                    onClick={() => handleAutoGenerateNextWeek()}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? "Menganalisis..." : "Auto-Generate Minggu Depan"}
+                  </button>
                 </div>
 
                 <div className={styles.searchRow} style={{ marginTop: "1rem", gridTemplateColumns: "1fr 1fr 1fr" }}>
@@ -1899,12 +2314,11 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                 <section className={styles.activityCard}>
                   <h3 className={styles.activityHeader}>Aktivitas Terkini</h3>
                   <ul className={styles.activityList}>
-                    {config.activities[activeTab].map((activity) => (
-                      <li key={activity.text} className={styles.activityItem}>
+                    {currentActivities.map((activity, index) => (
+                      <li key={`${activity.text}-${index}`} className={styles.activityItem}>
                         <span className={styles.activityIcon}>{activity.icon}</span>
                         <div>
                           <p className={styles.activityText}>{activity.text}</p>
-                          <p className={styles.activityTime}>{activity.time}</p>
                         </div>
                       </li>
                     ))}
@@ -1915,28 +2329,13 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   {config.actions.map((action) => (
                     <button key={action.title} type="button" className={styles.actionCard}>
                       {action.icon ? <span>{action.icon}</span> : null}
-                      <p className={styles.actionTitle}>{action.title}</p>
+                      <p className={action.title === "Laporan" ? styles.actionTitleActive : styles.actionTitle}>{action.title}</p>
                       <p className={styles.actionSub}>{action.subtitle}</p>
                     </button>
                   ))}
                 </div>
               </>
-            ) : (
-              <section className={styles.activityCard}>
-                <h3 className={styles.activityHeader}>Aktivitas Terkini</h3>
-                <ul className={styles.activityList}>
-                  {config.activities[activeTab].map((activity) => (
-                    <li key={activity.text} className={styles.activityItem}>
-                      <span className={styles.activityIcon}>{activity.icon}</span>
-                      <div>
-                        <p className={styles.activityText}>{activity.text}</p>
-                        <p className={styles.activityTime}>{activity.time}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            ) : null}
           </div>
         </section>
       </div>
@@ -2079,6 +2478,22 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
       onCancel={() => setPendingDeliveryAction(null)}
       onConfirm={() => {
         void handleConfirmDeliveryAction();
+      }}
+    />
+    <ConfirmDialog
+      isOpen={Boolean(customAlert)}
+      title={customAlert?.title ?? ""}
+      message={customAlert?.message ?? ""}
+      confirmLabel={customAlert?.confirmLabel ?? "OK"}
+      cancelLabel={customAlert?.cancelLabel}
+      variant={customAlert?.variant}
+      hideCancel={customAlert?.hideCancel}
+      onCancel={() => setCustomAlert(null)}
+      onConfirm={async () => {
+        if (customAlert?.onConfirm) {
+          await customAlert.onConfirm();
+        }
+        setCustomAlert(null);
       }}
     />
     </>
