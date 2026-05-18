@@ -14,13 +14,15 @@ function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSessionUserId(req);
   if ('error' in session) return getAuthErrorResponse(session.error);
 
+  const { id } = await params;
+
   try {
-    const result = await advanceDelivery(session.userId, params.id);
+    const result = await advanceDelivery(session.userId, id);
 
     if ('error' in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });

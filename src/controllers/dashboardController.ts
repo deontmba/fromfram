@@ -61,113 +61,107 @@ export const getDashboard = async (userId: string) => {
         },
       }),
 
-        // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
-        prisma.weeklyBox.findFirst({
-          where: {
-            userId,
-            weekStartDate: { lte: today },
-            weekEndDate: { gte: today },
-          },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3. WeeklyBox minggu berjalan (yang mencakup hari ini)
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId,
+          weekStartDate: { lte: today },
+          weekEndDate: { gte: today },
+        },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
-            orderBy: { dayOfWeek: 'asc' },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
         },
       }),
 
-        // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
-        prisma.weeklyBox.findFirst({
-          where: {
-            userId,
-            weekStartDate: { gt: today },
-          },
-          orderBy: { weekStartDate: 'asc' },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId,
+          weekStartDate: { gt: today },
+        },
+        orderBy: { weekStartDate: 'asc' },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
-            orderBy: { dayOfWeek: 'asc' },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
         },
       }),
 
-        // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
-        prisma.weeklyBox.findFirst({
-          where: { userId },
-          orderBy: { weekStartDate: 'desc' },
-          select: {
-            id: true,
-            weekStartDate: true,
-            weekEndDate: true,
-            selectionDeadline: true,
-            isAutoSelected: true,
-            status: true,
-            mealSelections: {
-              select: {
-                id: true,
-                dayOfWeek: true,
-                mealType: true,
-                serving: true,
-                recipe: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                    calories: true,
-                    protein: true,
-                    imageUrl: true,
-                  },
+      // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
+      prisma.weeklyBox.findFirst({
+        where: { userId },
+        orderBy: { weekStartDate: 'desc' },
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
                 },
               },
-              orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
             },
-            orderBy: { dayOfWeek: 'asc' },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
         },
       }),

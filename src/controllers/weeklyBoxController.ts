@@ -145,9 +145,6 @@ export async function lockCurrentWeeklyBox(userId: string) {
     };
   }
 
-  // Dapatkan hari unik dari meal selections
-  const uniqueDays = Array.from(new Set(box.mealSelections.map((sel) => sel.dayOfWeek)));
-
   const dayOffsets: Record<string, number> = {
     SENIN: 0,
     SELASA: 1,
@@ -165,19 +162,21 @@ export async function lockCurrentWeeklyBox(userId: string) {
       data: { status: 'LOCKED' },
     });
 
-    // 2. Buat delivery untuk masing-masing hari unik
-    if (uniqueDays.length > 0) {
-      const deliveryData = uniqueDays.map((day) => {
-        const offset = dayOffsets[day] ?? 0;
+    // 2. Buat delivery untuk masing-masing meal selection
+    if (box.mealSelections.length > 0) {
+      const deliveryData = box.mealSelections.map((sel) => {
+        const offset = dayOffsets[sel.dayOfWeek] ?? 0;
         const deliveryDate = new Date(box.weekStartDate);
         deliveryDate.setDate(deliveryDate.getDate() + offset);
-        deliveryDate.setHours(7, 30, 0, 0); // Waktu default pengiriman pagi hari
+        const isLunch = sel.mealType === 'LUNCH';
+        deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
 
         return {
           userId,
           weeklyBoxId: box.id,
           addressId: address.id,
           deliveryDate,
+          mealType: sel.mealType,
           status: 'PREPARING' as const,
         };
       });

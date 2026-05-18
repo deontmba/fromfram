@@ -123,6 +123,43 @@ function CheckIcon() {
   );
 }
 
+function mapGoalsToMealCategory(goals: string[]): MealPlan["id"] {
+  const g = goals[0]?.toLowerCase() ?? "";
+  if (g.includes("loss") || g.includes("diet") || g.includes("kalori") || g.includes("berat")) {
+    return "diet";
+  }
+  if (g.includes("gain") || g.includes("fitness") || g.includes("otot") || g.includes("protein") || g.includes("atlet")) {
+    return "fitness";
+  }
+  return "basic";
+}
+
+function mapDietaryToMealCategory(dietary: string[]): MealPlan["id"] {
+  const d = dietary[0]?.toLowerCase() ?? "";
+  if (d.includes("diet") || d.includes("kalori") || d.includes("berat")) {
+    return "diet";
+  }
+  if (d.includes("fitness") || d.includes("protein") || d.includes("atlet")) {
+    return "fitness";
+  }
+  return "basic";
+}
+
+const cardContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+};
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -257,7 +294,7 @@ export function SelectPlanScreen() {
           <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
             Sesuaikan kategori meal plan, jumlah porsi, dan durasi berlangganan
           </p>
-        </motion.header>
+        </header>
 
         <div className="space-y-12">
           {/* STEP 1: Meal Category */}
@@ -332,7 +369,7 @@ export function SelectPlanScreen() {
                 })}
               </motion.div>
             </fieldset>
-          </motion.section>
+          </section>
 
           {/* STEP 2: Porsi — dipindah sebelum durasi agar harga langsung reflect saat memilih plan */}
           <section aria-labelledby="serving-title">
@@ -424,12 +461,12 @@ export function SelectPlanScreen() {
                           </li>
                         ))}
                       </ul>
-                    </button>
+                    </motion.button>
                   );
                 })}
               </motion.div>
             </fieldset>
-          </motion.section>
+          </section>
         </div>
 
         <footer className="mt-12 flex items-center justify-between gap-6">
@@ -455,7 +492,7 @@ export function SelectPlanScreen() {
           >
             {isSubmitting ? "Menyambungkan..." : "Lanjutkan →"}
           </button>
-        </motion.footer>
+        </footer>
 
         {errorMessage ? (
           <motion.p
@@ -466,7 +503,7 @@ export function SelectPlanScreen() {
             {errorMessage}
           </motion.p>
         ) : null}
-      </motion.section>
+      </section>
     </main>
   );
 }

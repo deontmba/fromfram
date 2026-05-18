@@ -347,7 +347,6 @@ export async function getAdminDeliveries(
         });
 
         if (address) {
-          const uniqueDays = Array.from(new Set(box.mealSelections.map((sel) => sel.dayOfWeek)));
           const dayOffsets: Record<string, number> = {
             SENIN: 0,
             SELASA: 1,
@@ -358,17 +357,19 @@ export async function getAdminDeliveries(
             MINGGU: 6,
           };
 
-          const deliveryData = uniqueDays.map((day) => {
-            const offset = dayOffsets[day] ?? 0;
+          const deliveryData = box.mealSelections.map((sel) => {
+            const offset = dayOffsets[sel.dayOfWeek] ?? 0;
             const deliveryDate = new Date(box.weekStartDate);
             deliveryDate.setDate(deliveryDate.getDate() + offset);
-            deliveryDate.setHours(7, 30, 0, 0);
+            const isLunch = sel.mealType === 'LUNCH';
+            deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
 
             return {
               userId: box.userId,
               weeklyBoxId: box.id,
               addressId: address.id,
               deliveryDate,
+              mealType: sel.mealType,
               status: 'PREPARING' as const,
             };
           });
@@ -383,34 +384,31 @@ export async function getAdminDeliveries(
     console.error('[ADMIN DELIVERIES BACKFILL ERROR]', err);
   }
 
-  const { status: statusFilter, area: areaFilter } = filters;
+  const {
+    status: statusFilter,
+    area: areaFilter,
+    date: dateFilter,
+    mealType,
+    search,
+    page = 1,
+    limit = 10,
+  } = filters;
 
-  const deliveries = await prisma.delivery.findMany({
-    where: {
-      ...(statusFilter && statusFilter !== 'all' && {
-        status: statusFilter as 'PREPARING' | 'SHIPPED' | 'DELIVERED',
-      }),
-      ...(areaFilter && areaFilter !== 'all' && {
-        address: {
-          city: { contains: areaFilter, mode: 'insensitive' },
-        },
-      }),
-    },
-    select: {
-      id: true,
-      deliveryDate: true,
-      status: true,
-      shippedAt: true,
-      deliveredAt: true,
-      user: {
-        select: { id: true, name: true },
-      },
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    ...(statusFilter && statusFilter !== 'all' && {
+      status: statusFilter as 'PREPARING' | 'SHIPPED' | 'DELIVERED',
+    }),
+    ...(areaFilter && areaFilter !== 'all' && {
       address: {
         city: { contains: areaFilter, mode: 'insensitive' as const },
       },
     }),
-    ...(dateFilter && { deliveryDate: dateFilter }),
-    ...(mealType && {
+    ...(dateFilter && {
+      deliveryDate: dateFilter,
+    }),
+    ...(mealType && mealType !== 'all' && {
       mealType: mealType as 'LUNCH' | 'DINNER',
     }),
     ...(search && {
@@ -588,12 +586,13 @@ export async function createAdminDelivery(
     address: string;
     deliveryDate: string;
     status: string;
+    mealType?: string;
   }
 ) {
   const authError = await verifyAdmin(adminId);
   if (authError) return authError;
 
-  const { userId, menu, address: addressText, deliveryDate: dateStr, status } = input;
+  const { userId, menu, address: addressText, deliveryDate: dateStr, status, mealType = 'LUNCH' } = input;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -690,6 +689,7 @@ export async function createAdminDelivery(
       weeklyBoxId: weeklyBox.id,
       addressId: address.id,
       deliveryDate,
+      mealType: (mealType === 'DINNER' ? 'DINNER' : 'LUNCH'),
       status: status as 'PREPARING' | 'SHIPPED' | 'DELIVERED',
     },
   });

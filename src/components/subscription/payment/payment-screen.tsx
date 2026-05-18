@@ -38,6 +38,7 @@ type PaymentScreenProps = {
 declare global {
   interface Window {
     snap?: {
+      pay: (token: string, options: { onSuccess?: () => void; onPending?: () => void; onError?: () => void; onClose?: () => void }) => void;
       embed: (token: string, options: { embedId: string; onSuccess?: () => void; onPending?: () => void; onError?: () => void; onClose?: () => void }) => void;
     };
   }
@@ -157,6 +158,24 @@ function mapSubscriptionToSummary(payload: unknown): Partial<PaymentSummary> {
     ) ?? "monthly";
   const servings = pickNumber(rec.servings, rec.servingSize);
   return {
+    planLabel: PLAN_CONFIG[planKey].planLabel,
+    durationLabel: PLAN_CONFIG[planKey].durationLabel,
+    subtotal: PLAN_CONFIG[planKey].subtotal,
+    discount: PLAN_CONFIG[planKey].discount,
+    total: PLAN_CONFIG[planKey].total,
+    servingLabel: servings ? `${servings} orang` : undefined,
+  };
+}
+
+function mapTransaction(payload: unknown): TransactionViewModel | null {
+  const root = toRecord(payload);
+  if (!root) return null;
+  const record =
+    toRecord(root.transaction) ??
+    toRecord(toRecord(root.data)?.transaction) ??
+    toRecord(root.data) ??
+    root;
+  return {
     id: pickString(record.id, record.transactionId),
     amount: pickNumber(record.amount, record.total, record.totalAmount),
     status: pickString(record.status),
@@ -166,10 +185,28 @@ function mapSubscriptionToSummary(payload: unknown): Partial<PaymentSummary> {
       record.paymentCode,
       toRecord(record.payment)?.qrisCode,
     ),
-    qrImageDataUrl: pickString(rootRecord?.qrImageDataUrl, record.qrImageDataUrl),
-    snapToken: pickString(rootRecord?.snapToken, record.snapToken, record.qrisCode),
-    redirectUrl: pickString(rootRecord?.redirectUrl, record.redirectUrl),
+    qrImageDataUrl: pickString(root?.qrImageDataUrl, record.qrImageDataUrl),
+    snapToken: pickString(root?.snapToken, record.snapToken, record.qrisCode),
+    redirectUrl: pickString(root?.redirectUrl, record.redirectUrl),
   };
+}
+
+function PaymentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+      <line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function QrisIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6">
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M7 7h3v3H7zm7 0h3v3h-3zm-7 7h3v3H7z" fill="currentColor" />
+    </svg>
+  );
 }
 
 function getDefaultAddressLabel(payload: unknown): string | null {
@@ -232,6 +269,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
   const router = useRouter();
   const snapContainerRef = useRef<HTMLDivElement | null>(null);
   const embeddedSnapTokenRef = useRef<string | null>(null);
+  const snapScriptLoaded = useRef(false);
   const [summary, setSummary] = useState<PaymentSummary>(FALLBACK_SUMMARY);
   const [transaction, setTransaction] = useState<TransactionViewModel>({
     id: null,
@@ -244,11 +282,16 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
   });
   const [isPreparing, setIsPreparing] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran Midtrans Snap...");
   const [autoPoll, setAutoPoll] = useState(true);
   const [isSnapScriptLoaded, setIsSnapScriptLoaded] = useState(false);
   const [snapScriptError, setSnapScriptError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  const snapToken = transaction.snapToken;
+  const canPay = !isPreparing && Boolean(transaction.snapToken);
+  const paymentAmount = transaction.amount ?? summary.total;
 
   useEffect(() => {
     setIsMounted(true);
@@ -317,6 +360,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
 
         if (!isMounted) return;
 
+        const nextTransaction = mapTransaction(payload);
         if (nextTransaction) {
           setTransaction(nextTransaction);
           const normalizedStatus = nextTransaction.status?.toUpperCase();
@@ -695,5 +739,6 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         </div>
       </section>
     </main>
+    </>
   );
 }

@@ -54,3 +54,17 @@ export async function getTransactionStatus(userId: string, transactionId: string
     return { error: 'Gagal mengambil status transaksi', status: 500 };
   }
 }
+
+import crypto from 'crypto';
+
+export function verifyMidtransSignature(
+  orderId: string,
+  statusCode: string,
+  grossAmount: string,
+  signatureKey: string
+): boolean {
+  const serverKey = process.env.MIDTRANS_SERVER_KEY ?? '';
+  const payload = `${orderId}${statusCode}${grossAmount}${serverKey}`;
+  const hashed = crypto.createHash('sha512').update(payload).digest('hex');
+  return hashed === signatureKey;
+}
