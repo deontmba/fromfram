@@ -44,10 +44,87 @@ export async function getAllTransactions(userId: string) {
 
 export async function getTransactionStatus(userId: string, transactionId: string) {
   try {
-    const transaction = await prisma.transaction.findFirst({
+    let transaction = await prisma.transaction.findFirst({
       where: { id: transactionId, userId }
     });
     if (!transaction) return { error: 'Transaksi tidak ditemukan', status: 404 };
+
+    // Jika transaksi masih PENDING, sync proaktif dengan Midtrans API
+    if (transaction.status === 'PENDING') {
+      const serverKey = process.env.MIDTRANS_SERVER_KEY ?? '';
+      if (serverKey) {
+        try {
+          const isProduction = process.env.MIDTRANS_IS_PRODUCTION === 'true';
+          const baseUrl = isProduction
+            ? 'https://api.midtrans.com'
+            : 'https://api.sandbox.midtrans.com';
+          const url = `${baseUrl}/v2/${transactionId}/status`;
+          const authHeader = 'Basic ' + Buffer.from(serverKey + ':').toString('base64');
+
+          const midtransRes = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'Authorization': authHeader,
+            },
+          });
+
+          if (midtransRes.ok) {
+            const midtransData = await midtransRes.json();
+            const transactionStatus = midtransData.transaction_status;
+            const fraudStatus = midtransData.fraud_status;
+
+            let dbStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | null = null;
+            switch (transactionStatus) {
+              case 'capture':
+                if (fraudStatus === 'challenge') dbStatus = 'PENDING';
+                if (fraudStatus === 'accept') dbStatus = 'COMPLETED';
+                break;
+              case 'settlement':
+                dbStatus = 'COMPLETED';
+                break;
+              case 'pending':
+                dbStatus = 'PENDING';
+                break;
+              case 'cancel':
+              case 'deny':
+              case 'expire':
+                dbStatus = 'FAILED';
+                break;
+            }
+
+            if (dbStatus && dbStatus !== 'PENDING') {
+              // Update status transaksi di database
+              transaction = await prisma.transaction.update({
+                where: { id: transactionId },
+                data: {
+                  status: dbStatus,
+                  ...(dbStatus === 'COMPLETED' && { paidAt: new Date() }),
+                },
+              });
+
+              // Jika pembayaran selesai, aktifkan juga subscription di database
+              if (dbStatus === 'COMPLETED') {
+                const subscription = await prisma.subscription.findUnique({
+                  where: { userId },
+                });
+                if (subscription && subscription.status === 'UNPAID') {
+                  await prisma.subscription.update({
+                    where: { id: subscription.id },
+                    data: { status: 'ACTIVE', startDate: new Date() },
+                  });
+                  console.info('[Direct Polling] Subscription activated for user:', userId);
+                }
+              }
+            }
+          }
+        } catch (fetchError) {
+          console.warn('[Direct Polling Warning] Failed to check status from Midtrans API:', fetchError);
+        }
+      }
+    }
+
     return { data: transaction, status: 200 };
   } catch (error) {
     console.error('[getTransactionStatus Error]', error);

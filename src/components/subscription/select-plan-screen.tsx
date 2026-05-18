@@ -9,6 +9,7 @@ import {
   ensureMySubscription,
   type ApiPlanType,
 } from "@/components/subscription/subscription-service";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -169,6 +170,7 @@ export function SelectPlanScreen() {
   const [selectedMeal, setSelectedMeal] = useState<MealPlan["id"]>("basic");
   const [selectedDuration, setSelectedDuration] = useState<DurationPlan["id"]>("monthly");
   const [selectedServing, setSelectedServing] = useState<number>(2);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -239,7 +241,12 @@ export function SelectPlanScreen() {
     return "BULANAN";
   }
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
     if (isSubmitting) return;
 
     setIsSubmitting(true);
@@ -504,6 +511,16 @@ export function SelectPlanScreen() {
           </motion.p>
         ) : null}
       </section>
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Konfirmasi Pilihan Langganan"
+        message={`Anda memilih meal plan ${selectedMeal.toUpperCase()} untuk ${selectedServing} porsi dengan durasi ${selectedDurationLabel}. Total biaya adalah ${formatRupiah(currentPrice)}. Apakah Anda ingin melanjutkan ke pengaturan alamat pengiriman?`}
+        confirmLabel="Ya, Lanjutkan"
+        cancelLabel="Batal"
+        isConfirming={isSubmitting}
+        onCancel={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+      />
     </main>
   );
 }

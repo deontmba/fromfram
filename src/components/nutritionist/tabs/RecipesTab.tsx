@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { RecipeRow, RecipeFormData } from "../hooks/useNutritionistData";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import styles from "../../operations/role-portal-screen.module.css";
 
 function clsx(...tokens: Array<string | false | null | undefined>) {
@@ -31,6 +32,15 @@ export function RecipesTab({ recipes, isLoading, onSave, onDelete }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [customAlert, setCustomAlert] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+    variant?: "default" | "destructive" | "admin" | "nutritionist";
+    hideCancel?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   function openAddForm() {
     setForm(EMPTY_FORM);
@@ -66,16 +76,60 @@ export function RecipesTab({ recipes, isLoading, onSave, onDelete }: Props) {
     const ok = await onSave(form);
     setIsSubmitting(false);
     if (ok) {
+      const savedName = form.name;
       cancelForm();
+      setCustomAlert({
+        title: "Resep Disimpan",
+        message: `Resep "${savedName}" berhasil disimpan ke dalam database.`,
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } else {
-      setErrorMsg("Gagal menyimpan resep. Coba lagi.");
+      setCustomAlert({
+        title: "Gagal Menyimpan Resep",
+        message: "Terjadi kesalahan saat menyimpan data resep. Pastikan semua field sudah diisi dengan benar.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Hapus resep ini? Aksi ini tidak bisa dibatalkan.")) return;
-    const ok = await onDelete(id);
-    if (!ok) alert("Gagal menghapus resep.");
+    setCustomAlert({
+      title: "Hapus Resep",
+      message: "Apakah Anda yakin ingin menghapus resep ini? Tindakan ini tidak dapat dibatalkan.",
+      confirmLabel: "Ya, Hapus",
+      cancelLabel: "Batal",
+      variant: "destructive",
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        const ok = await onDelete(id);
+        setIsSubmitting(false);
+        if (ok) {
+          setCustomAlert({
+            title: "Resep Dihapus",
+            message: "Resep berhasil dihapus dari database.",
+            confirmLabel: "OK",
+            variant: "nutritionist",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        } else {
+          setCustomAlert({
+            title: "Gagal Menghapus Resep",
+            message: "Terjadi kesalahan saat menghapus resep dari database.",
+            confirmLabel: "Tutup",
+            variant: "destructive",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        }
+      },
+    });
   }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,7 +138,14 @@ export function RecipesTab({ recipes, isLoading, onSave, onDelete }: Props) {
 
     // Validasi ukuran (opsional, misal max 2MB untuk base64 agar tidak berat)
     if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran file terlalu besar. Maksimal 2MB.");
+      setCustomAlert({
+        title: "Ukuran Gambar Terlalu Besar",
+        message: "Ukuran file gambar yang dipilih melebihi batas maksimal 2MB. Silakan pilih gambar yang lebih kecil.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
       return;
     }
 
@@ -188,19 +249,68 @@ export function RecipesTab({ recipes, isLoading, onSave, onDelete }: Props) {
               value={form.servings}
               onChange={(e) => setForm({ ...form, servings: e.target.value })}
             />
-            <div style={{ flex: "1 1 100%" }}>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                style={{ marginBottom: "0.5rem" }}
-              />
-              {imagePreview && (
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }}
+            <div style={{ flex: "1 1 100%", display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem", marginBottom: "0.5rem" }}>
+              <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "#64748b" }}>Gambar Resep (Opsional):</span>
+              <label 
+                className={clsx(styles.tabButton)} 
+                style={{
+                  display: "inline-block",
+                  padding: "0.5rem 1.25rem",
+                  fontWeight: 600,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  width: "fit-content",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  background: "#e2e8f0",
+                  color: "#334155",
+                  fontSize: "0.875rem",
+                  transition: "all 0.2s"
+                }}
+              >
+                {form.imageUrl || imagePreview ? "Ganti Gambar..." : "+ Pilih Gambar..."}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: "none" }}
                 />
+              </label>
+              {imagePreview && (
+                <div style={{ position: "relative", width: "100px", height: "100px", marginTop: "0.25rem" }}>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreview("");
+                      setForm((prev) => ({ ...prev, imageUrl: "" }));
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: "-8px",
+                      right: "-8px",
+                      background: "#ef4444",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -340,6 +450,22 @@ export function RecipesTab({ recipes, isLoading, onSave, onDelete }: Props) {
           </table>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={Boolean(customAlert)}
+        title={customAlert?.title ?? ""}
+        message={customAlert?.message ?? ""}
+        confirmLabel={customAlert?.confirmLabel ?? "OK"}
+        cancelLabel={customAlert?.cancelLabel}
+        variant={customAlert?.variant}
+        hideCancel={customAlert?.hideCancel}
+        onCancel={() => setCustomAlert(null)}
+        onConfirm={async () => {
+          if (customAlert?.onConfirm) {
+            await customAlert.onConfirm();
+          }
+          setCustomAlert(null);
+        }}
+      />
     </>
   );
 }

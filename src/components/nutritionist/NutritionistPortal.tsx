@@ -78,6 +78,7 @@ export function NutritionistPortal() {
     fetchWeeklyMenus,
     addMenu,
     deleteMenu,
+    autoGenerateMenu,
   } = useNutritionistData();
 
   // Fetch data when tab changes
@@ -162,6 +163,7 @@ export function NutritionistPortal() {
                 isLoading={isWeeklyMenuLoading}
                 onAdd={addMenu}
                 onDelete={deleteMenu}
+                onAutoGenerate={autoGenerateMenu}
               />
             )}
           </div>

@@ -208,6 +208,36 @@ export function useNutritionistData() {
     [fetchWeeklyMenus]
   );
 
+  const autoGenerateMenu = useCallback(
+    async (): Promise<{ success: boolean; message: string }> => {
+      try {
+        const res = await fetch("/api/nutritionist/weekly-menus/auto-generate", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          return {
+            success: false,
+            message: data.error || "Gagal meng-generate menu otomatis.",
+          };
+        }
+        await fetchWeeklyMenus();
+        return {
+          success: true,
+          message: data.message || "Berhasil meng-generate menu otomatis untuk minggu depan.",
+        };
+      } catch (err: any) {
+        console.error("[useNutritionistData] autoGenerateMenu error:", err);
+        return {
+          success: false,
+          message: err.message || "Terjadi kesalahan koneksi saat meng-generate menu.",
+        };
+      }
+    },
+    [fetchWeeklyMenus]
+  );
+
   return {
     // Dashboard
     dashboardKpis,
@@ -229,5 +259,6 @@ export function useNutritionistData() {
     fetchWeeklyMenus,
     addMenu,
     deleteMenu,
+    autoGenerateMenu,
   };
 }

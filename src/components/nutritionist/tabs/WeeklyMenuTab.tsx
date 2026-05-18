@@ -9,6 +9,7 @@ import type {
   MenuFormData,
   KpiItem,
 } from "../hooks/useNutritionistData";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import styles from "../../operations/role-portal-screen.module.css";
 
 function clsx(...tokens: Array<string | false | null | undefined>) {
@@ -48,6 +49,7 @@ type Props = {
   isLoading: boolean;
   onAdd: (form: MenuFormData) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onAutoGenerate: () => Promise<{ success: boolean; message: string }>;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -59,7 +61,32 @@ export function WeeklyMenuTab({
   isLoading,
   onAdd,
   onDelete,
+  onAutoGenerate,
 }: Props) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [customAlert, setCustomAlert] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+    variant?: "default" | "destructive" | "admin" | "nutritionist";
+    hideCancel?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
+  async function handleAutoGenerate() {
+    setIsGenerating(true);
+    const res = await onAutoGenerate();
+    setIsGenerating(false);
+    setCustomAlert({
+      title: res.success ? "Generasi Berhasil" : "Gagal Meng-generate",
+      message: res.message,
+      confirmLabel: res.success ? "OK" : "Tutup",
+      variant: res.success ? "nutritionist" : "destructive",
+      hideCancel: true,
+      onConfirm: () => {},
+    });
+  }
   // ── Filters ────────────────────────────────────────────────────────────────
   const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
   const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth()));
@@ -153,24 +180,65 @@ export function WeeklyMenuTab({
     if (ok) {
       setShowForm(false);
       setMenuForm({ recipeId: "", weekStartDate: "" });
+      setCustomAlert({
+        title: "Menu Ditambahkan",
+        message: "Resep berhasil dijadwalkan ke menu mingguan.",
+        confirmLabel: "OK",
+        variant: "nutritionist",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     } else {
-      alert("Gagal menambah menu. Coba lagi.");
+      setCustomAlert({
+        title: "Gagal Menambahkan Menu",
+        message: "Terjadi kesalahan saat menambahkan resep ke jadwal menu mingguan.",
+        confirmLabel: "Tutup",
+        variant: "destructive",
+        hideCancel: true,
+        onConfirm: () => {},
+      });
     }
   }
 
   async function handleDeleteMenu(id: string) {
-    if (!confirm("Hapus menu dari jadwal minggu ini?")) return;
-    const ok = await onDelete(id);
-    if (!ok) alert("Gagal menghapus menu.");
-    else {
-      setGoalEditorMenuId((curr) => (curr === id ? null : curr));
-      setGoalOverrides((prev) => {
-        if (!(id in prev)) return prev;
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    }
+    setCustomAlert({
+      title: "Hapus Menu Mingguan",
+      message: "Apakah Anda yakin ingin menghapus resep ini dari jadwal menu?",
+      confirmLabel: "Ya, Hapus",
+      cancelLabel: "Batal",
+      variant: "destructive",
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        const ok = await onDelete(id);
+        setIsSubmitting(false);
+        if (!ok) {
+          setCustomAlert({
+            title: "Gagal Menghapus Menu",
+            message: "Terjadi kesalahan saat menghapus menu dari jadwal.",
+            confirmLabel: "Tutup",
+            variant: "destructive",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        } else {
+          setGoalEditorMenuId((curr) => (curr === id ? null : curr));
+          setGoalOverrides((prev) => {
+            if (!(id in prev)) return prev;
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+          setCustomAlert({
+            title: "Menu Dihapus",
+            message: "Menu berhasil dihapus dari jadwal mingguan.",
+            confirmLabel: "OK",
+            variant: "nutritionist",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        }
+      },
+    });
   }
 
   // ── Goal editor ────────────────────────────────────────────────────────────
@@ -196,17 +264,31 @@ export function WeeklyMenuTab({
       </div>
 
       {/* Info + filter bar */}
-      <div className={styles.notice}>
-        <p className={styles.noticeTitle}>Menu Mingguan</p>
-        <p>
-          Setiap kartu mewakili satu minggu kalender. Badge{" "}
-          <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.
-        </p>
-        {visibleWeeks.length > 0 && (
-          <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0.5rem 0" }}>
-            {visibleWeeks.length} minggu ditemukan pada periode ini
+      <div 
+        className={styles.notice} 
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}
+      >
+        <div>
+          <p className={styles.noticeTitle}>Menu Mingguan</p>
+          <p>
+            Setiap kartu mewakili satu minggu kalender. Badge{" "}
+            <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.
           </p>
-        )}
+          {visibleWeeks.length > 0 && (
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0.5rem 0 0 0" }}>
+              {visibleWeeks.length} minggu ditemukan pada periode ini
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          className={clsx(styles.tabButton, styles.tabButtonActive)}
+          onClick={handleAutoGenerate}
+          disabled={isGenerating}
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {isGenerating ? "Menganalisis..." : "Auto-Generate Minggu Depan"}
+        </button>
       </div>
 
       <div
@@ -612,6 +694,22 @@ export function WeeklyMenuTab({
           )}
         </div>
       )}
+      <ConfirmDialog
+        isOpen={Boolean(customAlert)}
+        title={customAlert?.title ?? ""}
+        message={customAlert?.message ?? ""}
+        confirmLabel={customAlert?.confirmLabel ?? "OK"}
+        cancelLabel={customAlert?.cancelLabel}
+        variant={customAlert?.variant}
+        hideCancel={customAlert?.hideCancel}
+        onCancel={() => setCustomAlert(null)}
+        onConfirm={async () => {
+          if (customAlert?.onConfirm) {
+            await customAlert.onConfirm();
+          }
+          setCustomAlert(null);
+        }}
+      />
     </>
   );
 }

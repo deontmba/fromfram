@@ -459,7 +459,7 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
         recentDeliveries.length > 0
           ? `${recentDeliveries.length} pengiriman terakhir`
           : "Belum ada riwayat pengiriman",
-      href: "/dashboard/order-history",
+      href: "/delivery",
       icon: "history",
       tone: "green",
     },

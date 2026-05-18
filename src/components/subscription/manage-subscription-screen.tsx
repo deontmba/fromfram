@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   createPreviewSubscriptionViewModel,
   type FeedbackState,
@@ -172,6 +173,8 @@ export function ManageSubscriptionScreen() {
   const [isPauseDialogOpen, setIsPauseDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [pauseWeeks, setPauseWeeks] = useState(1);
+  const [isSkipConfirmOpen, setIsSkipConfirmOpen] = useState(false);
+  const [isResumeConfirmOpen, setIsResumeConfirmOpen] = useState(false);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -228,7 +231,12 @@ export function ManageSubscriptionScreen() {
     setSelectedServing(mappedSubscription.servingCount);
   };
 
-  const handleSkip = async () => {
+  const handleSkip = () => {
+    setIsSkipConfirmOpen(true);
+  };
+
+  const handleConfirmSkip = async () => {
+    setIsSkipConfirmOpen(false);
     if (!subscription?.skippableWeeklyBoxId) {
       setFeedback({
         tone: "error",
@@ -281,7 +289,12 @@ export function ManageSubscriptionScreen() {
     }
   };
 
-  const handleResume = async () => {
+  const handleResume = () => {
+    setIsResumeConfirmOpen(true);
+  };
+
+  const handleConfirmResume = async () => {
+    setIsResumeConfirmOpen(false);
     setPendingAction("resume");
     setFeedback(null);
 
@@ -543,6 +556,7 @@ export function ManageSubscriptionScreen() {
         <ActionDialog
           title="Cancel subscription"
           description="Langganan akan dihentikan di akhir siklus berjalan. Pengiriman aktif tetap diproses."
+          variant="destructive"
           onClose={() => setIsCancelDialogOpen(false)}
         >
           <div className="rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-4 text-sm text-[#9f1239]">
@@ -569,6 +583,27 @@ export function ManageSubscriptionScreen() {
           </div>
         </ActionDialog>
       ) : null}
+
+      <ConfirmDialog
+        isOpen={isSkipConfirmOpen}
+        title="Skip Pengiriman 1 Minggu"
+        message="Apakah Anda yakin ingin melewati pengiriman box minggu berikutnya? Pengiriman akan otomatis dijadwalkan ulang untuk minggu setelahnya."
+        confirmLabel="Ya, Skip Pengiriman"
+        cancelLabel="Batal"
+        isConfirming={pendingAction === "skip"}
+        onCancel={() => setIsSkipConfirmOpen(false)}
+        onConfirm={handleConfirmSkip}
+      />
+      <ConfirmDialog
+        isOpen={isResumeConfirmOpen}
+        title="Aktifkan Kembali Langganan"
+        message="Apakah Anda yakin ingin mengaktifkan kembali langganan Anda? Kami akan mengirimkan meal kit Anda sesuai jadwal berikutnya."
+        confirmLabel="Ya, Aktifkan"
+        cancelLabel="Batal"
+        isConfirming={pendingAction === "resume"}
+        onCancel={() => setIsResumeConfirmOpen(false)}
+        onConfirm={handleConfirmResume}
+      />
     </>
   );
 }
@@ -796,20 +831,24 @@ function ActionsSection({
 function ActionDialog({
   title,
   description,
+  variant = "default",
   children,
   onClose,
 }: {
   title: string;
   description: string;
+  variant?: "default" | "destructive";
   children: ReactNode;
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="w-full max-w-[460px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-6 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+      <div className="relative overflow-hidden w-full max-w-[460px] rounded-3xl border border-white/20 bg-[#fafafa]/95 backdrop-blur-md px-6 py-6 shadow-[0_24px_50px_rgba(0,0,0,0.22)] ring-1 ring-black/5">
+        {/* Accent Top Line */}
+        <div className={`absolute top-0 left-0 right-0 h-1.5 ${variant === "destructive" ? "bg-[#e11d48]" : "bg-[#1abb89]"}`} />
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-[#11af82]">Subscription</p>
+            <p className="text-xs font-semibold text-neutral-400">Subscription</p>
             <h3 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
               {title}
             </h3>
@@ -818,9 +857,9 @@ function ActionDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-2xl border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+            className="rounded-2xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-700"
           >
-            Tutup
+            ✕
           </button>
         </div>
 
