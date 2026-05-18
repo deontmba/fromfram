@@ -1,20 +1,10 @@
 "use client";
 
-import { Navbar } from "@/components/landing/navbar";
-import { HeroSection } from "@/components/landing/hero-section";
-import { CollageSection } from "@/components/landing/collage-section";
-import { FeaturesSection } from "@/components/landing/features-section";
-import { HowItWorksSection } from "@/components/landing/how-it-works-section";
-import { TestimonialsSection } from "@/components/landing/testimonials-section";
-import { PricingSection } from "@/components/landing/pricing-section";
-import { FaqSection } from "@/components/landing/faq-section";
-import { CtaSection } from "@/components/landing/cta-section";
-import { Footer } from "@/components/landing/footer";
-
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 type Feature = {
   title: string;
@@ -56,8 +46,18 @@ type AuthMeResponse = {
     id?: string;
     name?: string;
     email?: string;
+    avatarUrl?: string;
     createdAt?: string;
   };
+};
+
+type Recipe = {
+  id: string;
+  name: string;
+  description: string;
+  calories: number;
+  protein: number;
+  imageUrl: string | null;
 };
 
 const loginHref = "/login";
@@ -214,6 +214,15 @@ const footerGroups = [
   },
 ];
 
+const contributors = [
+  { name: "Gideon Tamba", role: "Project Manager", image: "/images/gideon.png" },
+  { name: "Hafizh Fadhl Muhammad", role: "Backend Developer", image: "/images/hafizh.png" },
+  { name: "Mochammad Kaindra Kareef", role: "Backend Developer", image: "/images/kaindra.png" },
+  { name: "Bim Yusuf Karang", role: "Backend Developer", image: "/images/bim.png" },
+  { name: "Michael Jordan Alfanius Sianipar", role: "Frontend Developer", image: "/images/michael.png" },
+  { name: "Abdul Aziz Rantizi", role: "Frontend Developer", image: "/images/rantizi.png" },
+];
+
 function BrandMark() {
   return (
     <Link href="/" className="inline-flex items-center gap-2">
@@ -229,19 +238,8 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
   if (icon === "leaf") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path
-          d="M20 4S13 3 8.5 7.5C5 11 5 16 5 16s5 0 8.5-3.5C18 8 20 4 20 4Z"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M4 20c1.5-2.5 3.4-4.4 5.8-5.8"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <path d="M20 4S13 3 8.5 7.5C5 11 5 16 5 16s5 0 8.5-3.5C18 8 20 4 20 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 20c1.5-2.5 3.4-4.4 5.8-5.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     );
   }
@@ -249,19 +247,8 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
   if (icon === "chef") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path
-          d="M7 10h10a3 3 0 0 1 3 3v4H4v-4a3 3 0 0 1 3-3Z"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M8 10V9a4 4 0 1 1 8 0v1"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
+        <path d="M7 10h10a3 3 0 0 1 3 3v4H4v-4a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 10V9a4 4 0 1 1 8 0v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
     );
   }
@@ -270,13 +257,7 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
         <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M12 8v5l3 2"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M12 8v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
@@ -284,20 +265,8 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
   if (icon === "truck") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path
-          d="M3 7h11v8H3z"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M14 10h3l3 3v2h-6"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M3 7h11v8H3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M14 10h3l3 3v2h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         <circle cx="7.5" cy="18" r="1.5" fill="currentColor" />
         <circle cx="17.5" cy="18" r="1.5" fill="currentColor" />
       </svg>
@@ -307,33 +276,15 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
   if (icon === "heart") {
     return (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path
-          d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-      <path
-        d="M12 4 6.5 6v5c0 4 2.5 7.2 5.5 9 3-1.8 5.5-5 5.5-9V6L12 4Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m9.5 12 2 2 3-4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M12 4 6.5 6v5c0 4 2.5 7.2 5.5 9 3-1.8 5.5-5 5.5-9V6L12 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m9.5 12 2 2 3-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -341,13 +292,7 @@ function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
 function ProfileIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <path
-        d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
@@ -368,97 +313,18 @@ function StarRow() {
 function HeroFoodDecorations() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 hidden overflow-hidden lg:block" aria-hidden="true">
-      <Image
-        src="/images/brocolli.png"
-        alt=""
-        width={680}
-        height={680}
-        priority
-        sizes="(min-width: 1280px) 620px, 420px"
-        className="absolute -left-60 top-20 h-auto w-[420px] -rotate-[20deg] xl:-left-52 xl:w-[620px]"
-      />
-      <Image
-        src="/images/cheese.png"
-        alt=""
-        width={464}
-        height={464}
-        sizes="420px"
-        className="absolute -bottom-24 -left-16 h-auto w-[420px] rotate-[10deg]"
-      />
-      <Image
-        src="/images/milk.png"
-        alt=""
-        width={528}
-        height={528}
-        priority
-        sizes="(min-width: 1280px) 390px, 300px"
-        className="absolute -right-16 top-24 h-auto w-[300px] rotate-[9deg] xl:right-4 xl:w-[390px]"
-      />
-      <Image
-        src="/images/salmon.png"
-        alt=""
-        width={760}
-        height={760}
-        sizes="580px"
-        className="absolute -right-56 bottom-20 h-auto w-[580px] -rotate-[8deg] xl:-right-40"
-      />
-    </div>
-  );
-}
-
-function HeroPreviewCard() {
-  return (
-    <div className="mx-auto mt-12 w-full max-w-3xl rounded-[24px] border-2 border-[#1db788]/40 bg-white p-4 text-left shadow-[0_10px_24px_rgba(15,23,42,0.10)] sm:p-5">
-      <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[18px] bg-[#f2faf5] p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-extrabold text-[#13b987]">Fresh box</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight text-black">Menu siap masak</h2>
-            </div>
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-[16px] border-2 border-[#1db788]/40 bg-[#13b987] text-white shadow-md">
-              <Image src="/icons/basic.svg" alt="" width={28} height={28} aria-hidden="true" />
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-3 gap-3">
-            <span className="rounded-[12px] bg-[#d3f5df] px-3 py-3 text-center text-sm font-extrabold text-[#087b58]">
-              Sayur
-            </span>
-            <span className="rounded-[12px] bg-[#dceefe] px-3 py-3 text-center text-sm font-extrabold text-[#126087]">
-              Protein
-            </span>
-            <span className="rounded-[12px] bg-[#ffe0dc] px-3 py-3 text-center text-sm font-extrabold text-[#b23a30]">
-              Saus
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-3">
-          <div className="flex items-center gap-3 rounded-[16px] border-2 border-[#1db788]/40 bg-white px-4 py-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e5f8ed]">
-              <Image src="/icons/diet.svg" alt="" width={22} height={22} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-sm font-black text-black">Diet seimbang</p>
-              <p className="text-xs font-semibold text-neutral-500">Kalori terukur</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-[16px] border-2 border-[#1db788]/40 bg-white px-4 py-3">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e5f8ed]">
-              <Image src="/icons/fitness.svg" alt="" width={22} height={22} aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-sm font-black text-black">Fitness meal</p>
-              <p className="text-xs font-semibold text-neutral-500">Protein harian</p>
-            </div>
-          </div>
-          <div className="rounded-[16px] border-2 border-[#1db788]/40 bg-[#13b987] px-4 py-4 text-white">
-            <p className="text-sm font-extrabold text-white/80">Dikirim fresh</p>
-            <p className="mt-1 text-2xl font-black leading-none tracking-tight">15 menit siap</p>
-          </div>
-        </div>
-      </div>
+      <motion.div initial={{ x: -100, opacity: 0, rotate: -40 }} animate={{ x: 0, opacity: 1, rotate: -20 }} transition={{ duration: 1, delay: 0.2 }} className="absolute -left-60 top-20 h-auto w-[420px] xl:-left-52 xl:w-[620px]">
+        <Image src="/images/brocolli.png" alt="" width={680} height={680} priority sizes="(min-width: 1280px) 620px, 420px" />
+      </motion.div>
+      <motion.div initial={{ y: 100, opacity: 0, rotate: -10 }} animate={{ y: 0, opacity: 1, rotate: 10 }} transition={{ duration: 1, delay: 0.4 }} className="absolute -bottom-24 -left-16 h-auto w-[420px]">
+        <Image src="/images/cheese.png" alt="" width={464} height={464} sizes="420px" />
+      </motion.div>
+      <motion.div initial={{ x: 100, opacity: 0, rotate: 30 }} animate={{ x: 0, opacity: 1, rotate: 9 }} transition={{ duration: 1, delay: 0.3 }} className="absolute -right-16 top-24 h-auto w-[300px] xl:right-4 xl:w-[390px]">
+        <Image src="/images/milk.png" alt="" width={528} height={528} priority sizes="(min-width: 1280px) 390px, 300px" />
+      </motion.div>
+      <motion.div initial={{ y: 100, opacity: 0, rotate: 10 }} animate={{ y: 0, opacity: 1, rotate: -8 }} transition={{ duration: 1, delay: 0.5 }} className="absolute -right-56 bottom-20 h-auto w-[580px] xl:-right-40">
+        <Image src="/images/salmon.png" alt="" width={760} height={760} sizes="580px" />
+      </motion.div>
     </div>
   );
 }
@@ -492,13 +358,7 @@ function CheckIcon({ active = false }: { active?: boolean }) {
       }`}
     >
       <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="h-3 w-3">
-        <path
-          d="M2.2 6.1 4.8 8.7 9.8 3.3"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M2.2 6.1 4.8 8.7 9.8 3.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </span>
   );
@@ -509,34 +369,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function hasExistingSubscription(payload: unknown) {
-  if (payload === null || payload === undefined) {
-    return false;
-  }
-
-  const subscription = isRecord(payload) && "data" in payload
-    ? payload.data
-    : isRecord(payload) && "subscription" in payload
-      ? payload.subscription
-      : payload;
-
-  if (!isRecord(subscription)) {
-    return false;
-  }
-
-  if (typeof subscription.id === "string" && subscription.id.trim().length > 0) {
-    return true;
-  }
-
-  return ["planId", "plan", "status", "startDate", "endDate", "currentPeriodEnd"].some(
-    (key) => subscription[key] !== null && subscription[key] !== undefined,
-  );
+  if (payload === null || payload === undefined) return false;
+  const subscription = isRecord(payload) && "data" in payload ? payload.data : isRecord(payload) && "subscription" in payload ? payload.subscription : payload;
+  if (!isRecord(subscription)) return false;
+  if (typeof subscription.id === "string" && subscription.id.trim().length > 0) return true;
+  return ["planId", "plan", "status", "startDate", "endDate", "currentPeriodEnd"].some((key) => subscription[key] !== null && subscription[key] !== undefined);
 }
 
 export default function Home() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<AuthMeResponse["user"] | null>(null);
   const [isCheckingCta, setIsCheckingCta] = useState(false);
-  const [openFaq, setOpenFaq] = useState(0);
+  const [openFaq, setOpenFaq] = useState(-1);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -546,30 +393,53 @@ export default function Home() {
         const response = await fetch("/api/auth/me", { cache: "no-store" });
         const data = (await response.json().catch(() => null)) as AuthMeResponse | null;
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
-        setIsAuthenticated(Boolean(response.ok && data?.user?.id));
-      } catch {
-        if (isMounted) {
+        if (response.ok && data?.user?.id) {
+          setIsAuthenticated(true);
+          setUser(data.user);
+        } else {
           setIsAuthenticated(false);
         }
+      } catch {
+        if (isMounted) setIsAuthenticated(false);
+      }
+    }
+
+    async function fetchRecipes() {
+      try {
+        const res = await fetch('/api/public/recipes');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) setRecipes(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch recipes", err);
+      } finally {
+        if (isMounted) setIsLoadingRecipes(false);
       }
     }
 
     void loadSession();
+    void fetchRecipes();
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
-  async function handleSubscriptionCtaClick() {
-    if (isCheckingCta) {
+  const scrollToSection = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    if (id === 'top') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
+  async function handleSubscriptionCtaClick() {
+    if (isCheckingCta) return;
     setIsCheckingCta(true);
 
     try {
@@ -577,13 +447,9 @@ export default function Home() {
       let authData: AuthMeResponse | null;
 
       try {
-        authResponse = await fetch("/api/auth/me", {
-          cache: "no-store",
-          credentials: "include",
-        });
+        authResponse = await fetch("/api/auth/me", { cache: "no-store", credentials: "include" });
         authData = (await authResponse.json().catch(() => null)) as AuthMeResponse | null;
       } catch (error) {
-        console.error("Failed to check authentication", error);
         router.push(loginHref);
         return;
       }
@@ -594,14 +460,9 @@ export default function Home() {
       }
 
       let subscriptionResponse: Response;
-
       try {
-        subscriptionResponse = await fetch("/api/subscriptions/me", {
-          cache: "no-store",
-          credentials: "include",
-        });
+        subscriptionResponse = await fetch("/api/subscriptions/me", { cache: "no-store", credentials: "include" });
       } catch (error) {
-        console.error("Failed to check subscription", error);
         router.push(selectPlanHref);
         return;
       }
@@ -612,16 +473,13 @@ export default function Home() {
       }
 
       const subscriptionData = await subscriptionResponse.json().catch(() => null);
-
       if (!subscriptionResponse.ok) {
-        console.error("Failed to check subscription", subscriptionResponse.status, subscriptionData);
         router.push(selectPlanHref);
         return;
       }
 
       router.push(hasExistingSubscription(subscriptionData) ? dashboardHref : selectPlanHref);
     } catch (error) {
-      console.error("Failed to check CTA destination", error);
       router.push(selectPlanHref);
     } finally {
       setIsCheckingCta(false);
@@ -629,27 +487,52 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f8f5ee] text-black">
-      <header className="sticky top-0 z-50 border-b-2 border-[#1db788]/30 bg-[#fffdf7]/95 backdrop-blur">
+    <main className="min-h-screen overflow-x-hidden bg-[#f8f5ee] text-black scroll-smooth">
+      <motion.header
+        initial={{ opacity: 0, y: -50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="sticky top-0 z-50 border-b-2 border-[#1db788]/30 bg-[#fffdf7]/95 backdrop-blur shadow-sm"
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           <BrandMark />
 
+          <nav className="hidden md:flex items-center gap-8">
+            <a href="#" onClick={(e) => scrollToSection(e, 'top')} className="group relative text-sm font-extrabold text-black hover:text-[#13b987] transition cursor-pointer">
+              Beranda
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#13b987] transition-all duration-300 group-hover:w-full"></span>
+            </a>
+            <a href="#menu" onClick={(e) => scrollToSection(e, 'menu')} className="group relative text-sm font-extrabold text-black hover:text-[#13b987] transition cursor-pointer">
+              Menu
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#13b987] transition-all duration-300 group-hover:w-full"></span>
+            </a>
+            <a href="#tentang-kami" onClick={(e) => scrollToSection(e, 'tentang-kami')} className="group relative text-sm font-extrabold text-black hover:text-[#13b987] transition cursor-pointer">
+              Tentang Kami
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#13b987] transition-all duration-300 group-hover:w-full"></span>
+            </a>
+          </nav>
+
           {isAuthenticated ? (
             <div className="flex items-center justify-end gap-2 sm:gap-4">
-              <Link href="/dashboard" className="px-3 py-2 text-sm font-extrabold text-black hover:text-[#13b987]">
+              <Link href="/dashboard" className="hidden sm:block text-sm font-extrabold text-black hover:text-[#13b987] transition group relative">
                 Dashboard
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#13b987] transition-all duration-300 group-hover:w-full"></span>
               </Link>
               <Link
                 href="/profile"
                 aria-label="Profile"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="inline-flex h-10 w-10 overflow-hidden items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <ProfileIcon />
+                {user?.avatarUrl ? (
+                  <Image src={user.avatarUrl} alt="Profile" width={40} height={40} className="h-full w-full object-cover" />
+                ) : (
+                  <ProfileIcon />
+                )}
               </Link>
             </div>
           ) : (
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/login" className="px-3 py-2 text-sm font-extrabold text-black hover:text-[#13b987]">
+              <Link href="/login" className="px-3 py-2 text-sm font-extrabold text-black hover:text-[#13b987] transition">
                 Masuk
               </Link>
               <Link
@@ -661,102 +544,183 @@ export default function Home() {
             </div>
           )}
         </div>
-      </header>
+      </motion.header>
 
-      <section className="relative overflow-hidden border-b-2 border-[#1db788]/30 bg-[#fffdf7]">
+      <section className="relative overflow-hidden border-b-2 border-[#1db788]/30 bg-gradient-to-b from-[#f2faf5] to-[#fffdf7]">
         <HeroFoodDecorations />
 
         <div className="relative z-10 mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-24 lg:px-8 lg:py-28">
-          <span className="inline-flex items-center rounded-full border-2 border-[#1db788]/40 bg-white px-4 py-2 text-xs font-black text-black shadow-sm sm:text-sm">
-            Fresh & Healthy Meal Subscription
-          </span>
+          <motion.span 
+            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="inline-flex items-center rounded-full border-2 border-[#1db788]/40 bg-white px-4 py-2 text-xs font-black text-[#13b987] shadow-sm sm:text-sm"
+          >
+            ✨ Fresh & Healthy Meal Subscription
+          </motion.span>
 
-          <h1 className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[0.98] tracking-tight text-[#13b987] sm:text-7xl lg:text-8xl">
-            Makanan Sehat, Diantar Setiap Hari.
-          </h1>
+          <motion.h1 
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1, type: "spring" }}
+            className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[0.98] tracking-tight text-[#087b58] sm:text-7xl lg:text-8xl"
+          >
+            Makanan Sehat, <br/><span className="text-[#13b987]">Diantar Setiap Hari.</span>
+          </motion.h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-base font-semibold leading-7 text-neutral-700 sm:text-lg">
-            Meal kit segar dengan resep praktis yang dirancang ahli gizi. Hemat waktu, tetap sehat!
-          </p>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
+            className="mx-auto mt-6 max-w-2xl text-base font-semibold leading-7 text-neutral-700 sm:text-lg"
+          >
+            Meal kit segar dengan resep praktis yang dirancang ahli gizi. Hemat waktu, tetap sehat, dan nikmati setiap hidangannya!
+          </motion.p>
 
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}
+            className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          >
             <button
               type="button"
               onClick={handleSubscriptionCtaClick}
               disabled={isCheckingCta}
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-[#13b987] px-7 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto"
+              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-[#13b987] px-7 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto cursor-pointer"
             >
               Mulai Berlangganan
-              <span aria-hidden="true" className="ml-2">
-                -&gt;
-              </span>
+              <span aria-hidden="true" className="ml-2">-&gt;</span>
             </button>
-            <Link
+            <a
               href="#features"
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white px-7 py-3 text-sm font-black text-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto"
+              onClick={(e) => scrollToSection(e, 'features')}
+              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white px-7 py-3 text-sm font-black text-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto cursor-pointer"
             >
               Pelajari Lebih Lanjut
-            </Link>
-          </div>
+            </a>
+          </motion.div>
 
-          <HeroPreviewCard />
-
-          <div className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.7 }}
+            className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3"
+          >
             {[
               ["10K+", "Member Aktif"],
               ["50+", "Menu Variatif"],
               ["4.9", "Rating Pengguna"],
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-[18px] border-2 border-[#1db788]/40 bg-white px-4 py-5 shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
+            ].map(([value, label], idx) => (
+              <div key={label} className="rounded-[18px] border-2 border-[#1db788]/40 bg-white px-4 py-5 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:scale-105">
                 <p className="text-4xl font-black tracking-tight text-[#13b987]">{value}</p>
                 <p className="mt-1 text-sm font-bold text-neutral-600">{label}</p>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <section id="features" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            align="left"
-            title="Kenapa Pilih FromFram?"
-            subtitle="Kami berkomitmen memberikan pengalaman terbaik untuk gaya hidup sehat Anda."
-          />
+          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading
+              align="left"
+              title="Kenapa Pilih FromFram?"
+              subtitle="Kami berkomitmen memberikan pengalaman terbaik untuk gaya hidup sehat Anda."
+            />
+          </motion.div>
 
           <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <article
+            {features.map((feature, idx) => (
+              <motion.article
                 key={feature.title}
-                className="rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-2 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
               >
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-[12px] border-2 border-[#1db788]/40 bg-[#13b987] text-white">
                   <FeatureIcon icon={feature.icon} />
                 </div>
                 <h3 className="mt-5 text-xl font-black tracking-tight">{feature.title}</h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-neutral-600">{feature.description}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
         </div>
       </section>
 
+      <section id="menu" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f2faf5] py-18 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Eksplorasi Menu Kami" subtitle="Menu spesial kami yang selalu diperbarui, siap untuk dinikmati." />
+          </motion.div>
+
+          {isLoadingRecipes ? (
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="animate-pulse flex flex-col rounded-[16px] border-2 border-neutral-200 bg-white p-4">
+                  <div className="h-48 rounded-xl bg-neutral-200 mb-4" />
+                  <div className="h-6 w-2/3 bg-neutral-200 rounded mb-2" />
+                  <div className="h-4 w-full bg-neutral-200 rounded mb-4" />
+                  <div className="flex gap-2 mt-auto">
+                    <div className="h-6 w-16 bg-neutral-200 rounded-full" />
+                    <div className="h-6 w-16 bg-neutral-200 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {recipes.slice(0, 6).map((recipe, idx) => (
+                <motion.article
+                  key={recipe.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="flex flex-col rounded-[16px] border-2 border-[#1db788]/40 bg-white overflow-hidden shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-2 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
+                >
+                  <div className="relative h-48 w-full bg-neutral-100">
+                    {recipe.imageUrl ? (
+                      <Image src={recipe.imageUrl} alt={recipe.name} fill className="object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-neutral-400 font-bold">No Image</div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="text-lg font-black tracking-tight text-neutral-900">{recipe.name}</h3>
+                    <p className="mt-2 text-sm text-neutral-600 line-clamp-2">{recipe.description}</p>
+                    <div className="mt-auto pt-4 flex items-center gap-2">
+                      <span className="inline-flex rounded-full bg-[#e5f8ed] px-2.5 py-0.5 text-xs font-extrabold text-[#087b58]">
+                        {recipe.calories} kcal
+                      </span>
+                      <span className="inline-flex rounded-full bg-[#e5f8ed] px-2.5 py-0.5 text-xs font-extrabold text-[#087b58]">
+                        {recipe.protein}g protein
+                      </span>
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section id="how-it-works" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f0ece4] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading title="Cara Kerjanya" subtitle="Mudah dan praktis, hanya 4 langkah." />
+          <motion.div initial={{ opacity: 0, y: -30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Cara Kerjanya" subtitle="Mudah dan praktis, hanya 4 langkah." />
+          </motion.div>
 
           <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-            {steps.map((step) => (
-              <article
+            {steps.map((step, idx) => (
+              <motion.article
                 key={step.number}
-                className={`rounded-[14px] border-2 border-[#1db788]/40 p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] ${step.tone}`}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1, type: "spring" }}
+                className={`rounded-[14px] border-2 border-[#1db788]/40 p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:scale-105 ${step.tone}`}
               >
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black text-sm font-black text-white">
                   {step.number}
                 </span>
                 <h3 className="mt-7 text-lg font-black tracking-tight">{step.title}</h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-neutral-700">{step.description}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
         </div>
@@ -764,16 +728,22 @@ export default function Home() {
 
       <section id="testimonials" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            title="Kata Mereka Tentang FromFram"
-            subtitle="Ribuan pelanggan puas dengan layanan kami."
-          />
+          <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading
+              title="Kata Mereka Tentang FromFram"
+              subtitle="Ribuan pelanggan puas dengan layanan kami."
+            />
+          </motion.div>
 
           <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {testimonials.map((testimonial) => (
-              <article
+            {testimonials.map((testimonial, idx) => (
+              <motion.article
                 key={testimonial.name}
-                className={`rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ${testimonial.tilt}`}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, delay: idx * 0.15 }}
+                className={`rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:shadow-xl ${testimonial.tilt}`}
               >
                 <StarRow />
                 <p className="mt-5 text-base font-bold leading-7 text-neutral-800">
@@ -788,7 +758,34 @@ export default function Home() {
                     <p className="text-xs font-semibold text-neutral-500">{testimonial.role}</p>
                   </div>
                 </div>
-              </article>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="tentang-kami" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-gradient-to-b from-[#fffdf7] to-[#f2faf5] py-18 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, y: -30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Tentang Kami" subtitle="Para kreator di balik FromFram yang berdedikasi membangun platform sehat ini." />
+          </motion.div>
+
+          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {contributors.map((member, idx) => (
+              <motion.div 
+                key={member.name}
+                initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1, type: "spring" }}
+                className="group flex flex-col items-center text-center"
+              >
+                <div className="relative h-40 w-40 overflow-hidden rounded-full border-4 border-[#1db788]/40 shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:border-[#13b987]">
+                  <Image src={member.image} alt={member.name} fill className="object-cover" />
+                </div>
+                <h3 className="mt-6 text-xl font-black text-neutral-900 transition-colors group-hover:text-[#13b987]">{member.name}</h3>
+                <p className="mt-1 text-sm font-bold text-neutral-500">{member.role}</p>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -796,16 +793,22 @@ export default function Home() {
 
       <section id="pricing" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            title="Pilih Paket Sehatmu"
-            subtitle="Investasi terbaik untuk kesehatan, fleksibel dengan kebutuhanmu."
-          />
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading
+              title="Pilih Paket Sehatmu"
+              subtitle="Investasi terbaik untuk kesehatan, fleksibel dengan kebutuhanmu."
+            />
+          </motion.div>
 
-          <div className="mt-12 grid items-end gap-6 lg:grid-cols-3">
-            {pricingPlans.map((plan) => (
-              <article
+          <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+            {pricingPlans.map((plan, idx) => (
+              <motion.article
                 key={plan.name}
-                className={`relative rounded-[18px] border-2 border-[#1db788]/40 p-7 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ${
+                initial={{ opacity: 0, y: 60 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.6, delay: idx * 0.2 }}
+                className={`relative flex flex-col rounded-[18px] border-2 border-[#1db788]/40 p-7 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-2 hover:shadow-2xl ${
                   plan.popular ? "bg-[#cdf5dd] lg:-translate-y-4" : "bg-white"
                 }`}
               >
@@ -835,13 +838,13 @@ export default function Home() {
                   type="button"
                   onClick={handleSubscriptionCtaClick}
                   disabled={isCheckingCta}
-                  className={`mt-8 inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 px-6 py-3 text-sm font-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] ${
-                    plan.popular ? "bg-[#13b987] text-white hover:bg-[#0f9f73]" : "bg-white text-black"
+                  className={`mt-auto inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 px-6 py-3 text-sm font-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] cursor-pointer ${
+                    plan.popular ? "bg-[#13b987] text-white hover:bg-[#0f9f73]" : "bg-white text-black hover:bg-neutral-50"
                   }`}
                 >
                   Pilih Paket
                 </button>
-              </article>
+              </motion.article>
             ))}
           </div>
         </div>
@@ -849,29 +852,35 @@ export default function Home() {
 
       <section id="faq" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f8f5ee] py-18 sm:py-24">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading title="Pertanyaan yang Sering Diajukan" />
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Pertanyaan yang Sering Diajukan" />
+          </motion.div>
 
           <div className="mt-10 space-y-4">
             {faqItems.map((item, index) => {
               const isOpen = openFaq === index;
 
               return (
-                <div key={item.question} className="rounded-[14px] border-2 border-[#1db788]/40 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.08)]">
+                <motion.div 
+                  key={item.question} 
+                  initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="rounded-[14px] border-2 border-[#1db788]/40 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition-all"
+                >
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-black sm:text-base"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-black sm:text-base cursor-pointer"
                     aria-expanded={isOpen}
                   >
                     {item.question}
                     <span className="text-xl leading-none">{isOpen ? "-" : "+"}</span>
                   </button>
                   {isOpen ? (
-                    <div className="border-t-2 border-[#1db788]/30 px-5 py-4 text-sm font-semibold leading-6 text-neutral-600">
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="border-t-2 border-[#1db788]/30 px-5 py-4 text-sm font-semibold leading-6 text-neutral-600">
                       {item.answer}
-                    </div>
+                    </motion.div>
                   ) : null}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -880,20 +889,21 @@ export default function Home() {
 
       <section className="border-b-2 border-[#1db788]/30 bg-[#064E3B] py-20 text-white sm:py-24">
         <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
+          <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-4xl font-black leading-[1.05] tracking-tight sm:text-6xl">
             Siap Untuk Hidup Lebih Sehat?
-          </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-base font-semibold leading-7 text-white/75 sm:text-lg">
+          </motion.h2>
+          <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} className="mx-auto mt-5 max-w-2xl text-base font-semibold leading-7 text-white/75 sm:text-lg">
             Bergabung dengan ribuan member yang sudah merasakan manfaatnya.
-          </p>
-          <button
+          </motion.p>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.4 }}
             type="button"
             onClick={handleSubscriptionCtaClick}
             disabled={isCheckingCta}
-            className="mt-9 inline-flex rounded-full border-2 border-[#1db788] bg-[#13b987] px-7 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(255,255,255,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(255,255,255,0.18)]"
+            className="mt-9 inline-flex rounded-full border-2 border-[#1db788] bg-[#13b987] px-7 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(255,255,255,0.12)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(255,255,255,0.18)]"
           >
             Daftar Sekarang - Gratis 7 Hari
-          </button>
+          </motion.button>
         </div>
       </section>
 
@@ -926,7 +936,7 @@ export default function Home() {
         </div>
 
         <div className="mx-auto max-w-7xl border-t-2 border-[#1db788]/30 px-4 py-7 text-sm font-semibold text-neutral-600 sm:px-6 lg:px-8">
-          &copy; 2024 FromFram. All rights reserved.
+          &copy; 2026 FromFram. All rights reserved.
         </div>
       </footer>
     </main>
