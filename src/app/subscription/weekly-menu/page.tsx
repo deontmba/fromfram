@@ -79,7 +79,9 @@ function ChefHatIcon() {
 function getStartOfWeek(date: Date) {
   const value = new Date(date);
   value.setHours(0, 0, 0, 0);
-  value.setDate(value.getDate() - value.getDay());
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
   return value;
 }
 

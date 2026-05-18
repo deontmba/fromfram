@@ -13,7 +13,9 @@ export type DayKey = (typeof DAYS_OF_WEEK)[number];
 export function getStartOfWeek(date: Date) {
   const start = new Date(date);
   start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - start.getDay());
+  const day = start.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  start.setDate(start.getDate() + diff);
   return start;
 }
 
