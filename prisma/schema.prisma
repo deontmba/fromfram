@@ -11,7 +11,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
-  NUTRITIONIST // ← tambah sesuai dokumen
+  NUTRITIONIST
 }
 
 enum PlanType {
@@ -35,7 +35,7 @@ enum TransactionStatus {
 
 enum BoxStatus {
   PENDING_SELECTION
-  LOCKED           // ← fix: dokumen pakai LOCKED, bukan SELECTION_LOCKED
+  LOCKED
   COMPLETED
   SKIPPED
 }
@@ -56,31 +56,39 @@ enum DayOfWeek {
   MINGGU
 }
 
+// ← BARU: membedakan makan siang dan makan malam
+enum MealType {
+  LUNCH
+  DINNER
+}
+
 // --- MODELS ---
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
-  password           String?
-  name               String
-  role               Role                @default(USER)
-  isVerified         Boolean             @default(false)
-  hasCompletedOnboarding Boolean         @default(false)
-  googleId           String?             @unique        
-  avatarUrl          String?                            
-  createdAt          DateTime            @default(now())
- 
+  id                       String               @id @default(cuid())
+  email                    String               @unique
+  password                 String?
+  name                     String
+  role                     Role                 @default(USER)
+  isVerified               Boolean              @default(false)
+  hasCompletedOnboarding   Boolean              @default(false)
+  googleId                 String?              @unique
+  avatarUrl                String?
+  phoneNumber              String?
+  gender                   String?
+  createdAt                DateTime             @default(now())
+
   // Relations
-  nutritionalProfile NutritionalProfile?
-  addresses          Address[]
-  subscriptions      Subscription[]
-  transactions       Transaction[]
-  weeklyBoxes        WeeklyBox[]
-  deliveries         Delivery[]
-  recipes            Recipe[]
-  verificationTokens VerificationToken[]
-  passwordResetTokens PasswordResetToken[]
-  personalization    UserPersonalization?
+  nutritionalProfile       NutritionalProfile?
+  addresses                Address[]
+  subscriptions            Subscription[]
+  transactions             Transaction[]
+  weeklyBoxes              WeeklyBox[]
+  deliveries               Delivery[]
+  recipes                  Recipe[]
+  verificationTokens       VerificationToken[]
+  passwordResetTokens      PasswordResetToken[]
+  personalization          UserPersonalization?
 }
 
 model PasswordResetToken {
@@ -99,15 +107,15 @@ model VerificationToken {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
- 
+
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model NutritionalProfile {
   id               String  @id @default(cuid())
   userId           String  @unique
-  weight           Float   // berat badan (kg)
-  height           Float   // tinggi badan (cm)
+  weight           Float
+  height           Float
   dailyCalorieNeed Int
   allergies        String?
   medicalNotes     String? @db.Text
@@ -116,21 +124,21 @@ model NutritionalProfile {
 }
 
 model UserPersonalization {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  goals            String[]
-  dietaryPrefs     String[]
-  allergies        String[]
-  cookingPrefs     String[]
-  
-  weight           Float?
-  height           Float?
-  age              Int?
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  goals        String[]
+  dietaryPrefs String[]
+  allergies    String[]
+  cookingPrefs String[]
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  weight       Float?
+  height       Float?
+  age          Int?
 
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Address {
@@ -145,14 +153,13 @@ model Address {
   postalCode    String
   notes         String?
   isDefault     Boolean    @default(false)
-  latitude      Float?     // koordinat GPS dari MapPicker
-  longitude     Float?     // koordinat GPS dari MapPicker
+  latitude      Float?
+  longitude     Float?
 
   user          User       @relation(fields: [userId], references: [id])
   deliveries    Delivery[]
 }
 
-// ← BARU: tujuan kesehatan pengguna (Atlet, Diet, Gizi Buruk, dll)
 model Goal {
   id            String         @id @default(cuid())
   name          String         @unique
@@ -161,22 +168,21 @@ model Goal {
   maxCalories   Int
 
   subscriptions Subscription[]
-
 }
 
 model Subscription {
   id          String             @id @default(cuid())
   userId      String             @unique
-  goalId      String             // ← tambah: relasi ke Goal
+  goalId      String
   planType    PlanType
   servings    Int
-  status      SubscriptionStatus @default(ACTIVE)
+  status      SubscriptionStatus @default(UNPAID)
   startDate   DateTime           @default(now())
   endDate     DateTime?
   pausedUntil DateTime?
 
   user        User               @relation(fields: [userId], references: [id])
-  goal        Goal               @relation(fields: [goalId], references: [id]) // ← tambah
+  goal        Goal               @relation(fields: [goalId], references: [id])
 }
 
 model Transaction {
@@ -192,44 +198,42 @@ model Transaction {
 }
 
 model Recipe {
-  id             String              @id @default(cuid())
-  nutritionistId String              // ← tambah: resep dibuat oleh nutritionist
-  name           String              @unique
-  description    String              @db.Text
-  calories       Int                 // ← tambah: kalori per porsi
-  protein        Float               // ← tambah: protein dalam gram
-  servings       Int
-  imageUrl       String?             // ← tambah: foto resep
+  id              String             @id @default(cuid())
+  nutritionistId  String
+  name            String             @unique
+  description     String             @db.Text
+  calories        Int
+  protein         Float
+  servings        Int
+  imageUrl        String?
+  createdAt       DateTime           @default(now())
 
-  // Tagging system for personalization
   goalTags        String[]
   dietaryTags     String[]
   allergySafeTags String[]
   cookingTags     String[]
 
-  nutritionist   User                @relation(fields: [nutritionistId], references: [id])
-  ingredients    RecipeIngredient[]  // ← tambah: relasi ke bahan baku
-  mealSelections MealSelection[]
-  weeklyMenus    WeeklyMenu[]
+  nutritionist    User               @relation(fields: [nutritionistId], references: [id])
+  ingredients     RecipeIngredient[]
+  mealSelections  MealSelection[]
+  weeklyMenus     WeeklyMenu[]
 }
 
-// ← BARU: bahan baku dengan traceability (asal & pemasok)
 model Ingredient {
   id           String             @id @default(cuid())
   name         String             @unique
-  origin       String             // asal bahan baku
-  supplierName String             // nama pemasok
+  origin       String
+  supplierName String
   isAllergen   Boolean            @default(false)
 
   recipes      RecipeIngredient[]
 }
 
-// ← BARU: tabel junction Recipe <-> Ingredient (many-to-many)
 model RecipeIngredient {
   id           String     @id @default(cuid())
   recipeId     String
   ingredientId String
-  quantity     String     // e.g., "2 siung", "100gr"
+  quantity     String
 
   recipe       Recipe     @relation(fields: [recipeId], references: [id])
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
@@ -241,10 +245,11 @@ model WeeklyMenu {
   id            String   @id @default(cuid())
   recipeId      String
   weekStartDate DateTime
+  createdAt     DateTime @default(now())
 
   recipe        Recipe   @relation(fields: [recipeId], references: [id])
 
-  @@unique([recipeId, weekStartDate]) // ← tambah: satu resep sekali per minggu
+  @@unique([recipeId, weekStartDate])
 }
 
 model WeeklyBox {
@@ -260,7 +265,7 @@ model WeeklyBox {
   mealSelections    MealSelection[]
   deliveries        Delivery[]
 
-  @@unique([userId, weekStartDate]) // ← tambah: satu box per user per minggu
+  @@unique([userId, weekStartDate])
 }
 
 model MealSelection {
@@ -268,19 +273,24 @@ model MealSelection {
   weeklyBoxId String
   recipeId    String
   dayOfWeek   DayOfWeek
+  // ← BARU: membedakan pilihan makan siang vs makan malam per hari
+  mealType    MealType
 
   weeklyBox   WeeklyBox @relation(fields: [weeklyBoxId], references: [id])
   recipe      Recipe    @relation(fields: [recipeId], references: [id])
 
-  @@unique([weeklyBoxId, dayOfWeek]) // ← tambah: satu menu per hari per box
+  // ← DIUBAH: satu box boleh punya 2 entry per hari (LUNCH + DINNER)
+  @@unique([weeklyBoxId, dayOfWeek, mealType])
 }
 
 model Delivery {
   id           String         @id @default(cuid())
   userId       String
   weeklyBoxId  String
-  addressId    String         // snapshot alamat saat box dikunci
+  addressId    String
   deliveryDate DateTime
+  // ← BARU: membedakan delivery makan siang vs makan malam
+  mealType     MealType
   status       DeliveryStatus @default(PREPARING)
   shippedAt    DateTime?
   deliveredAt  DateTime?

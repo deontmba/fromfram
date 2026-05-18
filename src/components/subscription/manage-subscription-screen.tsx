@@ -567,25 +567,63 @@ export function ManageSubscriptionScreen() {
   );
 }
 
+function getStatusBadgeClassName(status: ManageSubscriptionViewModel["status"]) {
+  if (status === "active") {
+    return "bg-white text-[#109f78]";
+  }
+
+  if (status === "paused") {
+    return "bg-amber-100 text-amber-800";
+  }
+
+  if (status === "cancelled") {
+    return "bg-red-100 text-red-700";
+  }
+
+  if (status === "unpaid") {
+    return "bg-orange-100 text-orange-700";
+  }
+
+  return "bg-neutral-200 text-neutral-600";
+}
+
 function SummarySection({
   subscription,
 }: {
   subscription: ManageSubscriptionViewModel;
 }) {
+  const summaryBg = subscription.isPreview
+    ? "bg-neutral-400"
+    : subscription.status === "paused"
+      ? "bg-amber-500"
+      : subscription.status === "cancelled"
+        ? "bg-red-400"
+        : subscription.status === "unpaid"
+          ? "bg-orange-500"
+          : "bg-[#18ba89]";
+
   return (
-    <div className="mt-6 rounded-[18px] bg-[#18ba89] px-6 py-6 text-white shadow-[0_14px_30px_rgba(18,168,123,0.22)]">
+    <div className={`mt-6 rounded-[18px] ${summaryBg} px-6 py-6 text-white shadow-[0_14px_30px_rgba(0,0,0,0.15)]`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-white/80">Current subscription</p>
           <h1 className="mt-2 text-[1.8rem] font-bold tracking-[-0.02em]">
             {subscription.planLabel}
           </h1>
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <span className="text-[2rem] font-bold leading-none">{subscription.priceLabel}</span>
-            <span className="pb-1 text-sm font-semibold text-white/85">
-              {subscription.billingLabel}
-            </span>
-          </div>
+          {!subscription.isPreview ? (
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <span className="text-[2rem] font-bold leading-none">{subscription.priceLabel}</span>
+              {subscription.billingLabel ? (
+                <span className="pb-1 text-sm font-semibold text-white/85">
+                  {subscription.billingLabel}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-2 text-[1rem] text-white/85">
+              Kamu belum memiliki subscription aktif.
+            </p>
+          )}
           {subscription.pausedUntilLabel ? (
             <p className="mt-3 text-sm text-white/85">
               Dijeda sampai {subscription.pausedUntilLabel}
@@ -593,7 +631,7 @@ function SummarySection({
           ) : null}
         </div>
 
-        <span className="rounded-full bg-white px-4 py-1 text-sm font-semibold text-[#109f78]">
+        <span className={`rounded-full px-4 py-1 text-sm font-semibold ${getStatusBadgeClassName(subscription.status)}`}>
           {subscription.statusLabel}
         </span>
       </div>
@@ -629,7 +667,7 @@ function SummarySection({
             href="/profile/address"
             className="text-sm font-semibold text-white transition hover:text-white/85"
           >
-            Ubah alamat
+            {subscription.shippingAddressMissing ? "Tambah alamat" : "Ubah alamat"}
           </Link>
         </div>
       </div>

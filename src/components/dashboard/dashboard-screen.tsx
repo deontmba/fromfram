@@ -441,78 +441,78 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   return {
     subscription: subscription
       ? {
-          label: "Subscription",
-          plan: getPlanLabel(subscription.planType),
-          servings:
-            typeof subscription.servings === "number" && Number.isFinite(subscription.servings)
-              ? `${subscription.servings} orang`
-              : EMPTY_LABEL,
-          status: pickString(subscription.status) ?? EMPTY_LABEL,
-          nextBilling: EMPTY_LABEL,
-          isEmpty: false,
-        }
+        label: "Subscription",
+        plan: getPlanLabel(subscription.planType),
+        servings:
+          typeof subscription.servings === "number" && Number.isFinite(subscription.servings)
+            ? `${subscription.servings} orang`
+            : EMPTY_LABEL,
+        status: pickString(subscription.status) ?? EMPTY_LABEL,
+        nextBilling: EMPTY_LABEL,
+        isEmpty: false,
+      }
       : {
-          label: "Subscription",
-          plan: "Belum ada subscription aktif",
-          servings: EMPTY_LABEL,
-          status: EMPTY_LABEL,
-          nextBilling: EMPTY_LABEL,
-          isEmpty: true,
-        },
+        label: "Subscription",
+        plan: "Belum ada subscription aktif",
+        servings: EMPTY_LABEL,
+        status: EMPTY_LABEL,
+        nextBilling: EMPTY_LABEL,
+        isEmpty: true,
+      },
     currentWeek: weeklyBox
       ? {
-          title: "Minggu Ini",
-          dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-          items: buildCurrentWeekItems(weeklyBox, todayDelivery, recentDeliveries),
-          emptyMessage: null,
-          trackingEnabled: Boolean(todayDelivery?.id || weeklyBox.id),
-          todayDeliveryMessage: todayDelivery
-            ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
-            : "Belum ada pengiriman hari ini",
-        }
+        title: "Minggu Ini",
+        dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
+        items: buildCurrentWeekItems(weeklyBox, todayDelivery, recentDeliveries),
+        emptyMessage: null,
+        trackingEnabled: Boolean(todayDelivery?.id || weeklyBox.id),
+        todayDeliveryMessage: todayDelivery
+          ? `Pengiriman hari ini: ${mapDeliveryStatus(todayDelivery.status).label}`
+          : "Belum ada pengiriman hari ini",
+      }
       : {
-          title: "Minggu Ini",
-          dateRange: EMPTY_LABEL,
-          items: [],
-          emptyMessage: "Menu minggu ini belum tersedia",
-          trackingEnabled: false,
-          todayDeliveryMessage: "Belum ada pengiriman hari ini",
-        },
+        title: "Minggu Ini",
+        dateRange: EMPTY_LABEL,
+        items: [],
+        emptyMessage: "Menu minggu ini belum tersedia",
+        trackingEnabled: false,
+        todayDeliveryMessage: "Belum ada pengiriman hari ini",
+      },
     nextWeek: weeklyBox
       ? {
-          title: "Minggu Depan",
-          dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
-          heading: canSelectMenu
-            ? "Pilih Menu Sekarang"
-            : isFinalizedWeeklyBox
-              ? "Menu sudah dikunci"
-              : "Menu belum bisa dipilih",
-          deadline: formatDateLabel(weeklyBox.selectionDeadline),
-          selectedMenu: `${selectedDays}/${totalDays} hari`,
-          reminder: canSelectMenu
-            ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
-            : isFinalizedWeeklyBox
-              ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
-              : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
-          timeLeft: getTimeLeftLabel(weeklyBox.selectionDeadline),
-          canSelectMenu,
-          unavailableMessage: canSelectMenu
+        title: "Minggu Depan",
+        dateRange: formatDateRange(weeklyBox.weekStartDate, weeklyBox.weekEndDate),
+        heading: canSelectMenu
+          ? "Pilih Menu Sekarang"
+          : isFinalizedWeeklyBox
+            ? "Menu sudah dikunci"
+            : "Menu belum bisa dipilih",
+        deadline: formatDateLabel(weeklyBox.selectionDeadline),
+        selectedMenu: `${selectedDays}/${totalDays} hari`,
+        reminder: canSelectMenu
+          ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
+          : isFinalizedWeeklyBox
+            ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
+            : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
+        timeLeft: getTimeLeftLabel(weeklyBox.selectionDeadline),
+        canSelectMenu,
+        unavailableMessage: canSelectMenu
+          ? null
+          : isFinalizedWeeklyBox
             ? null
-            : isFinalizedWeeklyBox
-              ? null
-              : "Pilih Menu Sekarang belum tersedia",
-        }
+            : "Pilih Menu Sekarang belum tersedia",
+      }
       : {
-          title: "Minggu Depan",
-          dateRange: EMPTY_LABEL,
-          heading: "Menu minggu depan belum tersedia",
-          deadline: EMPTY_LABEL,
-          selectedMenu: EMPTY_LABEL,
-          reminder: "Menu minggu ini / minggu depan belum tersedia.",
-          timeLeft: EMPTY_LABEL,
-          canSelectMenu: false,
-          unavailableMessage: "Pilih Menu Sekarang belum tersedia",
-        },
+        title: "Minggu Depan",
+        dateRange: EMPTY_LABEL,
+        heading: "Menu minggu depan belum tersedia",
+        deadline: EMPTY_LABEL,
+        selectedMenu: EMPTY_LABEL,
+        reminder: "Menu minggu ini / minggu depan belum tersedia.",
+        timeLeft: EMPTY_LABEL,
+        canSelectMenu: false,
+        unavailableMessage: "Pilih Menu Sekarang belum tersedia",
+      },
     quickActions: buildQuickActions(recentDeliveries),
   };
 }

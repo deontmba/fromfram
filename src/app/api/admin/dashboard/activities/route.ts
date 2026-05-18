@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import { getAdminUsers } from '@/controllers/adminController';
+import { getRecentActivities } from '@/controllers/adminController';
 
 function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
   if (error === 'CONFIG_MISSING') {
@@ -18,14 +18,9 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url);
+    const limit = parseInt(searchParams.get('limit') ?? '10');
 
-    const result = await getAdminUsers(session.userId, {
-      search: searchParams.get('search'),
-      status: searchParams.get('status'),
-      plan: searchParams.get('plan'),
-      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
-      limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
-    });
+    const result = await getRecentActivities(session.userId, limit);
 
     if ('error' in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
@@ -33,9 +28,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
-    console.error('[ADMIN USERS GET ERROR]', error);
+    console.error('[ADMIN DASHBOARD ACTIVITIES GET ERROR]', error);
     return NextResponse.json(
-      { error: 'Gagal mengambil data users.' },
+      { error: 'Gagal mengambil data aktivitas.' },
       { status: 500 }
     );
   }

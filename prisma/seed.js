@@ -387,84 +387,98 @@ const mealSelectionSeeds = [
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SENIN",
     recipeName: "Ayam Panggang Quinoa",
+    mealType: "LUNCH"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SELASA",
     recipeName: "Nasi Merah Ayam Brokoli",
+    mealType: "DINNER"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "RABU",
     recipeName: "Salmon Bowl Sehat",
+    mealType: "LUNCH"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "KAMIS",
     recipeName: "Ayam Panggang Quinoa",
+    mealType: "DINNER"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "JUMAT",
     recipeName: "Nasi Merah Ayam Brokoli",
+    mealType: "LUNCH"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SABTU",
     recipeName: "Salmon Bowl Sehat",
+    mealType: "DINNER"
   },
   {
     userEmail: "budi@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "MINGGU",
     recipeName: "Oatmeal Pisang Greek Yogurt",
+    mealType: "LUNCH"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SENIN",
     recipeName: "Oatmeal Pisang Greek Yogurt",
+    mealType: "DINNER"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SELASA",
     recipeName: "Salmon Bowl Sehat",
+    mealType: "LUNCH"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "RABU",
     recipeName: "Ayam Panggang Quinoa",
+    mealType: "DINNER"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "KAMIS",
     recipeName: "Oatmeal Pisang Greek Yogurt",
+    mealType: "LUNCH"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "JUMAT",
     recipeName: "Salmon Bowl Sehat",
+    mealType: "LUNCH"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "SABTU",
     recipeName: "Ayam Panggang Quinoa",
+    mealType: "DINNER"
   },
   {
     userEmail: "rina@fromfram.test",
     weekStartDate: ACTIVE_WEEK_START,
     dayOfWeek: "MINGGU",
     recipeName: "Oatmeal Pisang Greek Yogurt",
+    mealType: "LUNCH"
   },
 ];
 
@@ -475,6 +489,7 @@ const deliverySeeds = [
     addressLabel: "Rumah",
     deliveryDate: DELIVERY_SLOT,
     status: "PREPARING",
+    mealType: "LUNCH",
   },
   {
     userEmail: "rina@fromfram.test",
@@ -484,6 +499,7 @@ const deliverySeeds = [
     status: "DELIVERED",
     shippedAt: DELIVERY_SHIPPED,
     deliveredAt: DELIVERY_COMPLETED,
+    mealType: "LUNCH",
   },
 ];
 

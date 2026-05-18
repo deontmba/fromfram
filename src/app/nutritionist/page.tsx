@@ -1,5 +1,5 @@
-import { RolePortalScreen } from "@/components/operations/role-portal-screen";
+import { NutritionistPortal } from "@/components/nutritionist/NutritionistPortal";
 
 export default function NutritionistPage() {
-  return <RolePortalScreen role="nutritionist" />;
+  return <NutritionistPortal />;
 }

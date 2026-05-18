@@ -6,6 +6,7 @@ export const createRecipeSchema = z.object({
   calories: z.number().int().positive('Kalori harus berupa angka positif.'),
   protein: z.number().positive('Protein harus berupa angka positif.'),
   servings: z.number().int().positive('Servings harus berupa angka positif.'),
+  imageUrl: z.string().url('Format URL tidak valid.').optional(),
 });
 
 export const updateRecipeSchema = z.object({
