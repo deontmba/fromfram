@@ -94,7 +94,7 @@ const userSeeds = [
     email: "budi@fromfram.test",
     name: "Budi Santoso",
     password: COMMON_PASSWORD,
-    role: "USER",
+    role: "USER",ha
     isVerified: true,
   },
   {
@@ -339,29 +339,29 @@ const recipeSeeds = [
 ];
 
 const recipeIngredientSeeds = [
-  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Dada Ayam", quantity: "180 g" },
-  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Quinoa", quantity: "100 g" },
-  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Brokoli", quantity: "80 g" },
-  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Tomat", quantity: "60 g" },
-  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Bawang Putih", quantity: "2 siung" },
-  { recipeName: "Salmon Bowl Sehat", ingredientName: "Salmon", quantity: "150 g" },
-  { recipeName: "Salmon Bowl Sehat", ingredientName: "Beras Merah", quantity: "100 g" },
-  { recipeName: "Salmon Bowl Sehat", ingredientName: "Bayam", quantity: "50 g" },
-  { recipeName: "Salmon Bowl Sehat", ingredientName: "Alpukat", quantity: "1/2 buah" },
-  { recipeName: "Salmon Bowl Sehat", ingredientName: "Tomat", quantity: "40 g" },
-  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Oat", quantity: "80 g" },
-  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Pisang", quantity: "1 buah" },
-  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Greek Yogurt", quantity: "100 g" },
-  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Chia Seed", quantity: "1 sdm" },
-  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Madu", quantity: "1 sdt" },
-  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Dada Ayam", quantity: "170 g" },
-  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Beras Merah", quantity: "120 g" },
-  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Brokoli", quantity: "90 g" },
-  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Wortel", quantity: "60 g" },
-  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Bawang Putih", quantity: "2 siung" },
-  { recipeName: "Steak Sapi Diet", ingredientName: "Daging Sapi", quantity: "200 g" },
-  { recipeName: "Salad Buah Segar", ingredientName: "Apel", quantity: "1 buah" },
-  { recipeName: "Sup Ayam Jahe", ingredientName: "Jahe", quantity: "1 ruas" },
+  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Dada Ayam", quantity: 180, unit: "g", quantityInKg: 0.180 },
+  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Quinoa", quantity: 100, unit: "g", quantityInKg: 0.100 },
+  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Brokoli", quantity: 80, unit: "g", quantityInKg: 0.080 },
+  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Tomat", quantity: 60, unit: "g", quantityInKg: 0.060 },
+  { recipeName: "Ayam Panggang Quinoa", ingredientName: "Bawang Putih", quantity: 2, unit: "siung", quantityInKg: 0.010 },
+  { recipeName: "Salmon Bowl Sehat", ingredientName: "Salmon", quantity: 150, unit: "g", quantityInKg: 0.150 },
+  { recipeName: "Salmon Bowl Sehat", ingredientName: "Beras Merah", quantity: 100, unit: "g", quantityInKg: 0.100 },
+  { recipeName: "Salmon Bowl Sehat", ingredientName: "Bayam", quantity: 50, unit: "g", quantityInKg: 0.050 },
+  { recipeName: "Salmon Bowl Sehat", ingredientName: "Alpukat", quantity: 0.5, unit: "buah", quantityInKg: 0.100 },
+  { recipeName: "Salmon Bowl Sehat", ingredientName: "Tomat", quantity: 40, unit: "g", quantityInKg: 0.040 },
+  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Oat", quantity: 80, unit: "g", quantityInKg: 0.080 },
+  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Pisang", quantity: 1, unit: "buah", quantityInKg: 0.120 },
+  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Greek Yogurt", quantity: 100, unit: "g", quantityInKg: 0.100 },
+  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Chia Seed", quantity: 1, unit: "sdm", quantityInKg: 0.015 },
+  { recipeName: "Oatmeal Pisang Greek Yogurt", ingredientName: "Madu", quantity: 1, unit: "sdt", quantityInKg: 0.005 },
+  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Dada Ayam", quantity: 170, unit: "g", quantityInKg: 0.170 },
+  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Beras Merah", quantity: 120, unit: "g", quantityInKg: 0.120 },
+  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Brokoli", quantity: 90, unit: "g", quantityInKg: 0.090 },
+  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Wortel", quantity: 60, unit: "g", quantityInKg: 0.060 },
+  { recipeName: "Nasi Merah Ayam Brokoli", ingredientName: "Bawang Putih", quantity: 2, unit: "siung", quantityInKg: 0.010 },
+  { recipeName: "Steak Sapi Diet", ingredientName: "Daging Sapi", quantity: 200, unit: "g", quantityInKg: 0.200 },
+  { recipeName: "Salad Buah Segar", ingredientName: "Apel", quantity: 1, unit: "buah", quantityInKg: 0.150 },
+  { recipeName: "Sup Ayam Jahe", ingredientName: "Jahe", quantity: 1, unit: "ruas", quantityInKg: 0.010 },
 ];
 
 const WEEK_BLUEPRINTS = [
@@ -424,9 +424,6 @@ const weeklyBoxSeeds = [
 
 const DAYS = ["SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"];
 
-// Helper: build entries for one user per day
-// Budi has 3 servings → 3 recipe slots per mealType, split across multiple recipes
-// e.g. Monday Lunch: Recipe A (1 serving) + Recipe B (1 serving) + Recipe C (1 serving)
 const allRecipes = [
   "Ayam Panggang Quinoa",
   "Salmon Bowl Sehat",
@@ -442,7 +439,6 @@ function buildMealSeeds(userEmail, servings) {
   DAYS.forEach((day, di) => {
     ["LUNCH", "DINNER"].forEach((mealType, mi) => {
       for (let s = 0; s < servings; s++) {
-        // Rotate through recipes so each slot gets variety
         const recipeIdx = (di * 2 + mi + s) % allRecipes.length;
         seeds.push({
           userEmail,
@@ -459,8 +455,8 @@ function buildMealSeeds(userEmail, servings) {
 }
 
 const mealSelectionSeeds = [
-  ...buildMealSeeds("budi@fromfram.test", 3),  // 3 servings
-  ...buildMealSeeds("rina@fromfram.test", 2),   // 2 servings
+  ...buildMealSeeds("budi@fromfram.test", 3),
+  ...buildMealSeeds("rina@fromfram.test", 2),
 ];
 
 const deliverySeeds = [
@@ -484,6 +480,69 @@ const deliverySeeds = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Farmer seed data
+// Semua komoditas yang disupply petani harus ada di ingredientSeeds di atas,
+// karena FarmerSupplyItem berelasi ke Ingredient yang sudah ada.
+// ---------------------------------------------------------------------------
+
+// Mapping: farmer → ingredient-ingredient yang ada di recipe
+const farmerSeeds = [
+  {
+    id: "farmer-bu-sri",
+    name: "Bu Sri",
+    region: "Cianjur, Jawa Barat",
+    commodityType: "Sayuran",
+    // Bayam, Wortel, Brokoli, Tomat → semua ada di ingredientSeeds
+    supplies: [
+      { ingredientName: "Bayam",    weeklyCapacityKg: 500, minOrderKg: 20, pricePerKg: 12000 },
+      { ingredientName: "Wortel",   weeklyCapacityKg: 400, minOrderKg: 15, pricePerKg: 10000 },
+      { ingredientName: "Brokoli",  weeklyCapacityKg: 300, minOrderKg: 10, pricePerKg: 25000 },
+      { ingredientName: "Tomat",    weeklyCapacityKg: 350, minOrderKg: 15, pricePerKg: 8000  },
+    ],
+  },
+  {
+    id: "farmer-pak-hendra",
+    name: "Pak Hendra",
+    region: "Karawang, Jawa Barat",
+    commodityType: "Karbohidrat",
+    // Beras Merah → ada di ingredientSeeds
+    supplies: [
+      { ingredientName: "Beras Merah", weeklyCapacityKg: 1000, minOrderKg: 50, pricePerKg: 18000 },
+    ],
+  },
+  {
+    id: "farmer-pak-agus",
+    name: "Pak Agus",
+    region: "Lembang, Jawa Barat",
+    commodityType: "Protein Hewani",
+    // Dada Ayam, Daging Sapi → ada di ingredientSeeds
+    supplies: [
+      { ingredientName: "Dada Ayam",   weeklyCapacityKg: 600, minOrderKg: 30, pricePerKg: 38000 },
+      { ingredientName: "Daging Sapi", weeklyCapacityKg: 200, minOrderKg: 10, pricePerKg: 130000 },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Ingredient → konsumsi per user per minggu (estimasi dalam kg)
+// Dipakai sebagai base untuk generate DemandForecastLog yang realistis.
+// Angka dihitung dari recipeIngredientSeeds: rata-rata quantityInKg per resep
+// yang mengandung bahan tersebut, diasumsikan tiap user makan 5x/minggu.
+// ---------------------------------------------------------------------------
+const ingredientConsumptionBase = {
+  // Protein hewani — porsi lebih besar per user
+  "Dada Ayam":   { kgPerUser: 0.175, label: "protein" }, // rata-rata (0.180+0.170)/2 * ~1 resep/minggu
+  "Daging Sapi": { kgPerUser: 0.200, label: "protein" },
+  // Sayuran — porsi sedang
+  "Bayam":       { kgPerUser: 0.050, label: "sayuran" },
+  "Wortel":      { kgPerUser: 0.060, label: "sayuran" },
+  "Brokoli":     { kgPerUser: 0.085, label: "sayuran" }, // rata-rata (0.080+0.090)/2
+  "Tomat":       { kgPerUser: 0.050, label: "sayuran" }, // rata-rata (0.060+0.040)/2
+  // Karbohidrat
+  "Beras Merah": { kgPerUser: 0.110, label: "karbo"   }, // rata-rata (0.100+0.120)/2
+};
+
 function indexBy(items, keyFn) {
   return Object.fromEntries(items.map((item) => [keyFn(item), item]));
 }
@@ -496,6 +555,14 @@ async function main() {
   const hashedPassword = await bcrypt.hash(COMMON_PASSWORD, 12);
 
   await prisma.$transaction(async (tx) => {
+    // Cleanup — urutan: child dulu, parent belakangan
+    // Tabel AI Forecasting (baru)
+    await tx.farmerPurchaseOrder.deleteMany();
+    await tx.demandForecastLog.deleteMany();
+    await tx.farmerSupplyItem.deleteMany();
+    await tx.farmer.deleteMany();
+
+    // Tabel existing
     await tx.delivery.deleteMany();
     await tx.mealSelection.deleteMany();
     await tx.weeklyMenu.deleteMany();
@@ -510,26 +577,29 @@ async function main() {
     await tx.goal.deleteMany();
     await tx.user.deleteMany();
 
+    // ── Goals ──────────────────────────────────────────────────────────────
     await tx.goal.createMany({ data: goalSeeds });
     const goalRows = await tx.goal.findMany({
-      where: { name: { in: goalSeeds.map((goal) => goal.name) } },
+      where: { name: { in: goalSeeds.map((g) => g.name) } },
     });
-    const goalByName = indexBy(goalRows, (goal) => goal.name);
+    const goalByName = indexBy(goalRows, (g) => g.name);
 
+    // ── Users ──────────────────────────────────────────────────────────────
     await tx.user.createMany({
-      data: userSeeds.map((user) => ({
-        email: user.email,
-        name: user.name,
+      data: userSeeds.map((u) => ({
+        email: u.email,
+        name: u.name,
         password: hashedPassword,
-        role: user.role,
-        isVerified: user.isVerified || false,
+        role: u.role,
+        isVerified: u.isVerified || false,
       })),
     });
     const userRows = await tx.user.findMany({
-      where: { email: { in: userSeeds.map((user) => user.email) } },
+      where: { email: { in: userSeeds.map((u) => u.email) } },
     });
-    const userByEmail = indexBy(userRows, (user) => user.email);
+    const userByEmail = indexBy(userRows, (u) => u.email);
 
+    // ── Profiles & Addresses ───────────────────────────────────────────────
     await tx.nutritionalProfile.createMany({
       data: nutritionalProfileSeeds.map(({ userEmail, ...profile }) => ({
         ...profile,
@@ -544,33 +614,34 @@ async function main() {
       })),
     });
     const addressRows = await tx.address.findMany({
-      where: {
-        userId: { in: Object.values(userByEmail).map((user) => user.id) },
-      },
+      where: { userId: { in: Object.values(userByEmail).map((u) => u.id) } },
     });
-    const addressByKey = indexBy(addressRows, (address) => `${address.userId}:${address.label}`);
+    const addressByKey = indexBy(addressRows, (a) => `${a.userId}:${a.label}`);
 
+    // ── Subscriptions & Transactions ───────────────────────────────────────
     await tx.subscription.createMany({
-      data: subscriptionSeeds.map(({ userEmail, goalName, ...subscription }) => ({
-        ...subscription,
+      data: subscriptionSeeds.map(({ userEmail, goalName, ...sub }) => ({
+        ...sub,
         userId: userByEmail[userEmail].id,
         goalId: goalByName[goalName].id,
       })),
     });
 
     await tx.transaction.createMany({
-      data: transactionSeeds.map(({ userEmail, ...transaction }) => ({
-        ...transaction,
+      data: transactionSeeds.map(({ userEmail, ...tx_ }) => ({
+        ...tx_,
         userId: userByEmail[userEmail].id,
       })),
     });
 
+    // ── Ingredients ────────────────────────────────────────────────────────
     await tx.ingredient.createMany({ data: ingredientSeeds });
     const ingredientRows = await tx.ingredient.findMany({
-      where: { name: { in: ingredientSeeds.map((ingredient) => ingredient.name) } },
+      where: { name: { in: ingredientSeeds.map((i) => i.name) } },
     });
-    const ingredientByName = indexBy(ingredientRows, (ingredient) => ingredient.name);
+    const ingredientByName = indexBy(ingredientRows, (i) => i.name);
 
+    // ── Recipes & RecipeIngredients ────────────────────────────────────────
     await tx.recipe.createMany({
       data: recipeSeeds.map(({ nutritionistEmail, ...recipe }) => ({
         ...recipe,
@@ -578,9 +649,9 @@ async function main() {
       })),
     });
     const recipeRows = await tx.recipe.findMany({
-      where: { name: { in: recipeSeeds.map((recipe) => recipe.name) } },
+      where: { name: { in: recipeSeeds.map((r) => r.name) } },
     });
-    const recipeByName = indexBy(recipeRows, (recipe) => recipe.name);
+    const recipeByName = indexBy(recipeRows, (r) => r.name);
 
     await tx.recipeIngredient.createMany({
       data: recipeIngredientSeeds.map(({ recipeName, ingredientName, ...item }) => ({
@@ -590,36 +661,37 @@ async function main() {
       })),
     });
 
+    // ── Weekly Menu & Box ──────────────────────────────────────────────────
     await tx.weeklyMenu.createMany({
-      data: weeklyMenuSeeds.map(({ recipeName, ...weeklyMenu }) => ({
-        ...weeklyMenu,
+      data: weeklyMenuSeeds.map(({ recipeName, ...wm }) => ({
+        ...wm,
         recipeId: recipeByName[recipeName].id,
       })),
     });
 
     await tx.weeklyBox.createMany({
-      data: weeklyBoxSeeds.map(({ userEmail, ...weeklyBox }) => ({
-        ...weeklyBox,
+      data: weeklyBoxSeeds.map(({ userEmail, ...wb }) => ({
+        ...wb,
         userId: userByEmail[userEmail].id,
       })),
     });
     const weeklyBoxRows = await tx.weeklyBox.findMany({
       where: {
-        userId: { in: Object.values(userByEmail).map((user) => user.id) },
+        userId: { in: Object.values(userByEmail).map((u) => u.id) },
         weekStartDate: ACTIVE_WEEK_START,
       },
     });
     const weeklyBoxByKey = indexBy(
       weeklyBoxRows,
-      (weeklyBox) => `${weeklyBox.userId}:${weeklyBox.weekStartDate.toISOString()}`
+      (wb) => `${wb.userId}:${wb.weekStartDate.toISOString()}`
     );
 
+    // ── Meal Selections & Deliveries ───────────────────────────────────────
     await tx.mealSelection.createMany({
-      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, serving, ...mealSelection }) => ({
-        ...mealSelection,
-        weeklyBoxId: weeklyBoxByKey[
-          `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
-        ].id,
+      data: mealSelectionSeeds.map(({ userEmail, weekStartDate, recipeName, serving, ...ms }) => ({
+        ...ms,
+        weeklyBoxId:
+          weeklyBoxByKey[`${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`].id,
         recipeId: recipeByName[recipeName].id,
         serving: serving ?? 1,
       })),
@@ -629,21 +701,127 @@ async function main() {
       data: deliverySeeds.map(({ userEmail, weekStartDate, addressLabel, ...delivery }) => ({
         ...delivery,
         userId: userByEmail[userEmail].id,
-        weeklyBoxId: weeklyBoxByKey[
-          `${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`
-        ].id,
+        weeklyBoxId:
+          weeklyBoxByKey[`${userByEmail[userEmail].id}:${weekStartDate.toISOString()}`].id,
         addressId: addressByKey[`${userByEmail[userEmail].id}:${addressLabel}`].id,
       })),
     });
+
+    // ── Farmers & FarmerSupplyItems ────────────────────────────────────────
+    // Dibuat di dalam transaction yang sama agar rollback bersih jika gagal.
+    for (const f of farmerSeeds) {
+      await tx.farmer.upsert({
+        where: { id: f.id },
+        update: { name: f.name, region: f.region, commodityType: f.commodityType },
+        create: { id: f.id, name: f.name, region: f.region, commodityType: f.commodityType },
+      });
+
+      for (const supply of f.supplies) {
+        // Ingredient PASTI sudah ada karena dibuat dari ingredientSeeds di atas
+        const ingredient = ingredientByName[supply.ingredientName];
+        if (!ingredient) {
+          throw new Error(
+            `Ingredient "${supply.ingredientName}" tidak ditemukan di ingredientSeeds. ` +
+            `Tambahkan ke ingredientSeeds terlebih dahulu.`
+          );
+        }
+
+        await tx.farmerSupplyItem.upsert({
+          where: { farmerId_ingredientId: { farmerId: f.id, ingredientId: ingredient.id } },
+          update: {
+            weeklyCapacityKg: supply.weeklyCapacityKg,
+            minOrderKg: supply.minOrderKg,
+            pricePerKg: supply.pricePerKg,
+          },
+          create: {
+            farmerId: f.id,
+            ingredientId: ingredient.id,
+            weeklyCapacityKg: supply.weeklyCapacityKg,
+            minOrderKg: supply.minOrderKg,
+            pricePerKg: supply.pricePerKg,
+          },
+        });
+      }
+    }
+
+    // ── DemandForecastLog — 8 minggu histori ───────────────────────────────
+    // Hanya ingredient yang ada di ingredientConsumptionBase yang di-log,
+    // karena itulah bahan yang disupply oleh petani mitra dan relevan untuk PO.
+    // Minggu ke-8 (minggu ini / index 7) → actualQtyUsedKg = null (belum selesai).
+
+    const forecastIngredientNames = Object.keys(ingredientConsumptionBase);
+
+    for (const ingredientName of forecastIngredientNames) {
+      const ingredient = ingredientByName[ingredientName];
+      if (!ingredient) continue; // guard — tidak akan terjadi jika data konsisten
+
+      const { kgPerUser } = ingredientConsumptionBase[ingredientName];
+
+      for (let weekIndex = 0; weekIndex < 8; weekIndex++) {
+        // Minggu ke-0 adalah 7 minggu lalu, minggu ke-7 adalah minggu ini
+        const weekStartDate = addWeeks(ACTIVE_WEEK_START, -7 + weekIndex);
+        const isCurrentWeek = weekIndex === 7;
+
+        // User aktif meningkat setiap minggu (simulasi pertumbuhan)
+        const baseUserCount = 120 + weekIndex * 7;
+        // Fluktuasi kecil ±4 user (supaya tidak terlalu linear)
+        const activeUserCount = baseUserCount + Math.floor(Math.random() * 9) - 4;
+
+        // Konsumsi aktual = user aktif × base per user + noise ±5%
+        const noise = 1 + (Math.random() * 0.10 - 0.05);
+        // Kejadian luar biasa (promo / hari libur) 15% kemungkinan ±20%
+        const spike = Math.random() < 0.15 ? (Math.random() > 0.5 ? 1.20 : 0.80) : 1.0;
+        const actualQty = parseFloat((activeUserCount * kgPerUser * noise * spike).toFixed(2));
+
+        // Prediksi selalu punya error kecil terhadap aktual (±5–15%)
+        const errorFactor = 1 + (Math.random() * 0.20 - 0.10); // ±10% rata-rata
+        const predictedQtyKg = parseFloat((actualQty * errorFactor).toFixed(2));
+
+        // Confidence score: mulai rendah lalu naik seiring minggu (model makin terlatih)
+        const baseConfidence = 0.60 + weekIndex * 0.015; // 0.60 → 0.705
+        const confidenceScore = parseFloat(
+          Math.min(0.95, baseConfidence + Math.random() * 0.08).toFixed(2)
+        );
+
+        // Minggu ini belum ada aktual (admin belum konfirmasi)
+        const actualQtyUsedKg = isCurrentWeek ? null : actualQty;
+
+        const existing = await tx.demandForecastLog.findFirst({
+          where: { ingredientId: ingredient.id, weekStartDate },
+        });
+
+        if (existing) {
+          await tx.demandForecastLog.update({
+            where: { id: existing.id },
+            data: { activeUserCount, predictedQtyKg, actualQtyUsedKg, confidenceScore, modelVersion: "ridge_v1" },
+          });
+        } else {
+          await tx.demandForecastLog.create({
+            data: {
+              ingredientId: ingredient.id,
+              weekStartDate,
+              activeUserCount,
+              predictedQtyKg,
+              actualQtyUsedKg,
+              confidenceScore,
+              modelVersion: "ridge_v1",
+            },
+          });
+        }
+      }
+    }
   });
 
-  console.log("Seed dummy data berhasil dibuat dengan weekly menu multi-minggu dan active week.");
-  console.log("Akun dummy menggunakan password:", COMMON_PASSWORD);
+  console.log("✅ Seed berhasil.");
+  console.log("   - Data utama (users, recipes, subscriptions, dll) selesai.");
+  console.log("   - Farmer & FarmerSupplyItem: 3 petani mitra, 7 komoditas.");
+  console.log("   - DemandForecastLog: 8 minggu histori untuk 7 ingredient.");
+  console.log(`   - Password semua akun dummy: ${COMMON_PASSWORD}`);
 }
 
 main()
   .catch((error) => {
-    console.error("Seed gagal:", error);
+    console.error("❌ Seed gagal:", error);
     process.exitCode = 1;
   })
   .finally(async () => {

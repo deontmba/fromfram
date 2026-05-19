@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import { ForecastingPage } from "@/components/forecasting/ForecastingPage";
+import { AdminIngredientsTab } from "./tabs/AdminIngredientsTab";
 import styles from "./role-portal-screen.module.css";
 
 type RoleVariant = "admin" | "nutritionist";
@@ -218,19 +220,22 @@ const adminConfig: RoleConfig = {
     { id: "dashboard", label: "Beranda" },
     { id: "deliveries", label: "Pengiriman" },
     { id: "users", label: "Pengguna" },
-    { id: "reports", label: "Laporan" },
+    { id: "ingredients", label: "Bahan Baku" },
+    { id: "reports", label: "Prediksi AI" },
   ],
   heroTitle: {
     dashboard: "Dasbor Operasional",
     deliveries: "Operasi Pengiriman",
     users: "Manajemen Pengguna dan Langganan",
-    reports: "Laporan Tren dan Pemantauan",
+    ingredients: "Manajemen Stok Bahan Baku",
+    reports: "Prediksi Kebutuhan Pasokan",
   },
   heroSubtitle: {
     dashboard: "Pantau data operasional harian dalam satu layar.",
     deliveries: "Kontrol status batch pengiriman dan pantau alur logistik.",
     users: "Lihat status pelanggan dan dampaknya ke pengiriman berikutnya.",
-    reports: "Pantau tren, anomali, dan area yang perlu di-review oleh tim operasional.",
+    ingredients: "Pantau stok bahan baku dan lakukan restock.",
+    reports: "Pantau estimasi kebutuhan bahan baku dan buat Purchase Order ke petani mitra secara otomatis.",
   },
   kpis: {
     dashboard: [
@@ -2088,58 +2093,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               ) : null}
 
               {role === "admin" && activeTab === "reports" ? (
-                <>
-                  <div className={styles.notice} style={{ marginBottom: "1rem" }}>
-                    <p className={styles.noticeTitle}>Ringkasan Tren Mingguan</p>
-                    <p>
-                      Tab ini dipakai untuk memantau arah pertumbuhan operasi, titik macet, dan area yang perlu intervensi cepat.
-                    </p>
-                  </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <ForecastingPage />
+                </div>
+              ) : null}
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr", gap: "1rem" }}>
-                    <section className={styles.activityCard} style={{ marginTop: 0 }}>
-                      <h3 className={styles.activityHeader}>Sinyal Tren</h3>
-                      <div style={{ display: "grid", gap: "0.9rem" }}>
-                        {(adminReportData?.trends || adminReportTrends).map((item) => (
-                          <article key={item.label} style={{ border: "1px solid #e8edf4", borderRadius: "14px", padding: "0.9rem", background: "#f8fafc" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
-                              <div>
-                                <p style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>{item.label}</p>
-                                <p style={{ margin: "0.25rem 0 0", color: "#64748b", fontSize: "0.86rem" }}>{item.note}</p>
-                              </div>
-                              <div style={{ textAlign: "right" }}>
-                                <p style={{ margin: 0, fontSize: "1.45rem", fontWeight: 800, color: "#0f172a" }}>{item.value}</p>
-                                <p style={{ margin: "0.18rem 0 0", fontWeight: 700, color: item.delta.startsWith("-") ? "#16a34a" : "#e11d48" }}>{item.delta}</p>
-                              </div>
-                            </div>
-                            <div style={{ marginTop: "0.8rem", height: "10px", borderRadius: "999px", background: "#e5e7eb", overflow: "hidden" }}>
-                              <div style={{ width: `${item.progress}%`, height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, var(--accent-strong), var(--accent-mid))" }} />
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className={styles.activityCard} style={{ marginTop: 0 }}>
-                      <h3 className={styles.activityHeader}>Ringkasan Operasional</h3>
-                      <div style={{ display: "grid", gap: "0.75rem" }}>
-                        {(adminReportData?.highlights || adminReportHighlights).map((item) => (
-                          <div key={item.label} style={{ padding: "0.85rem", borderRadius: "14px", background: "#f8fafc", border: "1px solid #e8edf4" }}>
-                            <p style={{ margin: 0, color: "#64748b", fontSize: "0.82rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{item.label}</p>
-                            <p style={{ margin: "0.28rem 0 0", color: "#0f172a", fontSize: "1rem", fontWeight: 800 }}>{item.value}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ marginTop: "0.95rem", borderRadius: "14px", padding: "0.9rem", background: "linear-gradient(135deg, var(--accent-strong), var(--accent-mid))", color: "#ffffff" }}>
-                        <p style={{ margin: 0, fontWeight: 700 }}>Arah pekan ini</p>
-                        <p style={{ margin: "0.35rem 0 0", fontSize: "0.92rem", opacity: 0.95 }}>
-                          Fokus utama ada pada menjaga pengiriman tepat waktu dan mengurangi kendala dari data alamat yang tidak lengkap.
-                        </p>
-                      </div>
-                    </section>
-                  </div>
-                </>
+              {role === "admin" && activeTab === "ingredients" ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <AdminIngredientsTab />
+                </div>
               ) : null}
 
               {role === "nutritionist" && activeTab === "recipes" ? (

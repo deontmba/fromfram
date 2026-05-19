@@ -89,6 +89,15 @@ export const getDashboard = async (userId: string) => {
                   calories: true,
                   protein: true,
                   imageUrl: true,
+                  ingredients: {
+                    select: {
+                      quantity: true,
+                      unit: true,
+                      ingredient: {
+                        select: { name: true }
+                      }
+                    }
+                  }
                 },
               },
             },
@@ -125,6 +134,13 @@ export const getDashboard = async (userId: string) => {
                   calories: true,
                   protein: true,
                   imageUrl: true,
+                  ingredients: {
+                    select: {
+                      quantity: true,
+                      unit: true,
+                      ingredient: { select: { name: true } }
+                    }
+                  }
                 },
               },
             },
@@ -158,6 +174,13 @@ export const getDashboard = async (userId: string) => {
                   calories: true,
                   protein: true,
                   imageUrl: true,
+                  ingredients: {
+                    select: {
+                      quantity: true,
+                      unit: true,
+                      ingredient: { select: { name: true } }
+                    }
+                  }
                 },
               },
             },
@@ -203,6 +226,13 @@ export const getDashboard = async (userId: string) => {
                       name: true,
                       calories: true,
                       imageUrl: true,
+                      ingredients: {
+                        select: {
+                          quantity: true,
+                          unit: true,
+                          ingredient: { select: { name: true } }
+                        }
+                      }
                     },
                   },
                 },

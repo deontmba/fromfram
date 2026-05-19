@@ -110,6 +110,11 @@ export async function getNutritionistRecipes(userId: string) {
       protein: true,
       servings: true,
       imageUrl: true,
+      ingredients: {
+        include: {
+          ingredient: true
+        }
+      }
     },
     orderBy: { id: 'desc' },
   });
@@ -131,6 +136,11 @@ export async function getNutritionistRecipeById(userId: string, recipeId: string
       protein: true,
       servings: true,
       imageUrl: true,
+      ingredients: {
+        include: {
+          ingredient: true
+        }
+      }
     },
   });
 
@@ -143,7 +153,7 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  const { name, description, calories, protein, servings, imageUrl } = input;
+  const { name, description, calories, protein, servings, imageUrl, ingredients } = input;
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -154,7 +164,18 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
       servings,
       nutritionistId: userId,
       ...(imageUrl ? { imageUrl } : {}),
+      ...(ingredients && ingredients.length > 0 ? {
+        ingredients: {
+          create: ingredients.map(ing => ({
+            ingredientId: ing.ingredientId,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            quantityInKg: ing.quantityInKg
+          }))
+        }
+      } : {})
     },
+    include: { ingredients: true }
   });
 
   return { data: { data: recipe }, status: 201 };
@@ -164,7 +185,7 @@ export async function updateNutritionistRecipe(userId: string, recipeId: string,
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  const { name, description, calories, protein, servings, imageUrl } = input;
+  const { name, description, calories, protein, servings, imageUrl, ingredients } = input;
 
   const updatedRecipe = await prisma.recipe.update({
     where: { id: recipeId },
@@ -175,7 +196,19 @@ export async function updateNutritionistRecipe(userId: string, recipeId: string,
       ...(protein !== undefined && { protein }),
       ...(servings !== undefined && { servings }),
       ...(imageUrl !== undefined && { imageUrl }),
+      ...(ingredients !== undefined ? {
+        ingredients: {
+          deleteMany: {}, // Clear existing ingredients
+          create: ingredients.map(ing => ({
+            ingredientId: ing.ingredientId,
+            quantity: ing.quantity,
+            unit: ing.unit,
+            quantityInKg: ing.quantityInKg
+          }))
+        }
+      } : {})
     },
+    include: { ingredients: true }
   });
 
   return { data: { data: updatedRecipe }, status: 200 };

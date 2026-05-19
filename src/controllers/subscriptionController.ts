@@ -351,6 +351,15 @@ export async function getWeeklyMenu() {
           protein: true,
           servings: true,
           imageUrl: true,
+          ingredients: {
+            select: {
+              quantity: true,
+              unit: true,
+              ingredient: {
+                select: { name: true, isAllergen: true },
+              },
+            },
+          },
         },
       },
     },
@@ -372,6 +381,12 @@ export async function getWeeklyMenu() {
           protein: wm.recipe.protein,
           servings: wm.recipe.servings,
           imageUrl: wm.recipe.imageUrl ?? undefined,
+          ingredients: wm.recipe.ingredients.map((ing) => ({
+            name: ing.ingredient.name,
+            isAllergen: ing.ingredient.isAllergen,
+            quantity: ing.quantity,
+            unit: ing.unit,
+          })),
         },
       ])
     ).values()
