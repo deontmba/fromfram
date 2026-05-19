@@ -251,6 +251,21 @@ export const updateHealthProfile = async (userId: string, input: UpdateHealthInp
       },
     });
 
+    // Sync weight and height to UserPersonalization to update its updatedAt field
+    await prisma.userPersonalization.upsert({
+      where: { userId },
+      create: { 
+        userId, 
+        weight, 
+        height, 
+        goals: [], 
+        dietaryPrefs: [], 
+        allergies: allergies ? [allergies] : [], 
+        cookingPrefs: [] 
+      },
+      update: { weight, height },
+    });
+
     return NextResponse.json({ profile: updatedProfile });
   } catch (error) {
     console.error('[HEALTH PUT ERROR]', error);
