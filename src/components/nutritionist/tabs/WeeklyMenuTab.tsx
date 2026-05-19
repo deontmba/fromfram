@@ -33,6 +33,20 @@ function formatMonthLabel(monthIndex: number) {
   );
 }
 
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" style={{ display: "block" }}>
+      <path
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function buildGoalPreview(
   row: WeeklyMenuItem,
   overrides: Record<string, string[]>
@@ -49,6 +63,7 @@ type Props = {
   isLoading: boolean;
   onAdd: (form: MenuFormData) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onDeleteWeek: (weekStartDate: string) => Promise<boolean>;
   onAutoGenerate: () => Promise<{ success: boolean; message: string }>;
 };
 
@@ -61,6 +76,7 @@ export function WeeklyMenuTab({
   isLoading,
   onAdd,
   onDelete,
+  onDeleteWeek,
   onAutoGenerate,
 }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -78,6 +94,11 @@ export function WeeklyMenuTab({
     setIsGenerating(true);
     const res = await onAutoGenerate();
     setIsGenerating(false);
+    if (res.success && (res as any).weekStartDate) {
+      setYearFilter("all");
+      setMonthFilter("all");
+      setExpandedWeekStart((res as any).weekStartDate);
+    }
     setCustomAlert({
       title: res.success ? "Generasi Berhasil" : "Gagal Meng-generate",
       message: res.message,
@@ -88,8 +109,8 @@ export function WeeklyMenuTab({
     });
   }
   // ── Filters ────────────────────────────────────────────────────────────────
-  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()));
-  const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth()));
+  const [yearFilter, setYearFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
 
   const periods = useMemo(() => {
     const seen = new Map<string, { year: number; month: number }>();
@@ -174,12 +195,24 @@ export function WeeklyMenuTab({
 
   async function handleAddMenu(e: React.FormEvent) {
     e.preventDefault();
+    const targetDate = menuForm.weekStartDate;
     setIsSubmitting(true);
     const ok = await onAdd(menuForm);
     setIsSubmitting(false);
     if (ok) {
       setShowForm(false);
       setMenuForm({ recipeId: "", weekStartDate: "" });
+      if (targetDate) {
+        const inputDate = new Date(targetDate);
+        inputDate.setHours(0, 0, 0, 0);
+        const day = inputDate.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        inputDate.setDate(inputDate.getDate() + diff);
+
+        setYearFilter("all");
+        setMonthFilter("all");
+        setExpandedWeekStart(inputDate.toISOString());
+      }
       setCustomAlert({
         title: "Menu Ditambahkan",
         message: "Resep berhasil dijadwalkan ke menu mingguan.",
@@ -241,6 +274,44 @@ export function WeeklyMenuTab({
     });
   }
 
+  async function handleDeleteWholeWeek(weekStartDate: string) {
+    const formattedRange = formatWeekRangeLabel(
+      weekStartDate,
+      new Date(new Date(weekStartDate).getTime() + 6 * 24 * 60 * 60 * 1000).toISOString()
+    );
+    setCustomAlert({
+      title: "Hapus Menu Pekan",
+      message: `Apakah Anda yakin ingin menghapus seluruh jadwal menu untuk pekan ${formattedRange}? Tindakan ini tidak dapat dibatalkan.`,
+      confirmLabel: "Hapus",
+      cancelLabel: "Batal",
+      variant: "destructive",
+      onConfirm: async () => {
+        setIsSubmitting(true);
+        const ok = await onDeleteWeek(weekStartDate);
+        setIsSubmitting(false);
+        if (ok) {
+          setCustomAlert({
+            title: "Menu Pekan Dihapus",
+            message: "Seluruh jadwal menu untuk pekan tersebut berhasil dihapus.",
+            confirmLabel: "OK",
+            variant: "nutritionist",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        } else {
+          setCustomAlert({
+            title: "Gagal Menghapus",
+            message: "Terjadi kesalahan saat menghapus jadwal menu pekan tersebut.",
+            confirmLabel: "Tutup",
+            variant: "destructive",
+            hideCancel: true,
+            onConfirm: () => {},
+          });
+        }
+      },
+    });
+  }
+
   // ── Goal editor ────────────────────────────────────────────────────────────
   const [goalEditorMenuId, setGoalEditorMenuId] = useState<string | null>(null);
 
@@ -280,15 +351,37 @@ export function WeeklyMenuTab({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          className={clsx(styles.tabButton, styles.tabButtonActive)}
-          onClick={handleAutoGenerate}
-          disabled={isGenerating}
-          style={{ whiteSpace: "nowrap" }}
-        >
-          {isGenerating ? "Menganalisis..." : "Auto-Generate Minggu Depan"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            type="button"
+            className={styles.tabButton}
+            onClick={() => {
+              setMenuForm({
+                recipeId: "",
+                weekStartDate: new Date().toISOString().slice(0, 10),
+              });
+              setShowForm(true);
+            }}
+            style={{
+              whiteSpace: "nowrap",
+              border: "1px solid #1d4ed8",
+              color: "#1d4ed8",
+              fontWeight: "bold",
+              background: "#eff6ff",
+            }}
+          >
+            + Jadwalkan Menu
+          </button>
+          <button
+            type="button"
+            className={clsx(styles.tabButton, styles.tabButtonActive)}
+            onClick={handleAutoGenerate}
+            disabled={isGenerating}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {isGenerating ? "Menganalisis..." : "Auto-Generate Pekan Selanjutnya"}
+          </button>
+        </div>
       </div>
 
       <div
@@ -325,12 +418,11 @@ export function WeeklyMenuTab({
           type="button"
           className={styles.tabButton}
           onClick={() => {
-            const now = new Date();
-            setYearFilter(String(now.getFullYear()));
-            setMonthFilter(String(now.getMonth()));
+            setYearFilter("all");
+            setMonthFilter("all");
           }}
         >
-          Kembali ke bulan ini
+          Tampilkan Semua Pekan
         </button>
       </div>
 
@@ -426,52 +518,93 @@ export function WeeklyMenuTab({
                   }}
                 >
                   {/* Card header */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedWeekStart(isExpanded ? null : week.weekStartDate)
-                    }
+                  <div
                     style={{
-                      width: "100%",
                       display: "flex",
-                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: "1rem",
-                      border: "none",
-                      background: "transparent",
-                      padding: 0,
-                      cursor: "pointer",
-                      textAlign: "left",
+                      justifyContent: "space-between",
+                      gap: "0.5rem",
+                      width: "100%",
                     }}
                   >
-                    <div>
-                      <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
-                        {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
-                      </p>
-                      <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
-                        {week.menus.length} menu tersimpan untuk minggu ini.
-                      </p>
-                    </div>
-                    <div
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedWeekStart(isExpanded ? null : week.weekStartDate)
+                      }
                       style={{
+                        flex: 1,
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: "0.5rem",
-                        flexWrap: "wrap",
-                        justifyContent: "flex-end",
+                        gap: "1rem",
+                        border: "none",
+                        background: "transparent",
+                        padding: 0,
+                        cursor: "pointer",
+                        textAlign: "left",
                       }}
                     >
-                      {week.isActiveWeek && (
-                        <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>
-                      )}
-                      <span
-                        aria-hidden="true"
-                        style={{ fontSize: "1.15rem", color: "#64748b" }}
+                      <div>
+                        <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
+                          {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
+                        </p>
+                        <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
+                          {week.menus.length} menu tersimpan untuk minggu ini.
+                        </p>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
                       >
-                        {isExpanded ? "▾" : "▸"}
-                      </span>
-                    </div>
-                  </button>
+                        {week.isActiveWeek && (
+                          <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>
+                        )}
+                        <span
+                          aria-hidden="true"
+                          style={{ fontSize: "1.15rem", color: "#64748b" }}
+                        >
+                          {isExpanded ? "▾" : "▸"}
+                        </span>
+                      </div>
+                    </button>
+
+                    {!week.isActiveWeek && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteWholeWeek(week.weekStartDate);
+                        }}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "#ef4444",
+                          padding: "0.5rem",
+                          borderRadius: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#fee2e2";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "transparent";
+                        }}
+                        title="Hapus seluruh menu pekan ini"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </div>
 
                   {/* Expanded content */}
                   {isExpanded && (

@@ -94,7 +94,7 @@ const userSeeds = [
     email: "budi@fromfram.test",
     name: "Budi Santoso",
     password: COMMON_PASSWORD,
-    role: "USER",ha
+    role: "USER",
     isVerified: true,
   },
   {

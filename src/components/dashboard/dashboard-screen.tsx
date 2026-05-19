@@ -82,6 +82,7 @@ type DashboardDelivery = {
   id?: string;
   deliveryDate?: string | null;
   status?: BackendDeliveryStatus | string | null;
+  mealType?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
   address?: {
@@ -93,7 +94,10 @@ type DashboardDelivery = {
   } | null;
   weeklyBox?: {
     mealSelections?: Array<{
+      dayOfWeek?: string | null;
+      mealType?: string | null;
       recipe?: {
+        id?: string;
         name?: string | null;
         calories?: number | null;
         imageUrl?: string | null;
@@ -102,11 +106,32 @@ type DashboardDelivery = {
   } | null;
 };
 
+type DashboardWeeklyMenuRecipe = {
+  id: string;
+  name: string;
+  description?: string | null;
+  calories?: number | null;
+  protein?: number | null;
+  imageUrl?: string | null;
+  ingredients?: Array<{
+    quantity: number;
+    unit: string;
+    ingredient: { name: string; isAllergen?: boolean };
+  }> | null;
+};
+
+type DashboardWeeklyMenu = {
+  weekStartDate: string;
+  recipe: DashboardWeeklyMenuRecipe | null;
+};
+
 type DashboardPayload = {
   user?: DashboardUser | null;
   subscription?: DashboardSubscription | null;
   currentWeeklyBox?: DashboardWeeklyBox | null;
   nextWeeklyBox?: DashboardWeeklyBox | null;
+  futureWeeklyBox?: DashboardWeeklyBox | null;
+  upcomingWeeklyMenus?: DashboardWeeklyMenu[] | null;
   todayDelivery?: DashboardDelivery | null;
   recentDeliveries?: DashboardDelivery[] | null;
 };
@@ -123,6 +148,7 @@ type MealEntry = {
   serving: number;
   calories: number | null;
   ingredients?: Array<{ name: string; quantity: number; unit: string }>;
+  imageUrl?: string | null;
 };
 
 type CurrentWeekItem = {
@@ -177,8 +203,12 @@ type DashboardViewModel = {
     timeLeft: string;
     canSelectMenu: boolean;
     unavailableMessage: string | null;
+    items: CurrentWeekItem[];
+    catalogRecipes: DashboardWeeklyMenuRecipe[];
+    catalogDateRange: string;
   };
   quickActions: QuickAction[];
+  recentDeliveries?: DashboardDelivery[] | null;
 };
 
 const DASHBOARD_PATH = "/api/dashboard";
@@ -447,6 +477,7 @@ function buildCurrentWeekItems(
         serving: typeof selection.serving === "number" ? selection.serving : 1,
         calories: pickNumber(selection.recipe.calories),
         ingredients,
+        imageUrl: pickString(selection.recipe.imageUrl),
       });
       selectionsByDayMeal.set(key, existing);
     }
@@ -518,6 +549,44 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   const isLockedNextWeeklyBox = nextWeeklyBoxStatus === "LOCKED";
   const isFinalizedNextWeeklyBox = isLockedNextWeeklyBox || nextWeeklyBoxStatus === "COMPLETED";
 
+  // Check if next week selection is completely selected/completed/finalized
+  const isNextFinished = (nextSelectedDays >= nextTotalDays) || isFinalizedNextWeeklyBox;
+
+  // Keep displayBox ALWAYS as nextWeeklyBox so that the top section (deadline, status, button) stays focused on next week (May 25)!
+  const displayBox = nextWeeklyBox;
+  const isDisplayingFutureWeek = false;
+
+  // Find what week the catalogue should display
+  let catalogStartDate: string | null = null;
+  let catalogEndDate: string | null = null;
+
+  if (nextWeeklyBox && nextWeeklyBox.weekStartDate && nextWeeklyBox.weekEndDate) {
+    if (isNextFinished) {
+      // If next week is finished, catalog shows future week (June 1)
+      const nextStart = new Date(nextWeeklyBox.weekStartDate);
+      const nextEnd = new Date(nextWeeklyBox.weekEndDate);
+
+      const futureStart = new Date(nextStart);
+      futureStart.setDate(futureStart.getDate() + 7);
+
+      const futureEnd = new Date(nextEnd);
+      futureEnd.setDate(futureEnd.getDate() + 7);
+
+      catalogStartDate = futureStart.toISOString();
+      catalogEndDate = futureEnd.toISOString();
+    } else {
+      // If next week is not finished, catalog shows next week (May 25)
+      catalogStartDate = nextWeeklyBox.weekStartDate;
+      catalogEndDate = nextWeeklyBox.weekEndDate;
+    }
+  }
+
+  const displaySelectedDays = pickNumber(displayBox?.summary?.selectedDays) ?? 0;
+  const displayTotalDays = pickNumber(displayBox?.summary?.totalDays) ?? daysOfWeek.length;
+  const displayCanSelectMenu = displayBox?.summary?.canSelectMenu === true;
+  const displayBoxStatus = pickString(displayBox?.status)?.toUpperCase() ?? null;
+  const isLockedDisplayBox = displayBoxStatus === "LOCKED" || displayBoxStatus === "COMPLETED";
+
   const accordionBox = currentWeeklyBox ?? nextWeeklyBox;
   const isAccordionNextWeek = !currentWeeklyBox && !!nextWeeklyBox;
 
@@ -531,7 +600,34 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
             ? `${subscription.servings} orang`
             : EMPTY_LABEL,
         status: pickString(subscription.status) ?? EMPTY_LABEL,
-        nextBilling: EMPTY_LABEL,
+        nextBilling: (() => {
+          if (!subscription.startDate || !subscription.planType) return EMPTY_LABEL;
+          const start = new Date(subscription.startDate);
+          if (Number.isNaN(start.getTime())) return EMPTY_LABEL;
+          
+          const day = start.getDay();
+          const diffToNextMonday = day === 1 ? 0 : (8 - day) % 7;
+          const firstMonday = new Date(start);
+          firstMonday.setDate(start.getDate() + diffToNextMonday);
+          firstMonday.setHours(0, 0, 0, 0);
+          
+          let weeksCount = 4;
+          const planLower = subscription.planType.toLowerCase();
+          if (planLower.includes("minggu") || planLower.includes("weekly")) {
+            weeksCount = 1;
+          } else if (planLower.includes("tahun") || planLower.includes("yearly")) {
+            weeksCount = 52;
+          }
+          
+          const nextBillingDate = new Date(firstMonday);
+          nextBillingDate.setDate(firstMonday.getDate() + (weeksCount * 7) - 1);
+          
+          return new Intl.DateTimeFormat("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }).format(nextBillingDate);
+        })(),
         isEmpty: false,
       }
       : {
@@ -562,29 +658,37 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
           trackingEnabled: false,
           todayDeliveryMessage: "Belum ada pengiriman hari ini",
         },
-    nextWeek: nextWeeklyBox
+    nextWeek: displayBox
       ? {
-          title: "Minggu Depan",
-          dateRange: formatDateRange(nextWeeklyBox.weekStartDate, nextWeeklyBox.weekEndDate),
-          heading: canSelectMenu
-            ? "Pilih Menu Sekarang"
-            : isFinalizedNextWeeklyBox
-              ? "Menu sudah dikunci"
-              : "Menu belum bisa dipilih",
-          deadline: formatDateLabel(nextWeeklyBox.selectionDeadline),
-          selectedMenu: `${nextSelectedDays}/${nextTotalDays} hari`,
-          reminder: canSelectMenu
-            ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
-            : isFinalizedNextWeeklyBox
-              ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
-              : "Menu minggu ini / minggu depan belum tersedia untuk dipilih.",
-          timeLeft: getTimeLeftLabel(nextWeeklyBox.selectionDeadline),
-          canSelectMenu,
-          unavailableMessage: canSelectMenu
+          title: isDisplayingFutureWeek ? "Minggu Berikutnya" : "Minggu Depan",
+          dateRange: formatDateRange(displayBox.weekStartDate, displayBox.weekEndDate),
+          heading: isDisplayingFutureWeek
+            ? (displayCanSelectMenu ? "Pilih Menu Sekarang" : isLockedDisplayBox ? "Menu sudah dikunci" : "Menu belum bisa dipilih")
+            : (canSelectMenu ? "Pilih Menu Sekarang" : isFinalizedNextWeeklyBox ? "Menu sudah dikunci" : "Menu belum bisa dipilih"),
+          deadline: formatDateLabel(displayBox.selectionDeadline),
+          selectedMenu: `${displaySelectedDays}/${displayTotalDays} hari`,
+          reminder: isDisplayingFutureWeek
+            ? "Pilihan menu Anda untuk minggu depan sudah lengkap! Yuk pilih menu untuk minggu berikutnya."
+            : (displayCanSelectMenu
+              ? "Jika tidak memilih sebelum deadline, sistem akan otomatis memilihkan menu."
+              : isLockedDisplayBox
+                ? "Pilihan menu sudah final setelah pembayaran dan tidak bisa diubah lagi."
+                : "Menu minggu ini / minggu depan belum tersedia untuk dipilih."),
+          timeLeft: getTimeLeftLabel(displayBox.selectionDeadline),
+          canSelectMenu: displayCanSelectMenu,
+          unavailableMessage: displayCanSelectMenu
             ? null
-            : isFinalizedNextWeeklyBox
+            : isLockedDisplayBox
               ? null
               : "Pilih Menu Sekarang belum tersedia",
+          items: buildCurrentWeekItems(displayBox, null, []),
+          catalogRecipes: (payload.upcomingWeeklyMenus || [])
+            .filter(wm => wm.weekStartDate && catalogStartDate && new Date(wm.weekStartDate).toDateString() === new Date(catalogStartDate).toDateString())
+            .map(wm => wm.recipe)
+            .filter((r): r is DashboardWeeklyMenuRecipe => r !== null && typeof r === 'object'),
+          catalogDateRange: catalogStartDate && catalogEndDate
+            ? formatDateRange(catalogStartDate, catalogEndDate)
+            : EMPTY_LABEL,
         }
       : {
         title: "Minggu Depan",
@@ -596,8 +700,12 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
         timeLeft: EMPTY_LABEL,
         canSelectMenu: false,
         unavailableMessage: "Pilih Menu Sekarang belum tersedia",
+        items: [],
+        catalogRecipes: [],
+        catalogDateRange: EMPTY_LABEL,
       },
     quickActions: buildQuickActions(recentDeliveries),
+    recentDeliveries,
   };
 }
 
@@ -847,6 +955,24 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  useEffect(() => {
+    setExpandedDay(getTodayDayOfWeek());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("payment_success") === "true") {
+        setShowPaymentSuccess(true);
+        // Clean query parameter in the URL safely without reloading the page
+        const newUrl = window.location.pathname + window.location.search.replace(/[?&]payment_success=true/, "").replace(/^&/, "?");
+        window.history.replaceState(null, "", newUrl);
+      }
+    }
+  }, []);
 
   const toggleDay = (dayKey: string) =>
     setExpandedDay((prev) => (prev === dayKey ? null : dayKey));
@@ -922,7 +1048,28 @@ export function DashboardScreen() {
   return (
     <DashboardShell>
       <div className="mx-auto w-full max-w-[1080px] px-5 py-5">
-        <section className="rounded-lg bg-[#07a982] px-5 py-5 text-white shadow-[0_12px_24px_rgba(15,23,42,0.16)] sm:px-6">
+        {showPaymentSuccess && (
+          <div className="mb-5 relative overflow-hidden rounded-2xl border-2 border-[#10b981]/30 bg-[#ecfdf5] p-5 shadow-[0_10px_25px_rgba(16,185,129,0.12)] transition-all duration-300">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-extrabold text-[#0d7d59] flex items-center gap-2">
+                  <span>🎉</span> Pembayaran Berhasil!
+                </h3>
+                <p className="mt-1.5 text-sm font-medium leading-relaxed text-[#1b6b50]">
+                  Pesanan subscription Anda telah aktif dan terverifikasi. Menu makanan Anda untuk minggu depan telah resmi dikunci dan tim koki serta ahli gizi kami siap menyiapkannya untuk Anda!
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaymentSuccess(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl bg-white/60 text-[#0d7d59] border border-[#10b981]/20 hover:bg-[#d1fae5] hover:text-[#0b6b4c] transition"
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        <section className="rounded-2xl bg-[#07a982] px-5 py-5 text-white shadow-[0_12px_24px_rgba(15,23,42,0.16)] sm:px-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-medium text-white/80">
@@ -943,7 +1090,7 @@ export function DashboardScreen() {
               ) : null}
             </div>
 
-            <div className="w-fit rounded-lg bg-white/12 px-4 py-3 text-right">
+            <div className="w-fit rounded-xl bg-white/12 px-4 py-3 text-right">
               <p className="text-xs font-semibold text-white/65">Next Billing</p>
               <p className="mt-1 text-[1.2rem] font-bold leading-none">
                 {dashboard.subscription.nextBilling}
@@ -953,14 +1100,14 @@ export function DashboardScreen() {
         </section>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
-          <section className="rounded-lg border border-neutral-200 bg-white px-5 py-5 shadow-[0_3px_12px_rgba(15,23,42,0.13)]">
+          <section className="rounded-2xl border border-neutral-200 bg-white px-5 py-5 shadow-[0_3px_12px_rgba(15,23,42,0.13)]">
             <WeekHeader
               icon="box"
               title={dashboard.currentWeek.title}
               dateRange={dashboard.currentWeek.dateRange}
             />
 
-            <p className="mt-4 rounded-lg border border-neutral-200 bg-[#f8f8f7] px-4 py-3 text-sm text-neutral-600">
+            <p className="mt-4 rounded-xl border border-neutral-200 bg-[#f8f8f7] px-4 py-3 text-sm text-neutral-600">
               {dashboard.currentWeek.todayDeliveryMessage}
             </p>
 
@@ -972,14 +1119,14 @@ export function DashboardScreen() {
               ) : (
                 dashboard.currentWeek.items.map((item) => {
                   const isToday = item.dayKey === getTodayDayOfWeek();
-                  const isOpen = expandedDay === item.dayKey || (isToday && expandedDay === null);
+                  const isOpen = expandedDay === item.dayKey;
                   const hasLunch = item.lunch.length > 0;
                   const hasDinner = item.dinner.length > 0;
                   const hasAnyMenu = hasLunch || hasDinner;
                   const totalItems = item.lunch.length + item.dinner.length;
 
                   return (
-                    <article key={item.day} className={`rounded-xl border overflow-hidden transition-all ${
+                    <article key={item.day} className={`rounded-2xl border overflow-hidden transition-all ${
                       isToday
                         ? "border-[#14af84] shadow-[0_2px_8px_rgba(20,175,132,0.15)]"
                         : "border-neutral-200"
@@ -995,7 +1142,7 @@ export function DashboardScreen() {
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg text-[0.65rem] font-bold ${
+                          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl text-[0.65rem] font-bold ${
                             isToday ? "bg-[#12b886] text-white" : "bg-neutral-100 text-neutral-500"
                           }`}>
                             {item.day.slice(0, 2).toUpperCase()}
@@ -1013,7 +1160,7 @@ export function DashboardScreen() {
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Status badge only for today */}
                           {isToday && item.status !== "unknown" && (
-                            <span className={`rounded-lg px-2.5 py-0.5 text-[0.68rem] font-bold ${statusStyles[item.status]}`}>
+                            <span className={`rounded-xl px-2.5 py-0.5 text-[0.68rem] font-bold ${statusStyles[item.status]}`}>
                               {item.statusLabel}
                             </span>
                           )}
@@ -1040,32 +1187,47 @@ export function DashboardScreen() {
                           {/* Lunch section */}
                           <div>
                             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                              <span>☀️</span> Makan Siang
+                              Makan Siang
                             </p>
                             {hasLunch ? (
-                              <div className="space-y-1.5 pl-5">
+                              <div className="space-y-2 pl-2 sm:pl-5">
                                 {item.lunch.map((entry, i) => (
-                                  <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        {entry.calories && (
-                                          <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
-                                        )}
-                                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
-                                          ×{entry.serving}
-                                        </span>
-                                      </div>
+                                  <div key={i} className="flex gap-3 rounded-xl bg-amber-50 border border-amber-100 p-2.5">
+                                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-neutral-100 border border-neutral-200 shadow-sm">
+                                      {entry.imageUrl ? (
+                                        <img
+                                          src={entry.imageUrl}
+                                          alt={entry.name}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="grid h-full w-full place-items-center bg-[#fffbeb] text-amber-600">
+                                          <ChefHatIcon className="h-5 w-5" />
+                                        </div>
+                                      )}
                                     </div>
-                                    {entry.ingredients && entry.ingredients.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-0.5">
-                                        {entry.ingredients.map((ing, idx) => (
-                                          <span key={idx} className="text-[0.6rem] text-neutral-500 bg-white border border-neutral-200 px-1.5 py-0.5 rounded">
-                                            {ing.name} ({ing.quantity} {ing.unit})
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="text-xs font-bold text-neutral-800 leading-snug truncate max-w-[180px] sm:max-w-none">{entry.name}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          {entry.calories && (
+                                            <span className="text-[0.65rem] font-medium text-neutral-400">{entry.calories} kkal</span>
+                                          )}
+                                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                                            ×{entry.serving}
                                           </span>
-                                        ))}
+                                        </div>
                                       </div>
-                                    )}
+                                      {entry.ingredients && entry.ingredients.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {entry.ingredients.map((ing, idx) => (
+                                            <span key={idx} className="text-[0.58rem] text-neutral-500 bg-white border border-neutral-200/80 px-1 rounded">
+                                              {ing.name} ({ing.quantity} {ing.unit})
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1077,32 +1239,47 @@ export function DashboardScreen() {
                           {/* Dinner section */}
                           <div>
                             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600">
-                              <span>🌙</span> Makan Malam
+                              Makan Malam
                             </p>
                             {hasDinner ? (
-                              <div className="space-y-1.5 pl-5">
+                              <div className="space-y-2 pl-2 sm:pl-5">
                                 {item.dinner.map((entry, i) => (
-                                  <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        {entry.calories && (
-                                          <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
-                                        )}
-                                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700">
-                                          ×{entry.serving}
-                                        </span>
-                                      </div>
+                                  <div key={i} className="flex gap-3 rounded-xl bg-indigo-50 border border-indigo-100 p-2.5">
+                                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-neutral-100 border border-neutral-200 shadow-sm">
+                                      {entry.imageUrl ? (
+                                        <img
+                                          src={entry.imageUrl}
+                                          alt={entry.name}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="grid h-full w-full place-items-center bg-[#f5f3ff] text-indigo-600">
+                                          <ChefHatIcon className="h-5 w-5" />
+                                        </div>
+                                      )}
                                     </div>
-                                    {entry.ingredients && entry.ingredients.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mt-0.5">
-                                        {entry.ingredients.map((ing, idx) => (
-                                          <span key={idx} className="text-[0.6rem] text-neutral-500 bg-white border border-neutral-200 px-1.5 py-0.5 rounded">
-                                            {ing.name} ({ing.quantity} {ing.unit})
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="text-xs font-bold text-neutral-800 leading-snug truncate max-w-[180px] sm:max-w-none">{entry.name}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          {entry.calories && (
+                                            <span className="text-[0.65rem] font-medium text-neutral-400">{entry.calories} kkal</span>
+                                          )}
+                                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700">
+                                            ×{entry.serving}
                                           </span>
-                                        ))}
+                                        </div>
                                       </div>
-                                    )}
+                                      {entry.ingredients && entry.ingredients.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {entry.ingredients.map((ing, idx) => (
+                                            <span key={idx} className="text-[0.58rem] text-neutral-500 bg-white border border-neutral-200/80 px-1 rounded">
+                                              {ing.name} ({ing.quantity} {ing.unit})
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -1147,16 +1324,15 @@ export function DashboardScreen() {
             )}
           </section>
 
-          <section className="rounded-lg border border-neutral-200 bg-white px-5 py-5 shadow-[0_3px_12px_rgba(15,23,42,0.13)] lg:min-h-[588px]">
+          <section className="rounded-2xl border border-neutral-200 bg-white px-5 py-5 shadow-[0_3px_12px_rgba(15,23,42,0.13)] lg:min-h-[588px]">
             <WeekHeader
               icon="calendar"
               title={dashboard.nextWeek.title}
               dateRange={dashboard.nextWeek.dateRange}
             />
 
-            <div className="mt-6 rounded-lg border border-[#ffc6c3] bg-[#fff1f1] p-4">
+            <div className="mt-6 rounded-2xl border border-[#ffc6c3] bg-[#fff1f1] p-4">
               <div className="flex gap-3">
-                <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#ff6767]" />
                 <div>
                   <h3 className="text-sm font-bold text-neutral-950">
                     {dashboard.nextWeek.heading}
@@ -1179,9 +1355,8 @@ export function DashboardScreen() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-[#ade5dc] bg-[#eafffb] p-4">
+            <div className="mt-4 rounded-2xl border border-[#ade5dc] bg-[#eafffb] p-4">
               <div className="flex gap-3">
-                <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#0a8c80]" />
                 <div>
                   <p className="text-sm leading-6 text-neutral-800">
                     {dashboard.nextWeek.reminder}
@@ -1209,6 +1384,91 @@ export function DashboardScreen() {
                 Pilih Menu Sekarang
               </button>
             )}
+
+            {/* Katalog Menu Minggu Ini/Depan */}
+            {dashboard.nextWeek.catalogRecipes && dashboard.nextWeek.catalogRecipes.length > 0 ? (
+              <div className="mt-6 border-t border-neutral-100 pt-5">
+                <div className="flex items-center justify-between mb-3.5">
+                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-neutral-500">
+                    Menu Tersedia ({dashboard.nextWeek.catalogDateRange})
+                  </h3>
+                  <span className="text-[11px] font-bold text-teal-600 bg-teal-50 border border-teal-200/65 px-2.5 py-0.5 rounded-full shadow-sm">
+                    {dashboard.nextWeek.catalogRecipes.length} Menu Pilihan
+                  </span>
+                </div>
+                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                  {dashboard.nextWeek.catalogRecipes.map((recipe) => (
+                    <div key={recipe.id} className="flex gap-3 rounded-2xl border border-neutral-100 bg-[#fbfdfc] p-3 shadow-sm hover:border-teal-200 hover:shadow-md transition duration-200">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-neutral-100 border border-neutral-200">
+                        {recipe.imageUrl ? (
+                          <img
+                            src={recipe.imageUrl}
+                            alt={recipe.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="grid h-full w-full place-items-center bg-[#eefbf7] text-teal-600">
+                            <ChefHatIcon className="h-6 w-6" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-neutral-900 leading-snug line-clamp-1">{recipe.name}</h4>
+                          {recipe.description && (
+                            <p className="text-[10px] text-neutral-400 mt-0.5 line-clamp-1 leading-normal">{recipe.description}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          {recipe.calories && (
+                            <span className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded">
+                              {recipe.calories} kkal
+                            </span>
+                          )}
+                          {recipe.protein && (
+                            <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">
+                              {recipe.protein}g protein
+                            </span>
+                          )}
+                        </div>
+                        {recipe.ingredients && recipe.ingredients.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {recipe.ingredients.slice(0, 4).map((ing, idx) => (
+                              <span
+                                key={idx}
+                                className={`text-[8px] font-medium px-1 py-0.2 rounded border ${
+                                  ing.ingredient?.isAllergen
+                                    ? "bg-amber-100 text-amber-800 border-amber-200"
+                                    : "bg-neutral-50 text-neutral-500 border-neutral-200"
+                                }`}
+                              >
+                                {ing.ingredient?.isAllergen && <span className="mr-0.5">⚠️</span>}
+                                {ing.ingredient?.name}
+                              </span>
+                            ))}
+                            {recipe.ingredients.length > 4 && (
+                              <span className="text-[8px] font-medium text-neutral-400 bg-neutral-50 px-1 py-0.2 rounded border border-neutral-100">
+                                +{recipe.ingredients.length - 4} lainnya
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-6 border-t border-neutral-100 pt-5 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-neutral-50 text-neutral-400">
+                  <ChefHatIcon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-2 text-xs font-bold text-neutral-500">Katalog Menu Belum Tersedia</h3>
+                <p className="mt-1 text-[11px] text-neutral-400 max-w-xs mx-auto">
+                  Ahli gizi kami sedang menyusun daftar menu masakan lezat untuk periode ini.
+                </p>
+              </div>
+            )}
           </section>
         </div>
 
@@ -1217,10 +1477,10 @@ export function DashboardScreen() {
             <Link
               key={action.title}
               href={action.href}
-              className="flex min-h-16 items-center gap-4 rounded-lg border border-neutral-200 bg-white px-4 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#a7dec9] hover:shadow-[0_8px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+              className="flex min-h-16 items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#a7dec9] hover:shadow-[0_8px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
             >
               <span
-                className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${actionIconStyles[action.tone]}`}
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${actionIconStyles[action.tone]}`}
               >
                 <QuickActionIcon icon={action.icon} />
               </span>

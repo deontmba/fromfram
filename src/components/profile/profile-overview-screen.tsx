@@ -44,6 +44,7 @@ type ProfileResponse = {
       goals?: string[];
       dietaryPrefs?: string[];
       allergies?: string[];
+      updatedAt?: string;
     };
     subscriptions?: any[];
     addresses?: any[];
@@ -60,6 +61,7 @@ type ProfileResponse = {
       goals?: string[];
       dietaryPrefs?: string[];
       allergies?: string[];
+      updatedAt?: string;
     };
     subscriptions?: any[];
     addresses?: any[];
@@ -115,6 +117,7 @@ export function ProfileOverviewScreen() {
   const [draft, setDraft] = useState<ProfileDetails>(profileMockData);
   const [addresses, setAddresses] = useState<Address[]>([]); // Initialize empty to avoid static Jl Sudirman
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
+  const [personalizationUpdatedAt, setPersonalizationUpdatedAt] = useState<string | null>(null);
   
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false);
@@ -180,6 +183,10 @@ export function ProfileOverviewScreen() {
           allergies: user.personalization?.allergies?.join(", ") ?? healthMockData.allergies,
           dietPreference: user.personalization?.dietaryPrefs?.join(", ") ?? healthMockData.dietPreference,
         };
+        
+        if (user.personalization?.updatedAt) {
+          setPersonalizationUpdatedAt(user.personalization.updatedAt);
+        }
 
         setProfile(mappedProfile);
         setDraft(mappedProfile);
@@ -597,6 +604,28 @@ export function ProfileOverviewScreen() {
                     </div>
                   </div>
                 </div>
+
+                {personalizationUpdatedAt && (() => {
+                  const lastUpdated = new Date(personalizationUpdatedAt);
+                  if (Number.isNaN(lastUpdated.getTime())) return null;
+                  
+                  const recommendedDate = new Date(lastUpdated);
+                  recommendedDate.setDate(lastUpdated.getDate() + 7);
+                  
+                  const isStale = new Date().getTime() > recommendedDate.getTime();
+                  const dateFormatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" });
+                  
+                  return (
+                    <div className="mt-6 border-t border-neutral-100/60 pt-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                      <p className="text-[0.82rem] text-neutral-400 font-semibold italic">
+                        Terakhir diperbarui: {dateFormatter.format(lastUpdated)}
+                      </p>
+                      <p className={`text-[0.82rem] font-bold ${isStale ? "text-red-500 animate-pulse" : "text-[#13b987]"}`}>
+                        {isStale ? `⚠ Sebaiknya diperbarui pada: ${dateFormatter.format(recommendedDate)}` : `Saran pembaruan berikutnya: ${dateFormatter.format(recommendedDate)}`}
+                      </p>
+                    </div>
+                  );
+                })()}
               </motion.div>
 
               {/* Subscription Management */}

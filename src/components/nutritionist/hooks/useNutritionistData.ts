@@ -308,8 +308,25 @@ export function useNutritionistData() {
     [fetchWeeklyMenus]
   );
 
+  const deleteWholeWeek = useCallback(
+    async (weekStartDate: string): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/nutritionist/weekly-menus?weekStartDate=${encodeURIComponent(weekStartDate)}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) return false;
+        await fetchWeeklyMenus();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [fetchWeeklyMenus]
+  );
+
   const autoGenerateMenu = useCallback(
-    async (): Promise<{ success: boolean; message: string }> => {
+    async (): Promise<{ success: boolean; message: string; weekStartDate?: string }> => {
       try {
         const res = await fetch("/api/nutritionist/weekly-menus/auto-generate", {
           method: "POST",
@@ -325,7 +342,8 @@ export function useNutritionistData() {
         await fetchWeeklyMenus();
         return {
           success: true,
-          message: data.message || "Berhasil meng-generate menu otomatis untuk minggu depan.",
+          message: data.message || "Berhasil meng-generate menu otomatis.",
+          weekStartDate: data.weekStartDate,
         };
       } catch (err: any) {
         console.error("[useNutritionistData] autoGenerateMenu error:", err);
@@ -366,6 +384,7 @@ export function useNutritionistData() {
     fetchWeeklyMenus,
     addMenu,
     deleteMenu,
+    deleteWholeWeek,
     autoGenerateMenu,
   };
 }

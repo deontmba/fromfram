@@ -395,7 +395,7 @@ export default function WeeklyMenuPage() {
                       
                       <div className="grid sm:grid-cols-2 gap-4">
                         <div className="rounded-xl bg-[#f0fbf7] p-3 border border-[#1db788]/10">
-                          <p className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">☀️ Makan Siang</p>
+                          <p className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">Makan Siang</p>
                           {dayData.lunch.length === 0 ? (
                             <p className="text-xs text-neutral-400 italic">Belum ada pilihan</p>
                           ) : (
@@ -411,7 +411,7 @@ export default function WeeklyMenuPage() {
                         </div>
 
                         <div className="rounded-xl bg-[#f0fbf7] p-3 border border-[#1db788]/10">
-                          <p className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">🌙 Makan Malam</p>
+                          <p className="text-sm font-semibold text-neutral-700 mb-2 flex items-center gap-2">Makan Malam</p>
                           {dayData.dinner.length === 0 ? (
                             <p className="text-xs text-neutral-400 italic">Belum ada pilihan</p>
                           ) : (
@@ -617,7 +617,7 @@ export default function WeeklyMenuPage() {
               onClick={() => setIsReceiptModalOpen(true)}
               className="w-full rounded-2xl border-2 border-[#0ea5a5] bg-white px-4 py-2.5 text-sm font-bold text-[#0ea5a5] transition hover:bg-[#f0fbf7] outline outline-1 outline-white/40"
             >
-              📋 Lihat Ringkasan Pesanan
+              Lihat Ringkasan Pesanan
             </button>
 
             <button
@@ -655,7 +655,7 @@ export default function WeeklyMenuPage() {
             {!menuUnavailableMessage && (
               <div className="mt-4 rounded-lg bg-white/10 px-3 py-2 border border-white/20">
                 <p className="text-xs text-white/80">
-                  <span className="font-semibold">💡 Info:</span> Anda dapat memilih menu sebanyak <span className="font-bold">{servingSize} porsi</span> untuk setiap waktu makan (Siang & Malam)
+                  <span className="font-semibold">Info:</span> Anda dapat memilih menu sebanyak <span className="font-bold">{servingSize} porsi</span> untuk setiap waktu makan (Siang & Malam)
                 </p>
               </div>
             )}

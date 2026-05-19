@@ -361,7 +361,8 @@ export async function getAdminDeliveries(
 
           const deliveryData = box.mealSelections.map((sel) => {
             const offset = dayOffsets[sel.dayOfWeek] ?? 0;
-            const deliveryDate = new Date(box.weekStartDate);
+            const localDateStr = box.weekStartDate.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta' });
+            const deliveryDate = new Date(localDateStr);
             deliveryDate.setDate(deliveryDate.getDate() + offset);
             const isLunch = sel.mealType === 'LUNCH';
             deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
@@ -463,18 +464,19 @@ export async function getAdminDeliveries(
     prisma.delivery.count({ where }),
   ]);
 
-  const jsToEnum: Record<number, string> = {
-    0: 'MINGGU',
-    1: 'SENIN',
-    2: 'SELASA',
-    3: 'RABU',
-    4: 'KAMIS',
-    5: 'JUMAT',
-    6: 'SABTU',
+  const enToId: Record<string, string> = {
+    'MONDAY': 'SENIN',
+    'TUESDAY': 'SELASA',
+    'WEDNESDAY': 'RABU',
+    'THURSDAY': 'KAMIS',
+    'FRIDAY': 'JUMAT',
+    'SATURDAY': 'SABTU',
+    'SUNDAY': 'MINGGU',
   };
 
   const data = deliveries.map((d) => {
-    const dayEnum = jsToEnum[new Date(d.deliveryDate).getDay()];
+    const dayNameEn = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date(d.deliveryDate)).toUpperCase();
+    const dayEnum = enToId[dayNameEn];
 
     // Match selection by dayOfWeek DAN mealType sekaligus
     const matchedSelection = d.weeklyBox?.mealSelections.find(
@@ -823,16 +825,17 @@ export async function updateAdminDelivery(
     }
 
     const targetDate = dateStr ? new Date(dateStr) : delivery.deliveryDate;
-    const jsToEnum: Record<number, string> = {
-      0: 'MINGGU',
-      1: 'SENIN',
-      2: 'SELASA',
-      3: 'RABU',
-      4: 'KAMIS',
-      5: 'JUMAT',
-      6: 'SABTU',
+    const enToId: Record<string, string> = {
+      'MONDAY': 'SENIN',
+      'TUESDAY': 'SELASA',
+      'WEDNESDAY': 'RABU',
+      'THURSDAY': 'KAMIS',
+      'FRIDAY': 'JUMAT',
+      'SATURDAY': 'SABTU',
+      'SUNDAY': 'MINGGU',
     };
-    const dayEnum = jsToEnum[targetDate.getDay()] as 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
+    const dayNameEn = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(targetDate).toUpperCase();
+    const dayEnum = enToId[dayNameEn] as 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
 
     const selection = await prisma.mealSelection.findFirst({
       where: {

@@ -382,14 +382,25 @@ export async function autoGenerateNutritionistWeeklyMenu(userId: string) {
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  // 1. Get the target week (Next Week)
+  // 1. Determine target week (Next Week, or the week after the latest week currently in the database)
   const currentWeekStart = getStartOfWeek(new Date());
-  const nextWeekStart = new Date(currentWeekStart);
-  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-  nextWeekStart.setHours(0, 0, 0, 0);
+  let targetWeekStart = new Date(currentWeekStart);
+  targetWeekStart.setDate(targetWeekStart.getDate() + 7);
+  targetWeekStart.setHours(0, 0, 0, 0);
 
-  const nextWeekEnd = new Date(nextWeekStart);
-  nextWeekEnd.setDate(nextWeekEnd.getDate() + 7);
+  // Find the latest weeklyMenu weekStartDate
+  const latestMenu = await prisma.weeklyMenu.findFirst({
+    orderBy: { weekStartDate: 'desc' },
+    select: { weekStartDate: true },
+  });
+
+  if (latestMenu && latestMenu.weekStartDate >= targetWeekStart) {
+    targetWeekStart = new Date(latestMenu.weekStartDate);
+    targetWeekStart.setDate(targetWeekStart.getDate() + 7);
+  }
+
+  const targetWeekEnd = new Date(targetWeekStart);
+  targetWeekEnd.setDate(targetWeekEnd.getDate() + 7);
 
   // 2. Fetch all available recipes
   const allRecipes = await prisma.recipe.findMany({
@@ -404,10 +415,10 @@ export async function autoGenerateNutritionistWeeklyMenu(userId: string) {
   const shuffled = allRecipes.sort(() => 0.5 - Math.random());
   const selectedRecipes = shuffled.slice(0, 14); // We want 14 recipes
 
-  // 4. Fetch existing menus for next week to avoid duplicates
+  // 4. Fetch existing menus for target week to avoid duplicates
   const existingMenus = await prisma.weeklyMenu.findMany({
     where: {
-      weekStartDate: { gte: nextWeekStart, lt: nextWeekEnd },
+      weekStartDate: { gte: targetWeekStart, lt: targetWeekEnd },
     },
     select: { recipeId: true },
   });
@@ -417,19 +428,39 @@ export async function autoGenerateNutritionistWeeklyMenu(userId: string) {
   // 5. Filter out already existing recipes
   const newRecipesToInsert = selectedRecipes.filter((r) => !existingRecipeIds.has(r.id));
 
+  const formattedDate = targetWeekStart.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
   if (newRecipesToInsert.length === 0) {
-    return { data: { success: true, message: 'Menu minggu depan sudah penuh / tidak ada resep baru untuk ditambahkan.' }, status: 200 };
+    return {
+      data: {
+        success: true,
+        message: `Menu untuk pekan ${formattedDate} sudah penuh / tidak ada resep baru untuk ditambahkan.`,
+        weekStartDate: targetWeekStart.toISOString(),
+      },
+      status: 200,
+    };
   }
 
   // 6. Bulk insert new weekly menus
   await prisma.weeklyMenu.createMany({
     data: newRecipesToInsert.map((r) => ({
       recipeId: r.id,
-      weekStartDate: nextWeekStart,
+      weekStartDate: targetWeekStart,
     })),
   });
 
-  return { data: { success: true, message: `Berhasil meng-generate ${newRecipesToInsert.length} resep untuk minggu depan.` }, status: 201 };
+  return {
+    data: {
+      success: true,
+      message: `Berhasil meng-generate ${newRecipesToInsert.length} resep untuk pekan mulai ${formattedDate}.`,
+      weekStartDate: targetWeekStart.toISOString(),
+    },
+    status: 201,
+  };
 }
 
 export async function getNutritionistDashboardActivity(userId: string) {
@@ -475,4 +506,25 @@ export async function getNutritionistDashboardActivity(userId: string) {
     data: { activities: finalActivities },
     status: 200,
   };
+}
+
+export async function deleteNutritionistWeeklyMenuByWeek(userId: string, weekStartDate: string) {
+  const authError = await verifyNutritionist(userId);
+  if (authError) return authError;
+
+  const normalizedWeekStart = getStartOfWeek(new Date(weekStartDate));
+  const nextWeekStart = new Date(normalizedWeekStart);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  nextWeekStart.setHours(0, 0, 0, 0);
+
+  await prisma.weeklyMenu.deleteMany({
+    where: {
+      weekStartDate: {
+        gte: normalizedWeekStart,
+        lt: nextWeekStart,
+      },
+    },
+  });
+
+  return { data: { success: true, message: 'Jadwal menu mingguan berhasil dihapus.' }, status: 200 };
 }
