@@ -16,6 +16,33 @@ export type ActivityItem = {
   type: "recipe" | "menu";
 };
 
+export type IngredientOption = {
+  id: string;
+  name: string;
+  origin: string;
+  supplierName: string;
+  isAllergen: boolean;
+  stockKg: number;
+  pricePerKg: number;
+};
+
+export type IngredientFormData = {
+  id: string;
+  name: string;
+  origin: string;
+  supplierName: string;
+  isAllergen: boolean;
+  stockKg: string;
+  pricePerKg: string;
+};
+
+export type RecipeIngredientEntry = {
+  ingredientId: string;
+  quantity: number;
+  unit: string;
+  quantityInKg: number;
+};
+
 export type RecipeRow = {
   id: string;
   name: string;
@@ -24,6 +51,11 @@ export type RecipeRow = {
   protein: number;
   servings: number;
   imageUrl: string | null;
+  ingredients?: Array<{
+    quantity: number;
+    unit: string;
+    ingredient: { id: string; name: string };
+  }>;
 };
 
 export type WeeklyMenuItem = {
@@ -54,6 +86,7 @@ export type RecipeFormData = {
   protein: string;
   servings: string;
   imageUrl: string;
+  ingredients: RecipeIngredientEntry[];
 };
 
 export type MenuFormData = {
@@ -101,6 +134,72 @@ export function useNutritionistData() {
   // ── Recipes ────────────────────────────────────────────────────────────────
   const [recipes, setRecipes] = useState<RecipeRow[]>([]);
   const [isRecipesLoading, setIsRecipesLoading] = useState(false);
+  const [ingredientOptions, setIngredientOptions] = useState<IngredientOption[]>([]);
+  const [isIngredientsLoading, setIsIngredientsLoading] = useState(false);
+
+  const fetchIngredients = useCallback(async () => {
+    setIsIngredientsLoading(true);
+    try {
+      const res = await fetch("/api/nutritionist/ingredients", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch ingredients");
+      const json = await res.json();
+      setIngredientOptions(json.data ?? []);
+    } catch (err) {
+      console.error("[useNutritionistData] fetchIngredients", err);
+    } finally {
+      setIsIngredientsLoading(false);
+    }
+  }, []);
+
+  const saveIngredient = useCallback(
+    async (form: IngredientFormData): Promise<{ ok: boolean; error?: string }> => {
+      const method = form.id ? "PATCH" : "POST";
+      const url = form.id
+        ? `/api/nutritionist/ingredients/${form.id}`
+        : "/api/nutritionist/ingredients";
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: form.name,
+            origin: form.origin,
+            supplierName: form.supplierName,
+            isAllergen: form.isAllergen,
+            stockKg: parseFloat(form.stockKg) || 0,
+            pricePerKg: parseFloat(form.pricePerKg) || 0,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: json.error ?? "Gagal menyimpan." };
+        await fetchIngredients();
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Terjadi kesalahan koneksi." };
+      }
+    },
+    [fetchIngredients]
+  );
+
+  const deleteIngredient = useCallback(
+    async (id: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const res = await fetch(`/api/nutritionist/ingredients/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) return { ok: false, error: json.error ?? "Gagal menghapus." };
+        await fetchIngredients();
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Terjadi kesalahan koneksi." };
+      }
+    },
+    [fetchIngredients]
+  );
 
   const fetchRecipes = useCallback(async () => {
     setIsRecipesLoading(true);
@@ -134,6 +233,7 @@ export function useNutritionistData() {
           protein: parseFloat(form.protein),
           servings: parseInt(form.servings),
           imageUrl: form.imageUrl || undefined,
+          ingredients: form.ingredients.length > 0 ? form.ingredients : undefined,
         }),
       });
 
@@ -251,6 +351,13 @@ export function useNutritionistData() {
     fetchRecipes,
     saveRecipe,
     deleteRecipe,
+
+    // Ingredients
+    ingredientOptions,
+    isIngredientsLoading,
+    fetchIngredients,
+    saveIngredient,
+    deleteIngredient,
 
     // Weekly Menus
     weeklyMenus,

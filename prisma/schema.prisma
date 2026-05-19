@@ -61,6 +61,13 @@ enum MealType {
   DINNER
 }
 
+enum POStatus {
+  DRAFT
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+}
+
 // --- MODELS ---
 
 model User {
@@ -219,20 +226,27 @@ model Recipe {
 }
 
 model Ingredient {
-  id           String             @id @default(cuid())
-  name         String             @unique
-  origin       String
-  supplierName String
-  isAllergen   Boolean            @default(false)
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  origin               String
+  supplierName         String
+  isAllergen           Boolean               @default(false)
+  stockKg              Float                 @default(0)
+  pricePerKg           Float                 @default(0)
 
-  recipes      RecipeIngredient[]
+  recipes              RecipeIngredient[]
+  farmerSupplyItems    FarmerSupplyItem[]
+  farmerPurchaseOrders FarmerPurchaseOrder[]
+  demandForecastLogs   DemandForecastLog[]
 }
 
 model RecipeIngredient {
   id           String     @id @default(cuid())
   recipeId     String
   ingredientId String
-  quantity     String
+  quantity     Float
+  unit         String
+  quantityInKg Float
 
   recipe       Recipe     @relation(fields: [recipeId], references: [id])
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
@@ -297,4 +311,66 @@ model Delivery {
   user         User           @relation(fields: [userId], references: [id])
   weeklyBox    WeeklyBox      @relation(fields: [weeklyBoxId], references: [id])
   address      Address        @relation(fields: [addressId], references: [id])
+}
+
+model Farmer {
+  id             String                @id @default(cuid())
+  name           String
+  phoneNumber    String?
+  region         String
+  commodityType  String
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+
+  supplyItems    FarmerSupplyItem[]
+  purchaseOrders FarmerPurchaseOrder[]
+}
+
+model FarmerSupplyItem {
+  id               String     @id @default(cuid())
+  farmerId         String
+  ingredientId     String
+  weeklyCapacityKg Float
+  minOrderKg       Float
+  pricePerKg       Float
+
+  farmer           Farmer     @relation(fields: [farmerId], references: [id])
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([farmerId, ingredientId])
+}
+
+model FarmerPurchaseOrder {
+  id              String     @id @default(cuid())
+  farmerId        String
+  ingredientId    String
+  weekStartDate   DateTime
+  forecastedQtyKg Float
+  orderedQtyKg    Float
+  pricePerKg      Float
+  totalPrice      Float
+  status          POStatus   @default(DRAFT)
+  confidenceScore Float?
+  notes           String?
+  confirmedAt     DateTime?
+  createdAt       DateTime   @default(now())
+
+  farmer          Farmer     @relation(fields: [farmerId], references: [id])
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([farmerId, ingredientId, weekStartDate])
+}
+
+model DemandForecastLog {
+  id              String     @id @default(cuid())
+  ingredientId    String
+  weekStartDate   DateTime
+  activeUserCount Int
+  predictedQtyKg  Float
+  actualQtyUsedKg Float?
+  confidenceScore Float?
+  modelVersion    String?
+  createdAt       DateTime   @default(now())
+
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
 }

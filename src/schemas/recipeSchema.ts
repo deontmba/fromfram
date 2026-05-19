@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+export const recipeIngredientSchema = z.object({
+  ingredientId: z.string().min(1, 'Ingredient wajib dipilih.'),
+  quantity: z.number().positive('Kuantitas harus positif.'),
+  unit: z.string().min(1, 'Satuan wajib diisi.'),
+  quantityInKg: z.number().positive('Kuantitas dalam Kg harus positif.'),
+});
+
 export const createRecipeSchema = z.object({
   name: z.string().min(1, 'Nama resep wajib diisi.'),
   description: z.string().min(1, 'Deskripsi wajib diisi.'),
@@ -7,6 +14,7 @@ export const createRecipeSchema = z.object({
   protein: z.number().positive('Protein harus berupa angka positif.'),
   servings: z.number().int().positive('Servings harus berupa angka positif.'),
   imageUrl: z.string().optional(),
+  ingredients: z.array(recipeIngredientSchema).optional(),
 });
 
 export const updateRecipeSchema = z.object({
@@ -16,6 +24,7 @@ export const updateRecipeSchema = z.object({
   protein: z.number().positive().optional(),
   servings: z.number().int().positive().optional(),
   imageUrl: z.string().optional(),
+  ingredients: z.array(recipeIngredientSchema).optional(),
 });
 
 export type CreateRecipeInput = z.infer<typeof createRecipeSchema>;

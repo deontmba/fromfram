@@ -54,6 +54,11 @@ type MealSelection = {
     calories?: number | null;
     protein?: number | null;
     imageUrl?: string | null;
+    ingredients?: Array<{
+      quantity: number;
+      unit: string;
+      ingredient: { name: string };
+    }> | null;
   } | null;
 };
 
@@ -113,7 +118,12 @@ type DashboardApiResponse = {
   error?: string;
 };
 
-type MealEntry = { name: string; serving: number; calories: number | null };
+type MealEntry = {
+  name: string;
+  serving: number;
+  calories: number | null;
+  ingredients?: Array<{ name: string; quantity: number; unit: string }>;
+};
 
 type CurrentWeekItem = {
   day: string;
@@ -424,10 +434,19 @@ function buildCurrentWeekItems(
     if (day && mealType && selection.recipe?.name) {
       const key = `${day}:${mealType}`;
       const existing = selectionsByDayMeal.get(key) ?? [];
+      const ingredients = Array.isArray(selection.recipe.ingredients)
+        ? selection.recipe.ingredients.map(ing => ({
+            name: ing.ingredient?.name ?? '',
+            quantity: typeof ing.quantity === "number" ? ing.quantity : 0,
+            unit: typeof ing.unit === "string" ? ing.unit : '',
+          }))
+        : undefined;
+
       existing.push({
         name: selection.recipe.name,
         serving: typeof selection.serving === "number" ? selection.serving : 1,
         calories: pickNumber(selection.recipe.calories),
+        ingredients,
       });
       selectionsByDayMeal.set(key, existing);
     }
@@ -1026,16 +1045,27 @@ export function DashboardScreen() {
                             {hasLunch ? (
                               <div className="space-y-1.5 pl-5">
                                 {item.lunch.map((entry, i) => (
-                                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
-                                    <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {entry.calories && (
-                                        <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
-                                      )}
-                                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
-                                        ×{entry.serving}
-                                      </span>
+                                  <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {entry.calories && (
+                                          <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
+                                        )}
+                                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                                          ×{entry.serving}
+                                        </span>
+                                      </div>
                                     </div>
+                                    {entry.ingredients && entry.ingredients.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {entry.ingredients.map((ing, idx) => (
+                                          <span key={idx} className="text-[0.6rem] text-neutral-500 bg-white border border-neutral-200 px-1.5 py-0.5 rounded">
+                                            {ing.name} ({ing.quantity} {ing.unit})
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -1052,16 +1082,27 @@ export function DashboardScreen() {
                             {hasDinner ? (
                               <div className="space-y-1.5 pl-5">
                                 {item.dinner.map((entry, i) => (
-                                  <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2">
-                                    <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {entry.calories && (
-                                        <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
-                                      )}
-                                      <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700">
-                                        ×{entry.serving}
-                                      </span>
+                                  <div key={i} className="flex flex-col gap-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-medium text-neutral-800 leading-snug">{entry.name}</span>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {entry.calories && (
+                                          <span className="text-[0.65rem] text-neutral-400">{entry.calories} kkal</span>
+                                        )}
+                                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700">
+                                          ×{entry.serving}
+                                        </span>
+                                      </div>
                                     </div>
+                                    {entry.ingredients && entry.ingredients.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-0.5">
+                                        {entry.ingredients.map((ing, idx) => (
+                                          <span key={idx} className="text-[0.6rem] text-neutral-500 bg-white border border-neutral-200 px-1.5 py-0.5 rounded">
+                                            {ing.name} ({ing.quantity} {ing.unit})
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>

@@ -16,6 +16,12 @@ type Recipe = {
   protein: number;
   servings: number;
   imageUrl?: string;
+  ingredients?: Array<{
+    name: string;
+    isAllergen: boolean;
+    quantity: number;
+    unit: string;
+  }>;
 };
 
 type MenuDay = {
@@ -455,7 +461,7 @@ export default function WeeklyMenuPage() {
       {/* FLOATING HOVER POPUP */}
       {hoveredData && (
         <div
-          className={`pointer-events-none fixed z-[9999] w-64 transform rounded-2xl border border-[#0ea5a5]/30 bg-gradient-to-br from-white to-[#e0f7f4] p-4 shadow-[0_15px_35px_rgba(14,165,165,0.2)] backdrop-blur-xl transition-all duration-200 ease-out ${
+          className={`pointer-events-none fixed z-[9999] w-72 transform rounded-2xl border border-[#0ea5a5]/30 bg-gradient-to-br from-white to-[#e0f7f4] p-4 shadow-[0_15px_35px_rgba(14,165,165,0.2)] backdrop-blur-xl transition-all duration-200 ease-out ${
             hoveredData.align === "left" ? "-translate-x-full -translate-y-1/2" : "-translate-y-1/2"
           }`}
           style={{
@@ -473,7 +479,7 @@ export default function WeeklyMenuPage() {
           
           <p className="mb-1.5 text-base font-bold leading-tight text-neutral-900">{hoveredData.recipe.name}</p>
           {hoveredData.recipe.description && (
-            <p className="mb-4 line-clamp-3 text-xs leading-relaxed text-neutral-600">{hoveredData.recipe.description}</p>
+            <p className="mb-3 line-clamp-3 text-xs leading-relaxed text-neutral-600">{hoveredData.recipe.description}</p>
           )}
           <div className="flex flex-col gap-2 rounded-xl border border-white/60 bg-white/50 p-3 backdrop-blur-sm">
             <div className="flex items-center justify-between text-xs">
@@ -489,6 +495,32 @@ export default function WeeklyMenuPage() {
               <span className="font-extrabold text-[#0ea5a5]">{hoveredData.recipe.servings}</span>
             </div>
           </div>
+
+          {/* Ingredients section */}
+          {hoveredData.recipe.ingredients && hoveredData.recipe.ingredients.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">🧪 Bahan Baku</p>
+              <div className="flex flex-wrap gap-1">
+                {hoveredData.recipe.ingredients.map((ing, i) => (
+                  <span
+                    key={i}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${
+                      ing.isAllergen
+                        ? "bg-amber-100 text-amber-700 border border-amber-200"
+                        : "bg-teal-50 text-teal-700 border border-teal-100"
+                    }`}
+                  >
+                    {ing.isAllergen && <span title="Alergen">⚠️</span>}
+                    {ing.name} <span className="opacity-60">({ing.quantity}{ing.unit})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(!hoveredData.recipe.ingredients || hoveredData.recipe.ingredients.length === 0) && (
+            <p className="mt-2 text-[0.65rem] italic text-neutral-400">Belum ada data bahan baku.</p>
+          )}
         </div>
       )}
 

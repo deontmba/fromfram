@@ -4,6 +4,7 @@ import { useEffect, type CSSProperties } from "react";
 import { useNutritionistData } from "./hooks/useNutritionistData";
 import { DashboardTab } from "./tabs/DashboardTab";
 import { RecipesTab } from "./tabs/RecipesTab";
+import { IngredientsTab } from "./tabs/IngredientsTab";
 import { WeeklyMenuTab } from "./tabs/WeeklyMenuTab";
 import { useState } from "react";
 import styles from "../operations/role-portal-screen.module.css";
@@ -13,6 +14,7 @@ import styles from "../operations/role-portal-screen.module.css";
 const TABS = [
   { id: "dashboard", label: "Dashboard" },
   { id: "recipes", label: "Recipes" },
+  { id: "ingredients", label: "Bahan Baku" },
   { id: "weekly-menu", label: "Weekly Menu" },
 ] as const;
 
@@ -26,6 +28,10 @@ const HERO: Record<TabId, { title: string; subtitle: string }> = {
   recipes: {
     title: "Recipe Nutrition Validation",
     subtitle: "Periksa detail resep sebelum dipublikasikan ke user.",
+  },
+  ingredients: {
+    title: "Manajemen Bahan Baku",
+    subtitle: "Kelola stok dan harga bahan baku untuk keperluan AI Forecasting.",
   },
   "weekly-menu": {
     title: "Weekly Menu Validation by Goal",
@@ -72,6 +78,12 @@ export function NutritionistPortal() {
     saveRecipe,
     deleteRecipe,
 
+    ingredientOptions,
+    isIngredientsLoading,
+    fetchIngredients,
+    saveIngredient,
+    deleteIngredient,
+
     weeklyMenus,
     weeklyGoals,
     isWeeklyMenuLoading,
@@ -84,13 +96,16 @@ export function NutritionistPortal() {
   // Fetch data when tab changes
   useEffect(() => {
     if (activeTab === "dashboard") fetchDashboard();
-    else if (activeTab === "recipes") fetchRecipes();
-    else if (activeTab === "weekly-menu") {
-      // Weekly menu tab needs both menus AND recipes list (for the add-menu dropdown)
+    else if (activeTab === "recipes") {
+      fetchRecipes();
+      fetchIngredients();
+    } else if (activeTab === "ingredients") {
+      fetchIngredients();
+    } else if (activeTab === "weekly-menu") {
       fetchWeeklyMenus();
       fetchRecipes();
     }
-  }, [activeTab, fetchDashboard, fetchRecipes, fetchWeeklyMenus]);
+  }, [activeTab, fetchDashboard, fetchRecipes, fetchIngredients, fetchWeeklyMenus]);
 
   function handleLogout() {
     fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then(() => {
@@ -146,10 +161,21 @@ export function NutritionistPortal() {
               />
             )}
 
+            {activeTab === "ingredients" && (
+              <IngredientsTab
+                ingredients={ingredientOptions}
+                isLoading={isIngredientsLoading}
+                onSave={saveIngredient}
+                onDelete={deleteIngredient}
+              />
+            )}
+
             {activeTab === "recipes" && (
               <RecipesTab
                 recipes={recipes}
                 isLoading={isRecipesLoading}
+                ingredientOptions={ingredientOptions}
+                isIngredientsLoading={isIngredientsLoading}
                 onSave={saveRecipe}
                 onDelete={deleteRecipe}
               />
