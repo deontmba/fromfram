@@ -15,6 +15,8 @@ export const getDashboard = async (userId: string) => {
       subscription,
       currentWeeklyBox,
       nextWeeklyBox,
+      futureWeeklyBox,
+      upcomingWeeklyMenus,
       latestWeeklyBox,
       todayDelivery,
       recentDeliveries,
@@ -147,6 +149,77 @@ export const getDashboard = async (userId: string) => {
             orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
           },
         },
+      }),
+
+      // 3d. WeeklyBox minggu setelah minggu depan (skip 1)
+      prisma.weeklyBox.findFirst({
+        where: {
+          userId,
+          weekStartDate: { gt: today },
+        },
+        orderBy: { weekStartDate: 'asc' },
+        skip: 1,
+        select: {
+          id: true,
+          weekStartDate: true,
+          weekEndDate: true,
+          selectionDeadline: true,
+          isAutoSelected: true,
+          status: true,
+          mealSelections: {
+            select: {
+              id: true,
+              dayOfWeek: true,
+              mealType: true,
+              serving: true,
+              recipe: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  calories: true,
+                  protein: true,
+                  imageUrl: true,
+                  ingredients: {
+                    select: {
+                      quantity: true,
+                      unit: true,
+                      ingredient: { select: { name: true } }
+                    }
+                  }
+                },
+              },
+            },
+            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
+          },
+        },
+      }),
+
+      // 3e. Menu katalog minggu depan dan berikutnya (untuk space kosong kanan)
+      prisma.weeklyMenu.findMany({
+        where: {
+          weekStartDate: { gt: today },
+        },
+        select: {
+          weekStartDate: true,
+          recipe: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              calories: true,
+              protein: true,
+              imageUrl: true,
+              ingredients: {
+                select: {
+                  quantity: true,
+                  unit: true,
+                  ingredient: { select: { name: true, isAllergen: true } }
+                }
+              }
+            }
+          }
+        }
       }),
 
       // 3c. WeeklyBox terbaru sebagai fallback terakhir agar box locked tetap tampil
@@ -285,6 +358,10 @@ export const getDashboard = async (userId: string) => {
         nextWeeklyBox: nextWeeklyBox
           ? { ...nextWeeklyBox, summary: calculateSummary(nextWeeklyBox) }
           : null,
+        futureWeeklyBox: futureWeeklyBox
+          ? { ...futureWeeklyBox, summary: calculateSummary(futureWeeklyBox) }
+          : null,
+        upcomingWeeklyMenus: upcomingWeeklyMenus ?? [],
         todayDelivery,
         recentDeliveries,
       },

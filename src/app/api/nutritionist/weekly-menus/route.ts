@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId } from '@/lib/session';
-import { getNutritionistWeeklyMenus, createNutritionistWeeklyMenu } from '@/controllers/nutritionistController';
+import { getNutritionistWeeklyMenus, createNutritionistWeeklyMenu, deleteNutritionistWeeklyMenuByWeek } from '@/controllers/nutritionistController';
 import { validate } from '@/lib/validate';
 import { createWeeklyMenuSchema } from '@/schemas';
 
@@ -39,5 +39,25 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[NUTRITIONIST WEEKLY MENUS POST ERROR]', error);
     return NextResponse.json({ error: 'Failed to create weekly menu.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const weekStartDate = searchParams.get('weekStartDate');
+    if (!weekStartDate) {
+      return NextResponse.json({ error: 'weekStartDate parameter is required.' }, { status: 400 });
+    }
+
+    const result = await deleteNutritionistWeeklyMenuByWeek(session.userId, weekStartDate);
+    if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error('[NUTRITIONIST WEEKLY MENUS DELETE ERROR]', error);
+    return NextResponse.json({ error: 'Failed to delete weekly menus.' }, { status: 500 });
   }
 }

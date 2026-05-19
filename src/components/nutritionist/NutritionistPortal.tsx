@@ -90,6 +90,7 @@ export function NutritionistPortal() {
     fetchWeeklyMenus,
     addMenu,
     deleteMenu,
+    deleteWholeWeek,
     autoGenerateMenu,
   } = useNutritionistData();
 
@@ -189,6 +190,7 @@ export function NutritionistPortal() {
                 isLoading={isWeeklyMenuLoading}
                 onAdd={addMenu}
                 onDelete={deleteMenu}
+                onDeleteWeek={deleteWholeWeek}
                 onAutoGenerate={autoGenerateMenu}
               />
             )}
