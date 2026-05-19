@@ -922,9 +922,22 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   useEffect(() => {
     setExpandedDay(getTodayDayOfWeek());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("payment_success") === "true") {
+        setShowPaymentSuccess(true);
+        // Clean query parameter in the URL safely without reloading the page
+        const newUrl = window.location.pathname + window.location.search.replace(/[?&]payment_success=true/, "").replace(/^&/, "?");
+        window.history.replaceState(null, "", newUrl);
+      }
+    }
   }, []);
 
   const toggleDay = (dayKey: string) =>
@@ -1001,6 +1014,27 @@ export function DashboardScreen() {
   return (
     <DashboardShell>
       <div className="mx-auto w-full max-w-[1080px] px-5 py-5">
+        {showPaymentSuccess && (
+          <div className="mb-5 relative overflow-hidden rounded-2xl border-2 border-[#10b981]/30 bg-[#ecfdf5] p-5 shadow-[0_10px_25px_rgba(16,185,129,0.12)] transition-all duration-300">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-extrabold text-[#0d7d59] flex items-center gap-2">
+                  <span>🎉</span> Pembayaran Berhasil!
+                </h3>
+                <p className="mt-1.5 text-sm font-medium leading-relaxed text-[#1b6b50]">
+                  Pesanan subscription Anda telah aktif dan terverifikasi. Menu makanan Anda untuk minggu depan telah resmi dikunci dan tim koki serta ahli gizi kami siap menyiapkannya untuk Anda!
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPaymentSuccess(false)}
+                className="grid h-8 w-8 place-items-center rounded-xl bg-white/60 text-[#0d7d59] border border-[#10b981]/20 hover:bg-[#d1fae5] hover:text-[#0b6b4c] transition"
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
         <section className="rounded-2xl bg-[#07a982] px-5 py-5 text-white shadow-[0_12px_24px_rgba(15,23,42,0.16)] sm:px-6">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -1119,7 +1153,7 @@ export function DashboardScreen() {
                           {/* Lunch section */}
                           <div>
                             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                              <span>☀️</span> Makan Siang
+                              Makan Siang
                             </p>
                             {hasLunch ? (
                               <div className="space-y-2 pl-2 sm:pl-5">
@@ -1133,8 +1167,8 @@ export function DashboardScreen() {
                                           className="h-full w-full object-cover"
                                         />
                                       ) : (
-                                        <div className="grid h-full w-full place-items-center bg-white text-amber-600">
-                                          <span className="text-[14px]">☀️</span>
+                                        <div className="grid h-full w-full place-items-center bg-[#fffbeb] text-amber-600">
+                                          <ChefHatIcon className="h-5 w-5" />
                                         </div>
                                       )}
                                     </div>
@@ -1171,7 +1205,7 @@ export function DashboardScreen() {
                           {/* Dinner section */}
                           <div>
                             <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-indigo-600">
-                              <span>🌙</span> Makan Malam
+                              Makan Malam
                             </p>
                             {hasDinner ? (
                               <div className="space-y-2 pl-2 sm:pl-5">
@@ -1185,8 +1219,8 @@ export function DashboardScreen() {
                                           className="h-full w-full object-cover"
                                         />
                                       ) : (
-                                        <div className="grid h-full w-full place-items-center bg-white text-indigo-600">
-                                          <span className="text-[14px]">🌙</span>
+                                        <div className="grid h-full w-full place-items-center bg-[#f5f3ff] text-indigo-600">
+                                          <ChefHatIcon className="h-5 w-5" />
                                         </div>
                                       )}
                                     </div>
@@ -1265,7 +1299,6 @@ export function DashboardScreen() {
 
             <div className="mt-6 rounded-2xl border border-[#ffc6c3] bg-[#fff1f1] p-4">
               <div className="flex gap-3">
-                <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#ff6767]" />
                 <div>
                   <h3 className="text-sm font-bold text-neutral-950">
                     {dashboard.nextWeek.heading}
@@ -1290,7 +1323,6 @@ export function DashboardScreen() {
 
             <div className="mt-4 rounded-2xl border border-[#ade5dc] bg-[#eafffb] p-4">
               <div className="flex gap-3">
-                <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#0a8c80]" />
                 <div>
                   <p className="text-sm leading-6 text-neutral-800">
                     {dashboard.nextWeek.reminder}

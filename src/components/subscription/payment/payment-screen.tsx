@@ -288,6 +288,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
   const [isSnapScriptLoaded, setIsSnapScriptLoaded] = useState(false);
   const [snapScriptError, setSnapScriptError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const snapToken = transaction.snapToken;
   const canPay = !isPreparing && Boolean(transaction.snapToken);
@@ -405,9 +406,9 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
 
     window.snap.pay(snapToken, {
       onSuccess: async () => {
-        setStatusMessage("Pembayaran berhasil! Mengarahkan ke dashboard...");
+        setStatusMessage("Pembayaran berhasil!");
         await lockCurrentWeeklyBox().catch(console.error);
-        router.push("/dashboard");
+        setShowSuccessModal(true);
       },
       onPending: () => {
         setStatusMessage("Pembayaran sedang diproses. Kami akan konfirmasi segera.");
@@ -422,7 +423,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         setIsOpening(false);
       },
     });
-  }, [snapToken, isOpening, router]);
+  }, [snapToken, isOpening, router, setShowSuccessModal]);
 
   const summaryRows = useMemo(
     () => [
@@ -475,11 +476,11 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         }));
         if (latestTransaction.status?.toUpperCase() === "COMPLETED") {
           setAutoPoll(false);
-          setStatusMessage("Pembayaran terverifikasi. Mengarahkan ke dashboard...");
+          setStatusMessage("Pembayaran terverifikasi.");
           await lockCurrentWeeklyBox().catch((error) => {
             console.error("[lock weekly box after payment status check]", error);
           });
-          router.push("/dashboard");
+          setShowSuccessModal(true);
           return;
         }
       }
@@ -490,7 +491,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
     } finally {
       if (!silent) setIsPaying(false);
     }
-  }, [isPaying, router, transaction.id]);
+  }, [isPaying, router, transaction.id, setShowSuccessModal]);
 
   const canCheckStatus = !isPreparing && Boolean(transaction.id);
 
@@ -739,6 +740,37 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         </div>
       </section>
     </main>
+
+    {showSuccessModal && (
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-md">
+        <div className="relative w-full max-w-md transform rounded-[28px] border border-[#10b981]/25 bg-white p-6 text-center shadow-2xl transition-all">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ecfdf5] text-[#10b981]">
+            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          
+          <h3 className="text-2xl font-black text-neutral-900 leading-tight">
+            Pembayaran Berhasil!
+          </h3>
+          
+          <p className="mt-3 text-sm leading-relaxed text-neutral-600">
+            Transaksi Anda telah sukses diproses dan diverifikasi. Anda sekarang dapat mengakses dashboard utama FromFram untuk melihat detail pesanan Anda.
+          </p>
+          
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                router.push("/dashboard?payment_success=true");
+              }}
+              className="w-full inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-[#1db788] to-[#16a679] text-base font-bold text-white shadow-[0_8px_20px_rgba(29,183,136,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(29,183,136,0.35)]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
