@@ -600,7 +600,34 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
             ? `${subscription.servings} orang`
             : EMPTY_LABEL,
         status: pickString(subscription.status) ?? EMPTY_LABEL,
-        nextBilling: EMPTY_LABEL,
+        nextBilling: (() => {
+          if (!subscription.startDate || !subscription.planType) return EMPTY_LABEL;
+          const start = new Date(subscription.startDate);
+          if (Number.isNaN(start.getTime())) return EMPTY_LABEL;
+          
+          const day = start.getDay();
+          const diffToNextMonday = day === 1 ? 0 : (8 - day) % 7;
+          const firstMonday = new Date(start);
+          firstMonday.setDate(start.getDate() + diffToNextMonday);
+          firstMonday.setHours(0, 0, 0, 0);
+          
+          let weeksCount = 4;
+          const planLower = subscription.planType.toLowerCase();
+          if (planLower.includes("minggu") || planLower.includes("weekly")) {
+            weeksCount = 1;
+          } else if (planLower.includes("tahun") || planLower.includes("yearly")) {
+            weeksCount = 52;
+          }
+          
+          const nextBillingDate = new Date(firstMonday);
+          nextBillingDate.setDate(firstMonday.getDate() + (weeksCount * 7) - 1);
+          
+          return new Intl.DateTimeFormat("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }).format(nextBillingDate);
+        })(),
         isEmpty: false,
       }
       : {

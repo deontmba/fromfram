@@ -205,21 +205,29 @@ export function formatDateLabel(value: unknown, fallback = "Belum tersedia") {
   return dateFormatter.format(dateValue);
 }
 
+function getFirstSubscriptionMonday(startDate: Date) {
+  const start = new Date(startDate);
+  const day = start.getDay();
+  const diffToNextMonday = day === 1 ? 0 : (8 - day) % 7;
+  const firstMonday = new Date(start);
+  firstMonday.setDate(start.getDate() + diffToNextMonday);
+  firstMonday.setHours(0, 0, 0, 0);
+  return firstMonday;
+}
+
 function addBillingCycle(startDate: Date, planKey: SubscriptionPlanKey) {
-  const nextDate = new Date(startDate);
-
+  const firstMonday = getFirstSubscriptionMonday(startDate);
+  
+  let weeksCount = 4; // default monthly
   if (planKey === "weekly") {
-    nextDate.setDate(nextDate.getDate() + 7);
-    return nextDate;
+    weeksCount = 1;
+  } else if (planKey === "yearly") {
+    weeksCount = 52;
   }
-
-  if (planKey === "monthly") {
-    nextDate.setMonth(nextDate.getMonth() + 1);
-    return nextDate;
-  }
-
-  nextDate.setFullYear(nextDate.getFullYear() + 1);
-  return nextDate;
+  
+  const nextBilling = new Date(firstMonday);
+  nextBilling.setDate(firstMonday.getDate() + (weeksCount * 7) - 1);
+  return nextBilling;
 }
 
 function unwrapSubscriptionPayload(payload: unknown) {
