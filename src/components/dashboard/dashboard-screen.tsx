@@ -82,6 +82,7 @@ type DashboardDelivery = {
   id?: string;
   deliveryDate?: string | null;
   status?: BackendDeliveryStatus | string | null;
+  mealType?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
   address?: {
@@ -93,7 +94,10 @@ type DashboardDelivery = {
   } | null;
   weeklyBox?: {
     mealSelections?: Array<{
+      dayOfWeek?: string | null;
+      mealType?: string | null;
       recipe?: {
+        id?: string;
         name?: string | null;
         calories?: number | null;
         imageUrl?: string | null;
@@ -204,6 +208,7 @@ type DashboardViewModel = {
     catalogDateRange: string;
   };
   quickActions: QuickAction[];
+  recentDeliveries?: DashboardDelivery[] | null;
 };
 
 const DASHBOARD_PATH = "/api/dashboard";
@@ -673,6 +678,7 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
         catalogDateRange: EMPTY_LABEL,
       },
     quickActions: buildQuickActions(recentDeliveries),
+    recentDeliveries,
   };
 }
 
@@ -923,6 +929,7 @@ export function DashboardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   useEffect(() => {
     setExpandedDay(getTodayDayOfWeek());

@@ -89,6 +89,7 @@ function getDayOfWeekEnum(date: Date) {
 const deliverySelect = {
   id: true,
   deliveryDate: true,
+  mealType: true,
   status: true,
   shippedAt: true,
   deliveredAt: true,
@@ -108,6 +109,7 @@ const deliverySelect = {
       mealSelections: {
         select: {
           dayOfWeek: true,
+          mealType: true,
           recipe: {
             select: { name: true, calories: true, imageUrl: true },
           },
@@ -127,6 +129,7 @@ const INFO_BULLETS = [
 type DeliveryRecord = {
   id: string;
   deliveryDate: Date;
+  mealType: string;
   status: string;
   shippedAt: Date | null;
   deliveredAt: Date | null;
@@ -142,6 +145,7 @@ type DeliveryRecord = {
     weekEndDate: Date;
     mealSelections: {
       dayOfWeek: string;
+      mealType: string;
       recipe: { name: string; calories: number; imageUrl: string | null } | null;
     }[];
   } | null;
@@ -151,6 +155,9 @@ function mapDeliveryToItem(delivery: DeliveryRecord) {
   const dayDate = new Date(delivery.deliveryDate);
   const todayDayKey = getDayOfWeekEnum(dayDate);
   const menuName =
+    delivery.weeklyBox?.mealSelections?.find(
+      (s) => s.dayOfWeek === todayDayKey && s.mealType === delivery.mealType
+    )?.recipe?.name ??
     delivery.weeklyBox?.mealSelections?.find((s) => s.dayOfWeek === todayDayKey)?.recipe?.name ??
     'Menu belum tersedia';
 
@@ -181,13 +188,55 @@ export async function getDeliveries(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Cari active weekly box persis seperti cara dashboard
+  const activeBox = await prisma.weeklyBox.findFirst({
+    where: {
+      userId,
+      weekStartDate: { lte: today },
+      weekEndDate: { gte: today },
+    },
+  }) ?? await prisma.weeklyBox.findFirst({
+    where: {
+      userId,
+      weekStartDate: { gt: today },
+    },
+    orderBy: { weekStartDate: 'asc' },
+  }) ?? await prisma.weeklyBox.findFirst({
+    where: { userId },
+    orderBy: { weekStartDate: 'desc' },
+  });
+
+  if (!activeBox) {
+    return {
+      data: {
+        status: 'success',
+        data: {
+          periodLabel: 'Tidak ada pengiriman minggu ini',
+          todayDelivery: null,
+          upcomingDeliveries: [],
+          recentDeliveries: [],
+          infoBullets: INFO_BULLETS,
+        },
+      },
+      status: 200,
+    };
+  }
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
   const deliveries = await prisma.delivery.findMany({
     where: {
       userId,
-      weeklyBox: {
-        weekStartDate: { lte: today },
-        weekEndDate: { gte: today },
-      },
+      OR: [
+        { weeklyBoxId: activeBox.id },
+        {
+          deliveryDate: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+      ],
     },
     orderBy: { deliveryDate: 'asc' },
     select: deliverySelect,
@@ -240,9 +289,9 @@ export async function getDeliveries(userId: string) {
       status: 'success',
       data: {
         periodLabel,
-        todayDelivery: todayDelivery ? mapDeliveryToItem(todayDelivery) : null,
-        upcomingDeliveries: upcomingDeliveries.map(mapDeliveryToItem),
-        recentDeliveries: recentDeliveries.map(mapDeliveryToItem),
+        todayDelivery: todayDelivery ? mapDeliveryToItem(todayDelivery as any) : null,
+        upcomingDeliveries: upcomingDeliveries.map((d) => mapDeliveryToItem(d as any)),
+        recentDeliveries: recentDeliveries.map((d) => mapDeliveryToItem(d as any)),
         infoBullets: INFO_BULLETS,
       },
     },

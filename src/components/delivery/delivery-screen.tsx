@@ -57,7 +57,6 @@ export function DeliveryScreen({ delivery }: { delivery: DeliveryTrackingViewMod
                 deliveries={delivery.upcomingDeliveries}
                 emptyMessage="Belum ada pengiriman berikutnya."
               />
-
               <DeliveryListSection
                 id="recent-deliveries-title"
                 title="Riwayat Terbaru"

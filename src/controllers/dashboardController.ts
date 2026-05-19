@@ -315,17 +315,36 @@ export const getDashboard = async (userId: string) => {
         },
       }),
 
-      // 5. Riwayat 7 pengiriman terakhir
+      // 5. Riwayat 20 pengiriman terakhir dengan relasi menu
       prisma.delivery.findMany({
         where: { userId },
         orderBy: { deliveryDate: 'desc' },
-        take: 7,
+        take: 20,
         select: {
           id: true,
           deliveryDate: true,
           status: true,
+          mealType: true,
           shippedAt: true,
           deliveredAt: true,
+          weeklyBox: {
+            select: {
+              mealSelections: {
+                select: {
+                  dayOfWeek: true,
+                  mealType: true,
+                  recipe: {
+                    select: {
+                      id: true,
+                      name: true,
+                      calories: true,
+                      imageUrl: true,
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
       }),
     ]);
