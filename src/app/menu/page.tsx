@@ -8,12 +8,17 @@ import Image from "next/image";
 export const revalidate = 60;
 
 export default async function MenuPage() {
-  const recipes = await prisma.recipe.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
-    take: 12,
-  });
+  let recipes: Awaited<ReturnType<typeof prisma.recipe.findMany>> = [];
+  try {
+    recipes = await prisma.recipe.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 12,
+    });
+  } catch (error) {
+    console.error("Warning: Failed to fetch recipes from database at build time. Proceeding with empty array.", error);
+  }
 
   return (
     <main className="flex min-h-screen flex-col bg-[#f8f5ee] text-black">
