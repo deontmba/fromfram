@@ -1,19 +1,11 @@
 import prisma from '@/lib/prisma';
 import { getEndOfWeek, getStartOfWeek } from '@/lib/week';
 import { CreateRecipeInput, UpdateRecipeInput } from '@/schemas';
+import { verifyRole } from '@/lib/auth';
+import { formatRelativeTime } from '@/lib/format';
 
-async function verifyNutritionist(userId: string): Promise<{ error: string; status: number } | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
+const verifyNutritionist = (userId: string) => verifyRole(userId, 'NUTRITIONIST');
 
-  if (!user || user.role !== 'NUTRITIONIST') {
-    return { error: 'Forbidden. Nutritionist access required.', status: 403 };
-  }
-
-  return null;
-}
 
 export async function getNutritionistKPIs(userId: string) {
   const authError = await verifyNutritionist(userId);
@@ -84,18 +76,6 @@ export async function getNutritionistActivities(userId: string) {
   return { data: { data: result }, status: 200 };
 }
 
-function formatRelativeTime(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'Baru saja';
-  if (diffMins < 60) return `${diffMins} menit lalu`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours} jam lalu`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays} hari lalu`;
-  const diffWeeks = Math.floor(diffDays / 7);
-  return `${diffWeeks} minggu lalu`;
-}
 
 export async function getNutritionistRecipes(userId: string) {
   const authError = await verifyNutritionist(userId);

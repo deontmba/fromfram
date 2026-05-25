@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { getSessionUserId } from '@/lib/session';
+import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { randomUUID } from 'crypto';
 
 function getSnapBaseUrl() {
@@ -32,12 +32,6 @@ function getEnabledPayments() {
   return enabledPayments.length > 0 ? enabledPayments : undefined;
 }
 
-function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING') {
-    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
-  }
-  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-}
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUserId(req);

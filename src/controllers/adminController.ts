@@ -1,21 +1,12 @@
 import prisma from '@/lib/prisma';
+import { verifyRole } from '@/lib/auth';
+import { formatRelativeTime } from '@/lib/format';
 
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 
-async function verifyAdmin(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-
-  if (!user || user.role !== 'ADMIN') {
-    return { error: 'Forbidden. Admin access required.', status: 403 };
-  }
-
-  return null;
-}
+const verifyAdmin = (userId: string) => verifyRole(userId, 'ADMIN');
 
 function getTodayRange() {
   const start = new Date();
@@ -23,20 +14,6 @@ function getTodayRange() {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
   return { start, end };
-}
-
-function timeAgo(date: Date | null | undefined): string {
-  if (!date) return 'Belum tersedia';
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  const diffHours = Math.floor(diffMs / 3_600_000);
-  const diffDays = Math.floor(diffMs / 86_400_000);
-
-  if (diffMins < 1) return 'Baru saja';
-  if (diffMins < 60) return `${diffMins} menit lalu`;
-  if (diffHours < 24) return `${diffHours} jam lalu`;
-  return `${diffDays} hari lalu`;
 }
 
 
@@ -171,7 +148,7 @@ export async function getRecentActivities(userId: string, limit = 10) {
   const activities = sorted.map((item) => ({
     text: item.text,
     type: item.type,
-    time: timeAgo(item.timestamp),
+    time: formatRelativeTime(item.timestamp),
     timestamp: item.timestamp.toISOString(),
   }));
 

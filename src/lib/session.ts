@@ -1,5 +1,5 @@
 import { jwtVerify } from "jose";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 type SessionError = "CONFIG_MISSING" | "UNAUTHENTICATED";
 
@@ -33,3 +33,9 @@ export async function getSessionUserId(
     return { error: "UNAUTHENTICATED" };
   }
 }
+
+export function getAuthErrorResponse(error: "CONFIG_MISSING" | "UNAUTHENTICATED") {
+  if (error === "CONFIG_MISSING")
+    return NextResponse.json({ error: "Server auth configuration missing." }, { status: 500 });
+  return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+}
