@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
+import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { getNutritionistRecipeById, updateNutritionistRecipe, deleteNutritionistRecipe } from '@/controllers/nutritionistController';
 import { validate } from '@/lib/validate';
 import { updateRecipeSchema } from '@/schemas';
 
-function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING')
-    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
-  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSessionUserId(req);

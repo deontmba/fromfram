@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
+import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { getTransactionStatus } from '@/controllers/transactionController';
 
-function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING') {
-    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
-  }
-  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-}
 
 type DynamicRouteParams = { id: string };
 interface RouteContext { params: Promise<DynamicRouteParams> }

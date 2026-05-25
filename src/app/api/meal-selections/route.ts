@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
+import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { saveMealSelection } from '@/controllers/mealSelectionController';
 import { validate } from '@/lib/validate';
 import { saveMealSelectionSchema } from '@/schemas';
 import prisma from '@/lib/prisma';
 import { DayOfWeek } from '@prisma/client';
-function getAuthErrorResponse(error: 'CONFIG_MISSING' | 'UNAUTHENTICATED') {
-  if (error === 'CONFIG_MISSING')
-    return NextResponse.json({ error: 'Server auth configuration missing.' }, { status: 500 });
-  return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-}
 
 export async function POST(req: NextRequest) {
   const session = await getSessionUserId(req);
