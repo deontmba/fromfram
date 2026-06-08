@@ -1,0 +1,12 @@
+{
+  "experimentalServices": {
+    "frontend": {
+      "entrypoint": "./",
+      "routePrefix": "/"
+    },
+    "forecasting": {
+      "entrypoint": "services/forecasting",
+      "routePrefix": "/_forecasting"
+    }
+  }
+}
