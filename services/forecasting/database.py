@@ -13,13 +13,14 @@ if not DATABASE_URL:
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Remove schema parameter which is not supported by psycopg2
+# Remove parameters which are not supported by psycopg2
 parsed = urllib.parse.urlparse(DATABASE_URL)
 query_dict = urllib.parse.parse_qs(parsed.query)
-if 'schema' in query_dict:
-    del query_dict['schema']
-    new_query = urllib.parse.urlencode(query_dict, doseq=True)
-    DATABASE_URL = urllib.parse.urlunparse(parsed._replace(query=new_query))
+for key in ['schema', 'pgbouncer', 'workaround']:
+    if key in query_dict:
+        del query_dict[key]
+new_query = urllib.parse.urlencode(query_dict, doseq=True)
+DATABASE_URL = urllib.parse.urlunparse(parsed._replace(query=new_query))
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
