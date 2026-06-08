@@ -810,7 +810,7 @@ async function main() {
         }
       }
     }
-  });
+  }, { timeout: 30000 });
 
   console.log("✅ Seed berhasil.");
   console.log("   - Data utama (users, recipes, subscriptions, dll) selesai.");

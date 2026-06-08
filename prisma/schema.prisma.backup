@@ -1,0 +1,376 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// --- ENUMS ---
+
+enum Role {
+  USER
+  ADMIN
+  NUTRITIONIST
+}
+
+enum PlanType {
+  MINGGUAN
+  BULANAN
+  TAHUNAN
+}
+
+enum SubscriptionStatus {
+  UNPAID
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum BoxStatus {
+  PENDING_SELECTION
+  LOCKED
+  COMPLETED
+  SKIPPED
+}
+
+enum DeliveryStatus {
+  PREPARING
+  SHIPPED
+  DELIVERED
+}
+
+enum DayOfWeek {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+enum MealType {
+  LUNCH
+  DINNER
+}
+
+enum POStatus {
+  DRAFT
+  CONFIRMED
+  FULFILLED
+  CANCELLED
+}
+
+// --- MODELS ---
+
+model User {
+  id                       String               @id @default(cuid())
+  email                    String               @unique
+  password                 String?
+  name                     String
+  role                     Role                 @default(USER)
+  isVerified               Boolean              @default(false)
+  hasCompletedOnboarding   Boolean              @default(false)
+  googleId                 String?              @unique
+  avatarUrl                String?
+  phoneNumber              String?
+  gender                   String?
+  createdAt                DateTime             @default(now())
+
+  // Relations
+  nutritionalProfile       NutritionalProfile?
+  addresses                Address[]
+  subscriptions            Subscription[]
+  transactions             Transaction[]
+  weeklyBoxes              WeeklyBox[]
+  deliveries               Delivery[]
+  recipes                  Recipe[]
+  verificationTokens       VerificationToken[]
+  passwordResetTokens      PasswordResetToken[]
+  personalization          UserPersonalization?
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NutritionalProfile {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  weight           Float
+  height           Float
+  dailyCalorieNeed Int
+  allergies        String?
+  medicalNotes     String? @db.Text
+
+  user             User    @relation(fields: [userId], references: [id])
+}
+
+model UserPersonalization {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  goals        String[]
+  dietaryPrefs String[]
+  allergies    String[]
+  cookingPrefs String[]
+
+  weight       Float?
+  height       Float?
+  age          Int?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id            String     @id @default(cuid())
+  userId        String
+  recipientName String?
+  phoneNumber   String?
+  label         String
+  street        String
+  city          String
+  province      String
+  postalCode    String
+  notes         String?
+  isDefault     Boolean    @default(false)
+  latitude      Float?
+  longitude     Float?
+
+  user          User       @relation(fields: [userId], references: [id])
+  deliveries    Delivery[]
+}
+
+model Goal {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  description   String         @db.Text
+  minCalories   Int
+  maxCalories   Int
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  goalId      String
+  planType    PlanType
+  servings    Int
+  status      SubscriptionStatus @default(UNPAID)
+  startDate   DateTime           @default(now())
+  endDate     DateTime?
+  pausedUntil DateTime?
+
+  user        User               @relation(fields: [userId], references: [id])
+  goal        Goal               @relation(fields: [goalId], references: [id])
+}
+
+model Transaction {
+  id        String            @id @default(cuid())
+  userId    String
+  amount    Float
+  status    TransactionStatus @default(PENDING)
+  qrisCode  String
+  paidAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  user      User              @relation(fields: [userId], references: [id])
+}
+
+model Recipe {
+  id              String             @id @default(cuid())
+  nutritionistId  String
+  name            String             @unique
+  description     String             @db.Text
+  calories        Int
+  protein         Float
+  servings        Int
+  imageUrl        String?
+  createdAt       DateTime           @default(now())
+
+  goalTags        String[]
+  dietaryTags     String[]
+  allergySafeTags String[]
+  cookingTags     String[]
+
+  nutritionist    User               @relation(fields: [nutritionistId], references: [id])
+  ingredients     RecipeIngredient[]
+  mealSelections  MealSelection[]
+  weeklyMenus     WeeklyMenu[]
+}
+
+model Ingredient {
+  id                   String                @id @default(cuid())
+  name                 String                @unique
+  origin               String
+  supplierName         String
+  isAllergen           Boolean               @default(false)
+  stockKg              Float                 @default(0)
+  pricePerKg           Float                 @default(0)
+
+  recipes              RecipeIngredient[]
+  farmerSupplyItems    FarmerSupplyItem[]
+  farmerPurchaseOrders FarmerPurchaseOrder[]
+  demandForecastLogs   DemandForecastLog[]
+}
+
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  unit         String
+  quantityInKg Float
+
+  recipe       Recipe     @relation(fields: [recipeId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([recipeId, ingredientId])
+}
+
+model WeeklyMenu {
+  id            String   @id @default(cuid())
+  recipeId      String
+  weekStartDate DateTime
+  createdAt     DateTime @default(now())
+
+  recipe        Recipe   @relation(fields: [recipeId], references: [id])
+
+  @@unique([recipeId, weekStartDate])
+}
+
+model WeeklyBox {
+  id                String          @id @default(cuid())
+  userId            String
+  weekStartDate     DateTime
+  weekEndDate       DateTime
+  selectionDeadline DateTime
+  isAutoSelected    Boolean         @default(false)
+  status            BoxStatus       @default(PENDING_SELECTION)
+
+  user              User            @relation(fields: [userId], references: [id])
+  mealSelections    MealSelection[]
+  deliveries        Delivery[]
+
+  @@unique([userId, weekStartDate])
+}
+
+model MealSelection {
+  id          String    @id @default(cuid())
+  weeklyBoxId String
+  recipeId    String
+  dayOfWeek   DayOfWeek
+  mealType    MealType
+  serving     Int       @default(1)
+  date        DateTime?
+
+  weeklyBox   WeeklyBox @relation(fields:[weeklyBoxId], references: [id])
+  recipe      Recipe    @relation(fields: [recipeId], references: [id])
+
+  @@unique([weeklyBoxId, dayOfWeek, mealType, recipeId])
+}
+
+model Delivery {
+  id           String         @id @default(cuid())
+  userId       String
+  weeklyBoxId  String
+  addressId    String
+  deliveryDate DateTime
+  // ← BARU: membedakan delivery makan siang vs makan malam
+  mealType     MealType
+  status       DeliveryStatus @default(PREPARING)
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+
+  user         User           @relation(fields: [userId], references: [id])
+  weeklyBox    WeeklyBox      @relation(fields: [weeklyBoxId], references: [id])
+  address      Address        @relation(fields: [addressId], references: [id])
+}
+
+model Farmer {
+  id             String                @id @default(cuid())
+  name           String
+  phoneNumber    String?
+  region         String
+  commodityType  String
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+
+  supplyItems    FarmerSupplyItem[]
+  purchaseOrders FarmerPurchaseOrder[]
+}
+
+model FarmerSupplyItem {
+  id               String     @id @default(cuid())
+  farmerId         String
+  ingredientId     String
+  weeklyCapacityKg Float
+  minOrderKg       Float
+  pricePerKg       Float
+
+  farmer           Farmer     @relation(fields: [farmerId], references: [id])
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([farmerId, ingredientId])
+}
+
+model FarmerPurchaseOrder {
+  id              String     @id @default(cuid())
+  farmerId        String
+  ingredientId    String
+  weekStartDate   DateTime
+  forecastedQtyKg Float
+  orderedQtyKg    Float
+  pricePerKg      Float
+  totalPrice      Float
+  status          POStatus   @default(DRAFT)
+  confidenceScore Float?
+  notes           String?
+  confirmedAt     DateTime?
+  createdAt       DateTime   @default(now())
+
+  farmer          Farmer     @relation(fields: [farmerId], references: [id])
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([farmerId, ingredientId, weekStartDate])
+}
+
+model DemandForecastLog {
+  id              String     @id @default(cuid())
+  ingredientId    String
+  weekStartDate   DateTime
+  activeUserCount Int
+  predictedQtyKg  Float
+  actualQtyUsedKg Float?
+  confidenceScore Float?
+  modelVersion    String?
+  createdAt       DateTime   @default(now())
+
+  ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+}
