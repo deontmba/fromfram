@@ -16,9 +16,10 @@ if DATABASE_URL.startswith("postgres://"):
 # Remove parameters which are not supported by psycopg2
 parsed = urllib.parse.urlparse(DATABASE_URL)
 query_dict = urllib.parse.parse_qs(parsed.query)
-for key in ['schema', 'pgbouncer', 'workaround']:
-    if key in query_dict:
-        del query_dict[key]
+keys_to_remove = ['schema', 'pgbouncer', 'workaround']
+for actual_key in list(query_dict.keys()):
+    if actual_key.lower() in keys_to_remove:
+        del query_dict[actual_key]
 new_query = urllib.parse.urlencode(query_dict, doseq=True)
 DATABASE_URL = urllib.parse.urlunparse(parsed._replace(query=new_query))
 
