@@ -1,6 +1,16 @@
 import prisma from '@/lib/prisma';
 
-const FORECAST_SERVICE_URL = process.env.FORECAST_SERVICE_URL || 'http://localhost:8001';
+const getForecastServiceUrl = () => {
+  if (process.env.FORECAST_SERVICE_URL) {
+    return process.env.FORECAST_SERVICE_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}/_forecasting`;
+  }
+  return 'http://localhost:8001';
+};
+
+const FORECAST_SERVICE_URL = getForecastServiceUrl();
 
 // ---------------------------------------------------------------------------
 // Helper
