@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const origin = req.nextUrl.origin || 'http://localhost:3000';
+
     const midtransPayload: Record<string, unknown> = {
       transaction_details: {
         order_id: orderId,
@@ -140,6 +142,9 @@ export async function POST(req: NextRequest) {
           price: amount,
         },
       ],
+      callbacks: {
+        finish: `${origin}/dashboard`,
+      },
     };
 
     const enabledPayments = getEnabledPayments();
