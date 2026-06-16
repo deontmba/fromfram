@@ -507,9 +507,9 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
       title: "Riwayat Pesanan",
       description:
         recentDeliveries.length > 0
-          ? `${recentDeliveries.length} pengiriman terakhir`
-          : "Belum ada riwayat pengiriman",
-      href: "/delivery",
+          ? `${recentDeliveries.length} pesanan terakhir`
+          : "Belum ada riwayat pesanan",
+      href: "/dashboard/payment-history",
       icon: "history",
       tone: "green",
     },
@@ -959,7 +959,8 @@ export function DashboardScreen() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   useEffect(() => {
-    setExpandedDay(getTodayDayOfWeek());
+    // Default-nya biarkan accordion tertutup (null) bukannya langsung auto-open getTodayDayOfWeek()
+    setExpandedDay(null);
   }, []);
 
   useEffect(() => {
@@ -1126,44 +1127,25 @@ export function DashboardScreen() {
                   const totalItems = item.lunch.length + item.dinner.length;
 
                   return (
-                    <article key={item.day} className={`rounded-2xl border overflow-hidden transition-all ${
-                      isToday
-                        ? "border-[#14af84] shadow-[0_2px_8px_rgba(20,175,132,0.15)]"
-                        : "border-neutral-200"
-                    }`}>
+                    <article key={item.day} className="rounded-2xl border overflow-hidden transition-all border-neutral-200">
                       {/* ── Accordion header (clickable) ── */}
                       <button
                         type="button"
                         onClick={() => toggleDay(item.dayKey)}
                         className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                          isOpen
-                            ? isToday ? "bg-[#f0fdf8]" : "bg-[#f8f8f7]"
-                            : "bg-white hover:bg-[#f8f8f7]"
+                          isOpen ? "bg-[#f8f8f7]" : "bg-white hover:bg-[#f8f8f7]"
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
-                          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl text-[0.65rem] font-bold ${
-                            isToday ? "bg-[#12b886] text-white" : "bg-neutral-100 text-neutral-500"
-                          }`}>
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl text-[0.65rem] font-bold bg-neutral-100 text-neutral-500">
                             {item.day.slice(0, 2).toUpperCase()}
                           </span>
-                          <span className={`text-sm font-bold ${isToday ? "text-[#0a7c5c]" : "text-neutral-800"}`}>
+                          <span className="text-sm font-bold text-neutral-800">
                             {item.day}
-                            {isToday && (
-                              <span className="ml-2 rounded-full bg-[#12b886] px-2 py-0.5 text-[0.6rem] font-bold text-white">
-                                Hari ini
-                              </span>
-                            )}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          {/* Status badge only for today */}
-                          {isToday && item.status !== "unknown" && (
-                            <span className={`rounded-xl px-2.5 py-0.5 text-[0.68rem] font-bold ${statusStyles[item.status]}`}>
-                              {item.statusLabel}
-                            </span>
-                          )}
                           {/* Item count chip */}
                           {hasAnyMenu && (
                             <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[0.68rem] font-semibold text-neutral-500">
@@ -1473,24 +1455,145 @@ export function DashboardScreen() {
         </div>
 
         <section aria-label="Aksi cepat" className="mt-5 grid gap-5 md:grid-cols-3">
-          {dashboard.quickActions.map((action) => (
-            <Link
-              key={action.title}
-              href={action.href}
-              className="flex min-h-16 items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#a7dec9] hover:shadow-[0_8px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
-            >
-              <span
-                className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${actionIconStyles[action.tone]}`}
+          {dashboard.quickActions.map((action) => {
+            const isHistory = action.icon === "history";
+            
+            if (isHistory) {
+              return (
+                <button
+                  key={action.title}
+                  type="button"
+                  onClick={() => setShowHistoryModal(true)}
+                  className="flex min-h-16 w-full items-center text-left gap-4 rounded-2xl border border-neutral-200 bg-white px-4 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#a7dec9] hover:shadow-[0_8px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc] cursor-pointer"
+                >
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${actionIconStyles[action.tone]}`}
+                  >
+                    <QuickActionIcon icon={action.icon} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-neutral-950">{action.title}</span>
+                    <span className="mt-1 block text-sm text-neutral-500">{action.description}</span>
+                  </span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={action.title}
+                href={action.href}
+                className="flex min-h-16 items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 shadow-[0_2px_8px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:border-[#a7dec9] hover:shadow-[0_8px_16px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
               >
-                <QuickActionIcon icon={action.icon} />
-              </span>
-              <span>
-                <span className="block text-sm font-bold text-neutral-950">{action.title}</span>
-                <span className="mt-1 block text-sm text-neutral-500">{action.description}</span>
-              </span>
-            </Link>
-          ))}
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${actionIconStyles[action.tone]}`}
+                >
+                  <QuickActionIcon icon={action.icon} />
+                </span>
+                <span>
+                  <span className="block text-sm font-bold text-neutral-950">{action.title}</span>
+                  <span className="mt-1 block text-sm text-neutral-500">{action.description}</span>
+                </span>
+              </Link>
+            );
+          })}
         </section>
+
+        {/* ── MODAL POPUP: RIWAYAT PESANAN (DELIVERED) ── */}
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl transition-all duration-300">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                <h3 className="text-base font-extrabold text-neutral-900 flex items-center gap-2">
+                  <span>📦</span> Riwayat Pengiriman
+                </h3>
+                <button
+                  onClick={() => setShowHistoryModal(false)}
+                  className="grid h-8 w-8 place-items-center rounded-xl bg-neutral-50 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 transition"
+                  aria-label="Tutup"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mt-4 max-h-[360px] overflow-y-auto pr-1 space-y-3">
+                {(() => {
+                  const deliveredOrders = (dashboard.recentDeliveries || []).filter(
+                    (d) => d.status === "DELIVERED"
+                  );
+
+                  if (deliveredOrders.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-sm text-neutral-400">
+                        Belum ada pesanan yang selesai diantar.
+                      </div>
+                    );
+                  }
+
+                  // Helper function to extract day name from date string in UTC/Local for matching DayOfWeek
+                  const getDayNameFromDate = (dateString: string) => {
+                    const days = ["MINGGU", "SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU"];
+                    const date = new Date(dateString);
+                    return days[date.getDay()];
+                  };
+
+                  return deliveredOrders.map((order) => {
+                    const selections = order.weeklyBox?.mealSelections || [];
+                    const orderDay = order.deliveryDate ? getDayNameFromDate(order.deliveryDate) : "";
+                    const orderMealType = typeof order.mealType === "string" ? order.mealType.toUpperCase() : "";
+
+                    // Filter so we ONLY show the menu matching the specific day and meal type of this delivery
+                    const filteredSelections = selections.filter((sel) => {
+                      const selDay = typeof sel.dayOfWeek === "string" ? sel.dayOfWeek.toUpperCase() : "";
+                      const selMeal = typeof sel.mealType === "string" ? sel.mealType.toUpperCase() : "";
+                      return selDay === orderDay && (!orderMealType || selMeal === orderMealType);
+                    });
+
+                    return (
+                      <div key={order.id} className="rounded-2xl border border-neutral-100 bg-neutral-50/60 p-3.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-[#118765] bg-[#dff3e9] px-2 py-0.5 rounded-full">
+                            Terkirim
+                          </span>
+                          <span className="text-[11px] font-semibold text-neutral-400">
+                            {order.deliveryDate ? formatDateLabel(order.deliveryDate) : EMPTY_LABEL}
+                          </span>
+                        </div>
+                        <div className="mt-2.5 space-y-1 text-xs text-neutral-700">
+                          <p className="font-semibold text-neutral-800">
+                            Alamat: <span className="font-normal text-neutral-500">{order.address?.street}, {order.address?.city}</span>
+                          </p>
+                          {filteredSelections.length > 0 ? (
+                            <div className="mt-2 pt-2 border-t border-neutral-100 space-y-1">
+                              <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Menu Diantar:</p>
+                              {filteredSelections.map((sel, idx) => (
+                                <p key={idx} className="font-medium text-neutral-600">
+                                  • {sel.dayOfWeek} ({sel.mealType}): <span className="font-semibold text-neutral-800">{sel.recipe?.name}</span>
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400 italic mt-1">Detail menu tidak tersedia untuk slot pengiriman ini</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              <div className="mt-6 border-t border-neutral-100 pt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryModal(false)}
+                  className="h-10 rounded-xl bg-neutral-100 px-5 text-sm font-bold text-neutral-600 transition hover:bg-neutral-200 cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardShell>
   );
