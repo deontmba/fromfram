@@ -10,6 +10,9 @@ const config: Config = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!jose|@prisma)/',
+  ],
   setupFiles: ['dotenv/config'],
 };
 
