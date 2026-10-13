@@ -5,7 +5,7 @@
       "routePrefix": "/"
     },
     "forecasting": {
-      "framework": "dockerfile",
+      "framework": "Container",
       "entrypoint": "services/forecasting",
       "routePrefix": "/_forecasting"
     }
