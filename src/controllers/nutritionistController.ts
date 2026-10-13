@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getEndOfWeek, getStartOfWeek } from '@/lib/week';
 import { CreateRecipeInput, UpdateRecipeInput } from '@/schemas';
 import { verifyRole } from '@/lib/auth';
@@ -225,7 +226,9 @@ export async function updateNutritionistRecipe(userId: string, recipeId: string,
       ...(fiber !== undefined && { fiber }),
       ...(sodium !== undefined && { sodium }),
       ...(sugar !== undefined && { sugar }),
-      ...(micronutrients !== undefined && { micronutrients }),
+      ...(micronutrients !== undefined && {
+        micronutrients: micronutrients === null ? Prisma.JsonNull : (micronutrients as any)
+      }),
       ...(servings !== undefined && { servings }),
       ...(imageUrl !== undefined && { imageUrl }),
       ...(ingredients !== undefined ? {
