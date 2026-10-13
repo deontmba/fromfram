@@ -4,6 +4,12 @@ export interface RecipeSummary {
   description: string;
   calories: number;
   protein: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sodium?: number;
+  sugar?: number;
+  micronutrients?: Record<string, string> | any | null;
   servings: number;
   imageUrl?: string | null;
 }

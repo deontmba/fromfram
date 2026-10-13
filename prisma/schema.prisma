@@ -210,6 +210,12 @@ model Recipe {
   description     String             @db.Text
   calories        Int
   protein         Float
+  carbs           Float              @default(0)
+  fat             Float              @default(0)
+  fiber           Float              @default(0)
+  sodium          Float              @default(0)
+  sugar           Float              @default(0)
+  micronutrients  Json?
   servings        Int
   imageUrl        String?
   createdAt       DateTime           @default(now())

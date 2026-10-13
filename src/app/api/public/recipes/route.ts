@@ -12,6 +12,12 @@ export async function GET() {
         description: true,
         calories: true,
         protein: true,
+        carbs: true,
+        fat: true,
+        fiber: true,
+        sodium: true,
+        sugar: true,
+        micronutrients: true,
         imageUrl: true,
       }
     });

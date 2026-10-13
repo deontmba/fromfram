@@ -49,6 +49,12 @@ export type RecipeRow = {
   description: string;
   calories: number;
   protein: number;
+  carbs?: number;
+  fat?: number;
+  fiber?: number;
+  sodium?: number;
+  sugar?: number;
+  micronutrients?: Record<string, string> | any | null;
   servings: number;
   imageUrl: string | null;
   ingredients?: Array<{
@@ -84,6 +90,12 @@ export type RecipeFormData = {
   description: string;
   calories: string;
   protein: string;
+  carbs: string;
+  fat: string;
+  fiber: string;
+  sodium: string;
+  sugar: string;
+  micronutrients: Record<string, string>;
   servings: string;
   imageUrl: string;
   ingredients: RecipeIngredientEntry[];
@@ -229,9 +241,15 @@ export function useNutritionistData() {
         body: JSON.stringify({
           name: form.name,
           description: form.description,
-          calories: parseInt(form.calories),
-          protein: parseFloat(form.protein),
-          servings: parseInt(form.servings),
+          calories: parseInt(form.calories) || 0,
+          protein: parseFloat(form.protein) || 0,
+          carbs: parseFloat(form.carbs) || 0,
+          fat: parseFloat(form.fat) || 0,
+          fiber: parseFloat(form.fiber) || 0,
+          sodium: parseFloat(form.sodium) || 0,
+          sugar: parseFloat(form.sugar) || 0,
+          micronutrients: Object.keys(form.micronutrients || {}).length > 0 ? form.micronutrients : null,
+          servings: parseInt(form.servings) || 1,
           imageUrl: form.imageUrl || undefined,
           ingredients: form.ingredients.length > 0 ? form.ingredients : undefined,
         }),
