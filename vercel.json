@@ -1,10 +1,11 @@
 {
-  "experimentalServices": {
+  "services": {
     "frontend": {
       "entrypoint": "./",
       "routePrefix": "/"
     },
     "forecasting": {
+      "framework": "dockerfile",
       "entrypoint": "services/forecasting",
       "routePrefix": "/_forecasting"
     }
