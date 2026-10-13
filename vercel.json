@@ -1,7 +1,8 @@
 {
-  "services": {
+  "experimentalServices": {
     "frontend": {
-      "root": "./"
+      "entrypoint": "./",
+      "routePrefix": "/"
     },
     "forecasting": {
       "framework": "dockerfile",
