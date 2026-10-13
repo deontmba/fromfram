@@ -5,9 +5,9 @@
       "routePrefix": "/"
     },
     "forecasting": {
-      "framework": "Container",
       "entrypoint": "services/forecasting",
       "routePrefix": "/_forecasting"
     }
   }
 }
+
