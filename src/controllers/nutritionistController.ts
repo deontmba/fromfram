@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getEndOfWeek, getStartOfWeek } from '@/lib/week';
 import { CreateRecipeInput, UpdateRecipeInput } from '@/schemas';
 import { verifyRole } from '@/lib/auth';
@@ -88,6 +89,12 @@ export async function getNutritionistRecipes(userId: string) {
       description: true,
       calories: true,
       protein: true,
+      carbs: true,
+      fat: true,
+      fiber: true,
+      sodium: true,
+      sugar: true,
+      micronutrients: true,
       servings: true,
       imageUrl: true,
       ingredients: {
@@ -114,6 +121,12 @@ export async function getNutritionistRecipeById(userId: string, recipeId: string
       description: true,
       calories: true,
       protein: true,
+      carbs: true,
+      fat: true,
+      fiber: true,
+      sodium: true,
+      sugar: true,
+      micronutrients: true,
       servings: true,
       imageUrl: true,
       ingredients: {
@@ -133,7 +146,21 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  const { name, description, calories, protein, servings, imageUrl, ingredients } = input;
+  const {
+    name,
+    description,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    sodium,
+    sugar,
+    micronutrients,
+    servings,
+    imageUrl,
+    ingredients,
+  } = input;
 
   const recipe = await prisma.recipe.create({
     data: {
@@ -141,6 +168,12 @@ export async function createNutritionistRecipe(userId: string, input: CreateReci
       description: description ?? '',
       calories,
       protein,
+      carbs: carbs ?? 0,
+      fat: fat ?? 0,
+      fiber: fiber ?? 0,
+      sodium: sodium ?? 0,
+      sugar: sugar ?? 0,
+      ...(micronutrients !== undefined && micronutrients !== null ? { micronutrients } : {}),
       servings,
       nutritionistId: userId,
       ...(imageUrl ? { imageUrl } : {}),
@@ -165,7 +198,21 @@ export async function updateNutritionistRecipe(userId: string, recipeId: string,
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  const { name, description, calories, protein, servings, imageUrl, ingredients } = input;
+  const {
+    name,
+    description,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    sodium,
+    sugar,
+    micronutrients,
+    servings,
+    imageUrl,
+    ingredients,
+  } = input;
 
   const updatedRecipe = await prisma.recipe.update({
     where: { id: recipeId },
@@ -174,6 +221,14 @@ export async function updateNutritionistRecipe(userId: string, recipeId: string,
       ...(description !== undefined && { description }),
       ...(calories !== undefined && { calories }),
       ...(protein !== undefined && { protein }),
+      ...(carbs !== undefined && { carbs }),
+      ...(fat !== undefined && { fat }),
+      ...(fiber !== undefined && { fiber }),
+      ...(sodium !== undefined && { sodium }),
+      ...(sugar !== undefined && { sugar }),
+      ...(micronutrients !== undefined && {
+        micronutrients: micronutrients === null ? Prisma.JsonNull : (micronutrients as any)
+      }),
       ...(servings !== undefined && { servings }),
       ...(imageUrl !== undefined && { imageUrl }),
       ...(ingredients !== undefined ? {
