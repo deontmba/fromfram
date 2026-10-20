@@ -68,6 +68,20 @@ enum POStatus {
   CANCELLED
 }
 
+enum LedgerSourceType {
+  ADMIN_EDIT
+  USER_PURCHASE
+}
+
+enum IngredientLedgerStatus {
+  COMPLETED
+  SIAP_PAKAI
+  MENUNGGU_DIKONFIRMASI
+  PREPARING
+  SHIPPED
+  DELIVERED
+}
+
 // --- MODELS ---
 
 model User {
@@ -95,6 +109,9 @@ model User {
   verificationTokens       VerificationToken[]
   passwordResetTokens      PasswordResetToken[]
   personalization          UserPersonalization?
+  ingredientLedgerAdmin    IngredientLedger[]   @relation("AdminIngredientEdits")
+  ingredientLedgerUser     IngredientLedger[]   @relation("UserIngredientPurchases")
+  transactionLedgers       TransactionLedger[]
 }
 
 model PasswordResetToken {
@@ -201,6 +218,7 @@ model Transaction {
   createdAt DateTime          @default(now())
 
   user      User              @relation(fields: [userId], references: [id])
+  ledgers   TransactionLedger[]
 }
 
 model Recipe {
@@ -244,6 +262,7 @@ model Ingredient {
   farmerSupplyItems    FarmerSupplyItem[]
   farmerPurchaseOrders FarmerPurchaseOrder[]
   demandForecastLogs   DemandForecastLog[]
+  ingredientLedgers    IngredientLedger[]
 }
 
 model RecipeIngredient {
@@ -283,6 +302,7 @@ model WeeklyBox {
   user              User            @relation(fields: [userId], references: [id])
   mealSelections    MealSelection[]
   deliveries        Delivery[]
+  ingredientLedgers IngredientLedger[]
 
   @@unique([userId, weekStartDate])
 }
@@ -379,4 +399,55 @@ model DemandForecastLog {
   createdAt       DateTime   @default(now())
 
   ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+}
+
+model IngredientLedger {
+  id                String                 @id @default(cuid())
+  ingredientId      String
+  sourceType        LedgerSourceType
+  status            IngredientLedgerStatus @default(COMPLETED)
+  code              String?                @unique
+  referenceCode     String?
+
+  adminUserId       String?
+  qtyChangeKg       Float?
+  stockBeforeKg     Float?
+  stockAfterKg      Float?
+
+  userId            String?
+  weeklyBoxId       String?
+  mealSelectionId   String?
+  qtyUsedKg         Float?
+  menuName          String?
+
+  notes             String?
+  createdAt         DateTime               @default(now())
+
+  ingredient        Ingredient             @relation(fields: [ingredientId], references: [id])
+  adminUser         User?                  @relation("AdminIngredientEdits", fields: [adminUserId], references: [id])
+  user              User?                  @relation("UserIngredientPurchases", fields: [userId], references: [id])
+  weeklyBox         WeeklyBox?             @relation(fields: [weeklyBoxId], references: [id])
+
+  @@index([ingredientId])
+  @@index([sourceType])
+  @@index([createdAt])
+}
+
+model TransactionLedger {
+  id             String            @id @default(cuid())
+  transactionId  String
+  userId         String
+  amount         Float
+  status         TransactionStatus
+  paymentMethod  String            @default("QRIS")
+  code           String?           @unique
+  referenceCode  String?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+
+  transaction    Transaction       @relation(fields: [transactionId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
 }
