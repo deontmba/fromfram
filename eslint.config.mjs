@@ -23,6 +23,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "prisma/seed.js",
+    // Standalone Node.js utility/migration scripts (CommonJS, not app code):
+    "scripts/**",
   ]),
 ]);
 
