@@ -714,11 +714,27 @@ export function AdminPencatatanTab() {
                           <div className="text-[11px] text-slate-400">{timeStr}</div>
                         </td>
                         <td className="p-3.5 font-medium text-slate-800">
-                          {isEditAdmin ? (ing.ingredient?.supplierName || "Admin Warehouse") : (ing.user?.name || "Pelanggan")}
+                          {isEditAdmin ? (
+                            <div>
+                              <div className="font-semibold text-slate-800">{ing.ingredient?.supplierName || "Admin Warehouse"}</div>
+                              {ing.ingredient?.origin && ing.ingredient.origin !== "-" && (
+                                <div className="text-[10px] text-slate-400 flex items-center gap-1">
+                                  <span>📍</span> {ing.ingredient.origin}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="font-semibold text-slate-800">{ing.user?.name || "Pelanggan"}</div>
+                              <div className="text-[10px] text-slate-400">Konsumen Langganan</div>
+                            </div>
+                          )}
                         </td>
                         <td className="p-3.5">
-                          <div className="font-bold text-[#0f172a]">{ing.ingredient?.name || "-"}</div>
-                          <div className="text-[10px] text-slate-400">{ing.menuName || ing.notes || "-"}</div>
+                          <div className="font-bold text-[#0f172a] text-sm">{ing.ingredient?.name || "-"}</div>
+                          <div className="text-[10px] text-slate-500 font-medium">
+                            {isEditAdmin ? (ing.notes || "Penyesuaian stok langsung oleh Admin") : (ing.menuName ? `Bahan resep: ${ing.menuName}` : (ing.notes || "Penggunaan bahan resep pesanan"))}
+                          </div>
                         </td>
                         <td className="p-3.5 font-medium text-slate-600">{mutationTypeLabel}</td>
                         <td className="p-3.5 text-center font-bold font-mono text-[#0f172a]">{volumeStr}</td>
