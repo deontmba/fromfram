@@ -6,6 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import { ForecastingPage } from "@/components/forecasting/ForecastingPage";
 import { AdminIngredientsTab } from "./tabs/AdminIngredientsTab";
+import { AdminPencatatanTab } from "./tabs/AdminPencatatanTab";
 import styles from "./role-portal-screen.module.css";
 
 type RoleVariant = "admin" | "nutritionist";
@@ -222,6 +223,7 @@ const adminConfig: RoleConfig = {
     { id: "users", label: "Pengguna" },
     { id: "ingredients", label: "Bahan Baku" },
     { id: "reports", label: "Prediksi AI" },
+    { id: "ledgers", label: "Pencatatan" },
   ],
   heroTitle: {
     dashboard: "Dasbor Operasional",
@@ -229,6 +231,7 @@ const adminConfig: RoleConfig = {
     users: "Manajemen Pengguna dan Langganan",
     ingredients: "Manajemen Stok Bahan Baku",
     reports: "Prediksi Kebutuhan Pasokan",
+    ledgers: "Dasbor Pencatatan",
   },
   heroSubtitle: {
     dashboard: "Pantau data operasional harian dalam satu layar.",
@@ -236,6 +239,7 @@ const adminConfig: RoleConfig = {
     users: "Lihat status pelanggan dan dampaknya ke pengiriman berikutnya.",
     ingredients: "Pantau stok bahan baku dan lakukan restock.",
     reports: "Pantau estimasi kebutuhan bahan baku dan buat Purchase Order ke petani mitra secara otomatis.",
+    ledgers: "Kelola alur transaksi pesanan, penerimaan bahan baku, serta log harian operasional.",
   },
   kpis: {
     dashboard: [
@@ -1576,41 +1580,45 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
             </div>
 
             <div className={styles.contentWrap}>
-              <h2 className={styles.sectionTitle}>{config.heroTitle[activeTab]}</h2>
-              <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
+              {activeTab !== "ledgers" && (
+                <>
+                  <h2 className={styles.sectionTitle}>{config.heroTitle[activeTab]}</h2>
+                  <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
 
-              {error && (
-                <div
-                  className={styles.notice}
-                  style={{ background: "#fee2e2", borderColor: "#ef4444" }}
-                >
-                  <p
-                    className={styles.noticeTitle}
-                    style={{ color: "#dc2626" }}
-                  >
-                    Error:
-                  </p>
-                  <p style={{ color: "#dc2626" }}>{error}</p>
-                </div>
-              )}
-
-              {/* KPI Cards */}
-              <div className={styles.kpiGrid}>
-                {currentKpis.map((kpi, index) => (
-                  <article
-                    key={kpi.label}
-                    className={styles.kpiCard}
-                    style={{ animationDelay: `${index * 80}ms` }}
-                  >
-                    <div className={styles.kpiRow}>
-                      {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : <span />}
-                      {kpi.delta ? <span className={styles.deltaBadge}>{kpi.delta}</span> : <span />}
+                  {error && (
+                    <div
+                      className={styles.notice}
+                      style={{ background: "#fee2e2", borderColor: "#ef4444" }}
+                    >
+                      <p
+                        className={styles.noticeTitle}
+                        style={{ color: "#dc2626" }}
+                      >
+                        Error:
+                      </p>
+                      <p style={{ color: "#dc2626" }}>{error}</p>
                     </div>
-                    <p className={styles.kpiValue}>{kpi.value}</p>
-                    <p className={styles.kpiLabel}>{kpi.label}</p>
-                  </article>
-                ))}
-              </div>
+                  )}
+
+                  {/* KPI Cards */}
+                  <div className={styles.kpiGrid}>
+                    {currentKpis.map((kpi, index) => (
+                      <article
+                        key={kpi.label}
+                        className={styles.kpiCard}
+                        style={{ animationDelay: `${index * 80}ms` }}
+                      >
+                        <div className={styles.kpiRow}>
+                          {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : <span />}
+                          {kpi.delta ? <span className={styles.deltaBadge}>{kpi.delta}</span> : <span />}
+                        </div>
+                        <p className={styles.kpiValue}>{kpi.value}</p>
+                        <p className={styles.kpiLabel}>{kpi.label}</p>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {isLoading && (
                 <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
@@ -2095,6 +2103,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
               {role === "admin" && activeTab === "reports" ? (
                 <div style={{ marginTop: '1rem' }}>
                   <ForecastingPage />
+                </div>
+              ) : null}
+
+              {role === "admin" && activeTab === "ledgers" ? (
+                <div style={{ marginTop: "1rem" }}>
+                  <AdminPencatatanTab />
                 </div>
               ) : null}
 

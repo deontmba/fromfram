@@ -39,6 +39,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data: { stockKg: newStock },
     });
 
+    // Otomatis catat di IngredientLedger (Read-Only)
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
+    const refCode = deltaKg > 0 ? `TIK/IN/${randomSuffix}` : `TIK/OUT/${randomSuffix}`;
+    const status = deltaKg > 0 ? 'COMPLETED' : 'SIAP_PAKAI';
+    const notes = deltaKg > 0
+      ? `Penambahan stok presisi oleh Admin (+${deltaKg.toFixed(2)} kg)`
+      : `Pengurangan stok presisi oleh Admin (${deltaKg.toFixed(2)} kg)`;
+
+    await prisma.ingredientLedger.create({
+      data: {
+        ingredientId: id,
+        sourceType: 'ADMIN_EDIT',
+        status,
+        code,
+        referenceCode: refCode,
+        adminUserId: auth.userId,
+        qtyChangeKg: deltaKg,
+        stockBeforeKg: existing.stockKg,
+        stockAfterKg: newStock,
+        notes,
+      },
+    }).catch((ledgerErr: unknown) => {
+      console.warn('[LEDGER WRITE WARNING]', ledgerErr);
+    });
+
     return NextResponse.json({ data: updated });
   } catch (error) {
     console.error('[ADMIN INGREDIENT ADJUST STOCK ERROR]', error);

@@ -23,6 +23,30 @@ export async function createTransaction(userId: string, input: CreateTransaction
       }
     });
 
+    // Otomatis catat di TransactionLedger (Read-Only)
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const code = `#TRX-2026-${String(randomSuffix).padStart(4, '0')}`;
+    const refCode = `INV/FF/260${String(randomSuffix).slice(-3)}`;
+
+    await prisma.transactionLedger.create({
+      data: {
+        transactionId: transaction.id,
+        userId,
+        amount: finalAmount,
+        status: 'PENDING',
+        paymentMethod: 'QRIS Midtrans',
+        code,
+        referenceCode: refCode,
+        metadata: {
+          planType: input.planType,
+          servings: input.servings,
+          category: 'Langganan Meal Kit Organik'
+        }
+      }
+    }).catch(ledgerErr => {
+      console.warn('[TRANSACTION LEDGER CREATE WARNING]', ledgerErr);
+    });
+
     return { data: transaction, status: 201 };
   } catch (error) {
     console.error('[Transaction Error]', error);
@@ -105,6 +129,12 @@ export async function getTransactionStatus(userId: string, transactionId: string
                 },
               });
 
+              // Sinkronkan status di TransactionLedger (Read-Only)
+              await prisma.transactionLedger.updateMany({
+                where: { transactionId },
+                data: { status: dbStatus }
+              }).catch(err => console.warn('[UPDATE TRANSACTION LEDGER STATUS WARNING]', err));
+
               // Jika pembayaran selesai, aktifkan juga subscription di database
               if (dbStatus === 'COMPLETED') {
                 const subscription = await prisma.subscription.findUnique({
@@ -132,7 +162,6 @@ export async function getTransactionStatus(userId: string, transactionId: string
     return { error: 'Gagal mengambil status transaksi', status: 500 };
   }
 }
-
 
 export function verifyMidtransSignature(
   orderId: string,

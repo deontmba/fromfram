@@ -49,15 +49,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nama bahan baku sudah terdaftar di sistem.' }, { status: 409 });
     }
 
+    const initialStock = Math.max(0, Number(stockKg) || 0);
     const ingredient = await prisma.ingredient.create({
       data: {
         name: trimmedName,
         origin: origin && typeof origin === 'string' && origin.trim() ? origin.trim() : '-',
         supplierName: supplierName && typeof supplierName === 'string' && supplierName.trim() ? supplierName.trim() : '-',
         isAllergen: Boolean(isAllergen),
-        stockKg: Math.max(0, Number(stockKg) || 0),
+        stockKg: initialStock,
         pricePerKg: Math.max(0, Number(pricePerKg) || 0),
       },
+    });
+
+    // Otomatis catat bahan baku baru di IngredientLedger
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
+    const refCode = `TIK/IN/${randomSuffix}`;
+
+    await prisma.ingredientLedger.create({
+      data: {
+        ingredientId: ingredient.id,
+        sourceType: 'ADMIN_EDIT',
+        status: 'COMPLETED',
+        code,
+        referenceCode: refCode,
+        adminUserId: auth.userId,
+        qtyChangeKg: initialStock,
+        stockBeforeKg: 0,
+        stockAfterKg: initialStock,
+        notes: `Penambahan bahan baku baru: ${trimmedName}`,
+      },
+    }).catch(err => {
+      console.warn('[NEW INGREDIENT LEDGER LOG WARNING]', err);
     });
 
     return NextResponse.json({ data: ingredient }, { status: 201 });
