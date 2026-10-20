@@ -10,7 +10,7 @@ async function verifyAdmin(req: NextRequest) {
   return { userId: session.userId };
 }
 
-// PATCH /api/admin/ingredients/[id] - Edit bahan baku
+// PATCH /api/admin/ingredients/[id] - Edit bahan baku dari Dashboard Admin
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAdmin(req);
   if ('error' in auth) return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
@@ -18,6 +18,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
 
   try {
+    const existing = await prisma.ingredient.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Bahan baku tidak ditemukan.' }, { status: 404 });
+    }
+
     const body = await req.json();
     const { name, origin, supplierName, isAllergen, stockKg, pricePerKg } = body;
 
@@ -48,6 +53,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const ingredient = await prisma.ingredient.update({
       where: { id },
       data,
+    });
+
+    // Otomatis catat di IngredientLedger jika ada perubahan dari Admin di Dashboard Bahan Baku
+    const deltaKg = stockKg !== undefined ? (Number(stockKg) - existing.stockKg) : 0;
+    const isStockChanged = Math.abs(deltaKg) > 0.0001;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
+    const refCode = deltaKg >= 0 ? `TIK/IN/${randomSuffix}` : `TIK/OUT/${randomSuffix}`;
+    const status = deltaKg >= 0 ? 'COMPLETED' : 'SIAP_PAKAI';
+
+    let notes = 'Pembaruan data bahan baku oleh Admin';
+    if (isStockChanged) {
+      notes = deltaKg > 0
+        ? `Pemasukan stok bahan baku (+${deltaKg.toFixed(2)} Kg)`
+        : `Pengurangan stok bahan baku (${deltaKg.toFixed(2)} Kg)`;
+    } else if (name !== undefined && name !== existing.name) {
+      notes = `Perubahan nama komoditas: ${existing.name} -> ${name}`;
+    }
+
+    await prisma.ingredientLedger.create({
+      data: {
+        ingredientId: id,
+        sourceType: 'ADMIN_EDIT',
+        status,
+        code,
+        referenceCode: refCode,
+        adminUserId: auth.userId,
+        qtyChangeKg: isStockChanged ? deltaKg : 0,
+        stockBeforeKg: existing.stockKg,
+        stockAfterKg: ingredient.stockKg,
+        notes,
+      },
+    }).catch(err => {
+      console.warn('[INGREDIENT UPDATE LEDGER WARNING]', err);
     });
 
     return NextResponse.json({ data: ingredient });
