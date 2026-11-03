@@ -552,8 +552,13 @@ export default function WeeklyMenuPage() {
         ]);
 
         if (addrRes.ok) {
-          const addrData = (await addrRes.json()) as AddressData[];
-          setAddresses(Array.isArray(addrData) ? addrData : []);
+          const addrJson = await addrRes.json();
+          const addrData = Array.isArray(addrJson)
+            ? addrJson
+            : Array.isArray(addrJson?.data)
+            ? addrJson.data
+            : [];
+          setAddresses(addrData);
         }
 
         if (schedRes.ok) {
@@ -1017,69 +1022,91 @@ export default function WeeklyMenuPage() {
           </div>
 
           {/* Address Schedule Panel */}
-          {addresses.length > 0 && (
-            <div className="mt-4 rounded-2xl border-2 border-[#1db788]/30 bg-white/20 backdrop-blur-sm overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setIsAddressPanelOpen((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
-              >
+          <div className="mt-4 rounded-2xl border-2 border-[#1db788]/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+            {addresses.length === 0 ? (
+              <div className="px-4 py-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-neutral-800">📍 Alamat Pengiriman Pintar</p>
-                  {!isAddressPanelOpen && addressSummaryText && (
-                    <p className="text-xs text-neutral-500 mt-0.5">{addressSummaryText}</p>
-                  )}
+                  <p className="text-xs text-neutral-500 mt-0.5">Belum ada alamat tersimpan</p>
                 </div>
-                <span className="text-xs font-semibold text-[#0ea5a5]">
-                  {isAddressPanelOpen ? "Tutup" : "Kelola"}
-                </span>
-              </button>
+                <Link
+                  href="/subscription/delivery-address"
+                  className="rounded-lg bg-[#1db788] px-2.5 py-1 text-xs font-bold text-white shadow-sm hover:bg-[#16a679] transition"
+                >
+                  + Tambah
+                </Link>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsAddressPanelOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/10 transition"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-neutral-800">📍 Alamat Pengiriman Pintar</p>
+                    {!isAddressPanelOpen && (
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        {addressSummaryText || `${addresses.length} alamat tersedia`}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-xs font-bold text-[#0ea5a5] bg-white/60 px-2 py-0.5 rounded-md border border-[#0ea5a5]/20">
+                    {isAddressPanelOpen ? "Tutup" : "Kelola"}
+                  </span>
+                </button>
 
-              {isAddressPanelOpen && (
-                <div className="border-t border-[#1db788]/20 px-4 pb-4 pt-3 space-y-2">
-                  <p className="text-xs text-neutral-500 mb-2">
-                    Pilih alamat pengiriman untuk setiap hari
-                  </p>
-                  {daysOfWeek.map(({ key, label }) => {
-                    const currentAddrId = addressSchedules[key]?.LUNCH;
-                    const currentLabel = getAddressLabel(currentAddrId, addresses);
-                    return (
-                      <div key={key} className="flex items-center gap-2">
-                        <span className="w-12 text-xs font-bold text-neutral-600 shrink-0">
-                          {label}
-                        </span>
-                        {currentLabel && (
-                          <span className="text-xs text-[#1db788] font-semibold shrink-0">
-                            {getAddressEmoji(currentLabel)} {currentLabel}
+                {isAddressPanelOpen && (
+                  <div className="border-t border-[#1db788]/20 px-4 pb-4 pt-3 space-y-2.5 bg-white/30">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-neutral-600 font-medium">
+                        Atur tujuan per hari:
+                      </p>
+                      <Link
+                        href="/subscription/delivery-address"
+                        className="text-[0.68rem] font-bold text-[#0ea5a5] hover:underline"
+                      >
+                        + Tambah Alamat
+                      </Link>
+                    </div>
+                    {daysOfWeek.map(({ key, label }) => {
+                      const currentAddrId = addressSchedules[key]?.LUNCH;
+                      const currentLabel = getAddressLabel(currentAddrId, addresses);
+                      return (
+                        <div key={key} className="flex items-center gap-2">
+                          <span className="w-12 text-xs font-bold text-neutral-700 shrink-0">
+                            {label}
                           </span>
-                        )}
-                        <select
-                          value={currentAddrId ?? ""}
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              void handleAddressScheduleChange(key, e.target.value);
-                            }
-                          }}
-                          disabled={isSavingSchedule}
-                          className="ml-auto min-w-0 flex-1 rounded-lg border border-[#1db788]/30 bg-white px-2 py-1 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#1db788]/40 disabled:opacity-50"
-                        >
-                          <option value="">Pilih alamat</option>
-                          {addresses.map((addr) => (
-                            <option key={addr.id} value={addr.id}>
-                              {addr.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                  {isSavingSchedule && (
-                    <p className="text-xs text-[#1db788] text-center animate-pulse">Menyimpan…</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                          <select
+                            value={currentAddrId ?? ""}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                void handleAddressScheduleChange(key, e.target.value);
+                              }
+                            }}
+                            disabled={isSavingSchedule}
+                            className="w-full rounded-lg border border-[#1db788]/30 bg-white px-2 py-1.5 text-xs text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#1db788]/40 disabled:opacity-50"
+                          >
+                            <option value="">-- Pilih alamat --</option>
+                            {addresses.map((addr) => (
+                              <option key={addr.id} value={addr.id}>
+                                {addr.label} ({addr.city})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
+                    {isSavingSchedule && (
+                      <p className="text-xs text-[#1db788] text-center font-bold animate-pulse pt-1">
+                        Menyimpan perubahan jadwal...
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Day list */}
           <div className="mt-4 flex-1 space-y-2.5 pb-6">
