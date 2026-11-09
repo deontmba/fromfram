@@ -112,6 +112,7 @@ model User {
   ingredientLedgerAdmin    IngredientLedger[]   @relation("AdminIngredientEdits")
   ingredientLedgerUser     IngredientLedger[]   @relation("UserIngredientPurchases")
   transactionLedgers       TransactionLedger[]
+  addressSchedules         AddressSchedule[]
 }
 
 model PasswordResetToken {
@@ -181,6 +182,7 @@ model Address {
 
   user          User       @relation(fields: [userId], references: [id])
   deliveries    Delivery[]
+  addressSchedules AddressSchedule[]
 }
 
 model Goal {
@@ -450,4 +452,19 @@ model TransactionLedger {
 
   @@index([userId])
   @@index([createdAt])
+}
+model AddressSchedule {
+  id        String    @id @default(cuid())
+  userId    String
+  dayOfWeek DayOfWeek
+  mealType  MealType
+  addressId String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address   Address   @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dayOfWeek, mealType])
+  @@index([userId])
 }
