@@ -11,6 +11,9 @@ class IngredientForecast(BaseModel):
     farmer_id: str
     farmer_name: str
     farmer_region: str
+    gross_demand_kg: float = 0.0
+    current_stock_kg: float = 0.0
+    safety_stock_kg: float = 0.0
     predicted_qty_kg: float
     confidence_score: float
     min_order_kg: float

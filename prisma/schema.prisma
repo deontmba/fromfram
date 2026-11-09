@@ -71,6 +71,7 @@ enum POStatus {
 enum LedgerSourceType {
   ADMIN_EDIT
   USER_PURCHASE
+  PO_FULFILLMENT
 }
 
 enum IngredientLedgerStatus {
@@ -381,10 +382,13 @@ model FarmerPurchaseOrder {
   confidenceScore Float?
   notes           String?
   confirmedAt     DateTime?
+  grossForecastKg Float?     // Total kebutuhan katering sebelum dipotong stok
+  currentStockKg  Float?     // Sisa stok riil di gudang saat PO dibuat
   createdAt       DateTime   @default(now())
 
   farmer          Farmer     @relation(fields: [farmerId], references: [id])
   ingredient      Ingredient @relation(fields: [ingredientId], references: [id])
+  ledgers         IngredientLedger[]
 
   @@unique([farmerId, ingredientId, weekStartDate])
 }
@@ -422,6 +426,8 @@ model IngredientLedger {
   qtyUsedKg         Float?
   menuName          String?
 
+  purchaseOrderId   String?
+
   notes             String?
   createdAt         DateTime               @default(now())
 
@@ -429,6 +435,7 @@ model IngredientLedger {
   adminUser         User?                  @relation("AdminIngredientEdits", fields: [adminUserId], references: [id])
   user              User?                  @relation("UserIngredientPurchases", fields: [userId], references: [id])
   weeklyBox         WeeklyBox?             @relation(fields: [weeklyBoxId], references: [id])
+  purchaseOrder     FarmerPurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
 
   @@index([ingredientId])
   @@index([sourceType])

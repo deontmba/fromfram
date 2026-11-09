@@ -96,10 +96,12 @@ def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_
                 INSERT INTO "FarmerPurchaseOrder" (
                     "id", "farmerId", "ingredientId", "weekStartDate", 
                     "forecastedQtyKg", "orderedQtyKg", "pricePerKg", "totalPrice",
+                    "grossForecastKg", "currentStockKg",
                     "status", "confidenceScore", "createdAt"
                 ) VALUES (
                     :id, :farmerId, :ingredientId, :weekStartDate,
                     :forecastedQtyKg, :orderedQtyKg, :pricePerKg, :totalPrice,
+                    :grossForecastKg, :currentStockKg,
                     'DRAFT', :confidenceScore, NOW()
                 )
                 ON CONFLICT ("farmerId", "ingredientId", "weekStartDate") DO UPDATE SET
@@ -107,6 +109,8 @@ def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_
                     "orderedQtyKg" = EXCLUDED."orderedQtyKg",
                     "pricePerKg" = EXCLUDED."pricePerKg",
                     "totalPrice" = EXCLUDED."totalPrice",
+                    "grossForecastKg" = EXCLUDED."grossForecastKg",
+                    "currentStockKg" = EXCLUDED."currentStockKg",
                     "confidenceScore" = EXCLUDED."confidenceScore"
             """)
             
@@ -126,6 +130,8 @@ def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_
                 "orderedQtyKg": ordered_qty,
                 "pricePerKg": f.price_per_kg,
                 "totalPrice": total_price,
+                "grossForecastKg": getattr(f, "gross_demand_kg", f.predicted_qty_kg),
+                "currentStockKg": getattr(f, "current_stock_kg", 0.0),
                 "confidenceScore": f.confidence_score
             })
             
