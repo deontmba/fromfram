@@ -33,7 +33,7 @@ describe('Admin Ingredients CRUD & Import with Format Synchronization', () => {
         data: {
           email: 'admin_ingredients_test@fromfram.test',
           name: 'Admin Test',
-          passwordHash: 'dummy',
+          password: 'dummy',
           role: 'ADMIN',
         },
       });

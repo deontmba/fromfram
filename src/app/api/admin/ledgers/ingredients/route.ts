@@ -28,8 +28,10 @@ export async function GET(req: NextRequest) {
     const where: any = {};
 
     if (filter === 'inbound') {
-      where.sourceType = 'ADMIN_EDIT';
-      where.qtyChangeKg = { gt: 0 };
+      where.OR = [
+        { sourceType: 'PO_FULFILLMENT' },
+        { AND: [{ sourceType: 'ADMIN_EDIT' }, { qtyChangeKg: { gt: 0 } }] },
+      ];
     } else if (filter === 'outbound') {
       where.OR = [
         { sourceType: 'USER_PURCHASE' },

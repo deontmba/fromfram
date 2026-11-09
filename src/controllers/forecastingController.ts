@@ -222,3 +222,84 @@ export async function updateActualUsage(
     return { error: 'Python Forecasting Service tidak dapat dihubungi.', status: 503 };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Fulfill PO (Penerimaan Panen) — Tambah Stok & Catat Otomatis ke IngredientLedger
+// ---------------------------------------------------------------------------
+
+export async function fulfillPO(
+  userId: string,
+  poId: string,
+  actualReceivedQtyKg?: number
+) {
+  const authError = await verifyAdmin(userId);
+  if (authError) return authError;
+
+  const po = await prisma.farmerPurchaseOrder.findUnique({
+    where: { id: poId },
+    include: {
+      ingredient: true,
+      farmer: true,
+    },
+  });
+
+  if (!po) {
+    return { error: `Purchase Order dengan ID ${poId} tidak ditemukan.`, status: 404 };
+  }
+
+  if (po.status === 'FULFILLED') {
+    return { error: 'Purchase Order ini sudah berstatus FULFILLED.', status: 400 };
+  }
+
+  const receivedQty = actualReceivedQtyKg !== undefined && !isNaN(actualReceivedQtyKg) && actualReceivedQtyKg > 0
+    ? actualReceivedQtyKg
+    : Number(po.orderedQtyKg);
+
+  const stockBefore = po.ingredient.stockKg || 0;
+  const stockAfter = stockBefore + receivedQty;
+
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const ledgerCode = `#BB-PO-${String(randomSuffix).padStart(4, '0')}`;
+  const refCode = `PO/${po.farmer.name.replace(/\s+/g, '-').toUpperCase()}/${randomSuffix}`;
+
+  const [updatedPO, updatedIngredient, createdLedger] = await prisma.$transaction([
+    prisma.farmerPurchaseOrder.update({
+      where: { id: poId },
+      data: {
+        status: 'FULFILLED',
+        orderedQtyKg: receivedQty,
+        totalPrice: receivedQty * Number(po.pricePerKg),
+      },
+    }),
+    prisma.ingredient.update({
+      where: { id: po.ingredientId },
+      data: {
+        stockKg: stockAfter,
+      },
+    }),
+    prisma.ingredientLedger.create({
+      data: {
+        ingredientId: po.ingredientId,
+        sourceType: 'PO_FULFILLMENT',
+        status: 'COMPLETED',
+        code: ledgerCode,
+        referenceCode: refCode,
+        purchaseOrderId: poId,
+        adminUserId: userId,
+        qtyChangeKg: receivedQty,
+        stockBeforeKg: stockBefore,
+        stockAfterKg: stockAfter,
+        notes: `Penerimaan panen dari ${po.farmer.name} (PO: ${poId.slice(-6)})`,
+      },
+    }),
+  ]);
+
+  return {
+    data: {
+      purchaseOrder: updatedPO,
+      ingredient: updatedIngredient,
+      ledger: createdLedger,
+    },
+    status: 200,
+  };
+}

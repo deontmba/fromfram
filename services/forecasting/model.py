@@ -9,6 +9,7 @@ def generate_forecast(db, week_start_date: datetime):
     supplies_query = text("""
         SELECT 
             fs."ingredientId", i."name" as ingredient_name,
+            COALESCE(i."stockKg", 0) as current_stock_kg,
             fs."farmerId", f."name" as farmer_name, f."region" as farmer_region,
             fs."minOrderKg",
             CASE WHEN fs."pricePerKg" > 0 THEN fs."pricePerKg" ELSE i."pricePerKg" END as "pricePerKg"
@@ -128,7 +129,17 @@ def generate_forecast(db, week_start_date: datetime):
                 avg_mape = 0.4
             confidence_score = max(0.0, 1.0 - avg_mape)
 
-        final_prediction = max(baseline, ridge_prediction) * 1.10
+        # --- Net-Aware Demand Calculation ---
+        current_stock = float(supply._mapping.get("current_stock_kg", 0.0) or 0.0)
+        gross_demand = max(baseline, ridge_prediction)
+        safety_stock = max(1.0, gross_demand * 0.10) if gross_demand > 0 else 0.0
+        net_deficit = (gross_demand + safety_stock) - current_stock
+        
+        min_order = float(supply._mapping["minOrderKg"])
+        if net_deficit <= 0:
+            final_prediction = 0.0
+        else:
+            final_prediction = max(min_order, net_deficit)
         
         forecasts.append({
             "ingredient_id": ing_id,
@@ -136,6 +147,9 @@ def generate_forecast(db, week_start_date: datetime):
             "farmer_id": supply._mapping["farmerId"],
             "farmer_name": supply._mapping["farmer_name"],
             "farmer_region": supply._mapping["farmer_region"],
+            "gross_demand_kg": round(float(gross_demand), 2),
+            "current_stock_kg": round(float(current_stock), 2),
+            "safety_stock_kg": round(float(safety_stock), 2),
             "predicted_qty_kg": round(float(final_prediction), 2),
             "confidence_score": round(float(confidence_score), 2),
             "min_order_kg": float(supply._mapping["minOrderKg"]),
