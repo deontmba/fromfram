@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       prisma.transactionLedger.findMany({
         where,
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true, subscriptions: { select: { planType: true, servings: true, status: true }, take: 1 } } },
           transaction: { select: { id: true, amount: true, status: true, paidAt: true, createdAt: true } },
         },
         orderBy: { createdAt: 'desc' },

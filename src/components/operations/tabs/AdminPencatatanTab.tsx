@@ -18,6 +18,11 @@ type TransactionLedgerItem = {
     id: string;
     name: string;
     email: string;
+    subscriptions?: Array<{
+      planType: string;
+      servings: number;
+      status: string;
+    }>;
   };
 };
 
@@ -52,6 +57,16 @@ type IngredientLedgerItem = {
     email: string;
   };
 };
+
+
+function getSubscriptionLabel(tx: TransactionLedgerItem) {
+  const plan = tx.metadata?.planType || tx.user?.subscriptions?.[0]?.planType;
+  if (!plan) return 'Paket Mingguan';
+  const upper = String(plan).toUpperCase();
+  if (upper.includes('BULAN')) return 'Paket Bulanan';
+  if (upper.includes('TAHUN')) return 'Paket Tahunan';
+  return 'Paket Mingguan';
+}
 
 export function AdminPencatatanTab() {
   const [activeSubTab, setActiveSubTab] = useState<TabType>("transactions");
@@ -156,6 +171,7 @@ export function AdminPencatatanTab() {
       "No. Invoice": tx.referenceCode || "-",
       "Waktu": new Date(tx.createdAt).toLocaleString("id-ID"),
       "Pelanggan": tx.user?.name || "-",
+      "Jenis Subscription": getSubscriptionLabel(tx),
       "Nominal": tx.amount,
       "Metode Pembayaran": tx.paymentMethod,
       "Status": tx.status,
@@ -385,8 +401,7 @@ export function AdminPencatatanTab() {
                   <th className="p-3.5">ID Transaksi</th>
                   <th className="p-3.5">Waktu & Tanggal</th>
                   <th className="p-3.5">Pelanggan / Mitra</th>
-                  <th className="p-3.5">Kategori & Komoditas</th>
-                  <th className="p-3.5 text-center">Volume</th>
+                  <th className="p-3.5 text-center">Jenis Subscription</th>
                   <th className="p-3.5">Total Nilai</th>
                   <th className="p-3.5 text-center">Status</th>
                   <th className="p-3.5 text-right">Aksi</th>
@@ -395,13 +410,13 @@ export function AdminPencatatanTab() {
               <tbody className="divide-y divide-slate-100">
                 {txLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                    <td colSpan={7} className="p-8 text-center text-slate-400">
                       Memuat data catatan transaksi...
                     </td>
                   </tr>
                 ) : txList.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                    <td colSpan={7} className="p-8 text-center text-slate-400">
                       Tidak ada catatan transaksi ditemukan.
                     </td>
                   </tr>
@@ -454,11 +469,10 @@ export function AdminPencatatanTab() {
                         <td className="p-3.5 font-medium text-slate-800">
                           {tx.user?.name || "-"}
                         </td>
-                        <td className="p-3.5 font-medium text-slate-600">
-                          {tx.metadata?.category || "Paket Meal Kit Mingguan"}
-                        </td>
-                        <td className="p-3.5 text-center font-medium text-slate-600">
-                          {tx.metadata?.volume || "1 Box"}
+                        <td className="p-3.5 text-center font-medium text-slate-700">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                            {getSubscriptionLabel(tx)}
+                          </span>
                         </td>
                         <td className="p-3.5 font-bold text-[#0f172a]">
                           {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(tx.amount)}
@@ -651,13 +665,13 @@ export function AdminPencatatanTab() {
               <tbody className="divide-y divide-slate-100">
                 {ingLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                    <td colSpan={7} className="p-8 text-center text-slate-400">
                       Memuat data catatan bahan baku...
                     </td>
                   </tr>
                 ) : ingList.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
+                    <td colSpan={7} className="p-8 text-center text-slate-400">
                       Tidak ada catatan bahan baku ditemukan.
                     </td>
                   </tr>
@@ -869,6 +883,10 @@ export function AdminPencatatanTab() {
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span className="text-slate-400">Pelanggan</span>
                 <span className="font-semibold">{selectedTx.user?.name || "-"} ({selectedTx.user?.email || "-"})</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-400">Jenis Subscription</span>
+                <span className="font-semibold text-slate-800">{getSubscriptionLabel(selectedTx)}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span className="text-slate-400">Nominal</span>
