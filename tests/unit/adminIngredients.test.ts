@@ -13,15 +13,17 @@ import { getSessionUserId } from '@/lib/session';
 
 describe('Admin Ingredients CRUD & Import with Format Synchronization', () => {
   let adminUser: any;
+  const TEST_NAMES = ['Beras Merah Test Admin', 'Kacang Merah Test Admin', 'Imported Wortel Test'];
+  // Restock and bulk import write ledger rows, which must go before the ingredient.
+  const cleanupTestIngredients = async () => {
+    await prisma.ingredientLedger.deleteMany({ where: { ingredient: { name: { in: TEST_NAMES } } } });
+    await prisma.ingredient.deleteMany({ where: { name: { in: TEST_NAMES } } });
+  };
   const mockGetSession = getSessionUserId as jest.Mock;
 
   beforeAll(async () => {
     // Cleanup prior test artifacts
-    await prisma.ingredient.deleteMany({
-      where: {
-        name: { in: ['Beras Merah Test Admin', 'Kacang Merah Test Admin', 'Imported Wortel Test'] }
-      }
-    });
+    await cleanupTestIngredients();
 
     // Create or find admin user
     adminUser = await prisma.user.findFirst({
@@ -43,11 +45,7 @@ describe('Admin Ingredients CRUD & Import with Format Synchronization', () => {
   });
 
   afterAll(async () => {
-    await prisma.ingredient.deleteMany({
-      where: {
-        name: { in: ['Beras Merah Test Admin', 'Kacang Merah Test Admin', 'Imported Wortel Test'] }
-      }
-    });
+    await cleanupTestIngredients();
   });
 
   it('should successfully create a new ingredient via admin POST', async () => {

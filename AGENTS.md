@@ -58,7 +58,7 @@ Three full-repo audits were run on `develop`. Every finding below was fixed on `
 - `database.py` forces the `postgresql+psycopg2://` driver, because SQLAlchemy 2.1 otherwise expects psycopg v3.
 
 ### Database and config
-- No hardcoded database URL anywhere. `src/lib/prisma.ts` throws when `DATABASE_URL` is missing. Scripts in `scripts/` read `process.env.DATABASE_URL`; run them with `node --env-file=.env scripts/<name>.js`.
+- No hardcoded database URL anywhere. `src/lib/prisma.ts` throws when `DATABASE_URL` is missing, on the first query (the client is created lazily, so `next build` can collect page data without the variable). Scripts in `scripts/` read `process.env.DATABASE_URL`; run them with `node --env-file=.env scripts/<name>.js`.
 - Every schema change needs a migration. `prisma/migrations/20261110000000_catch_up_schema_drift` adds what was earlier applied to prod with `db push` (Recipe nutrition columns, PO forecast columns, `IngredientLedger.purchaseOrderId`, `AddressSchedule`, enum `PO_FULFILLMENT`). It is idempotent (`IF NOT EXISTS`), so it is a no-op on prod.
 
 ### Admin and nutritionist panels (UI rework, 2026-11-17)

@@ -24,19 +24,27 @@ function sanitizeConnectionString(raw?: string): string {
   return '';
 }
 
-// Validate process.env.DATABASE_URL and process.env.DIRECT_URL before using
-const rawUrl = process.env.DATABASE_URL || process.env.DIRECT_URL;
-const connectionString = sanitizeConnectionString(rawUrl);
-// No hardcoded fallback: a missing env var must fail loudly, not silently hit prod.
-if (!connectionString) throw new Error('DATABASE_URL is missing or invalid.');
+function createClient(): PrismaClient {
+  const connectionString = sanitizeConnectionString(process.env.DATABASE_URL || process.env.DIRECT_URL);
+  // No hardcoded fallback: a missing env var must fail loudly, not silently hit prod.
+  if (!connectionString) throw new Error('DATABASE_URL is missing or invalid.');
+  return new PrismaClient({ adapter: new PrismaPg(new Pool({ connectionString })) });
+}
 
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+function getClient(): PrismaClient {
+  if (!globalForPrisma.prisma) globalForPrisma.prisma = createClient();
+  return globalForPrisma.prisma;
+}
 
-export const prisma = globalForPrisma.prisma || new PrismaClient({ adapter });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// Lazy so `next build` can import route handlers without DATABASE_URL; the first query still throws when it is missing.
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getClient();
+    const value = Reflect.get(client, prop);
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+});
 
 export default prisma;

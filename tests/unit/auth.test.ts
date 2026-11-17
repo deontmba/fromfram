@@ -5,6 +5,9 @@ import { createJwtToken, verifyJwtToken } from '@/lib/jwt';
 import { verifyRole } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 
+// lib/auth imports lib/session, which loads the ESM-only jose package.
+jest.mock('@/lib/session', () => ({ getSessionUserId: jest.fn() }));
+
 // MOCK LOCAL: Mocking jwt module to bypass ESM jose library issues under Jest environment
 jest.mock('@/lib/jwt', () => {
   return {
