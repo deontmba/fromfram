@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import { CustomerPage } from "@/components/ui/customer-page";
 import {
   calculateBmi,
   healthMockData,
@@ -143,29 +144,13 @@ export function HealthProfileScreen() {
 
   return (
     <>
-    <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]"
-      />
-
-      <section className="relative mx-auto w-full max-w-[760px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
-        <Link
-          href="/profile"
-          className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50"
-        >
-          Kembali
-        </Link>
-
-        <div className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-6 shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
-          <p className="text-sm font-semibold text-[#11af82]">Health</p>
-          <h1 className="mt-2 text-[1.6rem] font-bold tracking-[-0.02em] text-neutral-900">
-            Profil kesehatan
-          </h1>
-          <p className="mt-2 text-[1rem] text-neutral-500">
-            Simpan data dasar yang dibutuhkan untuk rekomendasi meal plan.
-          </p>
-
+    <CustomerPage
+      title="Profil kesehatan"
+      subtitle="Data dasar untuk menyarankan porsi dan kalori yang pas."
+      backHref="/profile"
+      backLabel="Profil"
+    >
+        <div className="rounded-2xl border border-neutral-200 bg-white px-6 py-6">
           <div className="mt-5 rounded-[18px] bg-[#e8f8f0] px-5 py-5">
             <p className="text-sm font-semibold text-neutral-500">BMI saat ini</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -283,13 +268,12 @@ export function HealthProfileScreen() {
                 disabled={isSaving}
                 className="h-14 rounded-2xl bg-[#1abb89] px-6 text-[1.05rem] font-bold text-white shadow-[0_8px_16px_rgba(18,168,123,0.35)] transition hover:bg-[#15a97b] disabled:opacity-60"
               >
-                {isSaving ? "Menyimpan..." : "Save health profile"}
+                {isSaving ? "Menyimpan..." : "Simpan profil kesehatan"}
               </button>
             </div>
           </form>
         </div>
-      </section>
-    </main>
+    </CustomerPage>
     <ConfirmDialog
       isOpen={isSaveConfirmOpen}
       title="Konfirmasi Perubahan Data Kesehatan"

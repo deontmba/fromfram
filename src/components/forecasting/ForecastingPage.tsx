@@ -3,6 +3,7 @@ import { BrainCircuit, LoaderCircle } from 'lucide-react';
 import { ForecastHeader } from './ForecastHeader';
 import { SummaryCards } from './SummaryCards';
 import { FarmerGroup } from './FarmerGroup';
+import { FulfillModal } from './FulfillModal';
 import styles from '../operations/role-portal-screen.module.css';
 
 export function ForecastingPage() {
@@ -18,6 +19,7 @@ export function ForecastingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [fulfillItem, setFulfillItem] = useState<any | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (msg: string) => {
@@ -109,6 +111,19 @@ export function ForecastingPage() {
     }
   };
 
+  const handleFulfillConfirm = async (actualQtyKg: number) => {
+    if (!fulfillItem) return;
+    const res = await fetch(`/api/admin/forecast/${fulfillItem.id}/fulfill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actualReceivedQtyKg: actualQtyKg }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Gagal memproses penerimaan panen');
+    showToast(`Panen diterima, +${actualQtyKg.toFixed(1)} kg masuk gudang`);
+    fetchData();
+  };
+
   const hasData = data && data.length > 0;
 
   return (
@@ -138,6 +153,7 @@ export function ForecastingPage() {
               farmerData={group}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
+              onOpenFulfill={setFulfillItem}
             />
           ))}
         </>
@@ -146,13 +162,17 @@ export function ForecastingPage() {
           <BrainCircuit aria-hidden="true" strokeWidth={1.5} />
           <h2>Belum ada prediksi</h2>
           <p>
-            Belum ada prediksi kebutuhan bahan baku untuk minggu {selectedWeek}. AI menghitungnya dari histori dan meal plan pelanggan.
+            Belum ada prediksi kebutuhan bahan baku untuk minggu {selectedWeek}. AI menghitung kebutuhan dari pesanan yang sudah terkunci, lalu dikurangi stok gudang.
           </p>
           <button type="button" className={styles.actionCard} onClick={handleGenerate} disabled={isGenerating}>
             {isGenerating ? <LoaderCircle className={styles.spin} aria-hidden="true" /> : <BrainCircuit aria-hidden="true" />}
             {isGenerating ? 'Menghitung...' : 'Buat Prediksi'}
           </button>
         </div>
+      )}
+
+      {fulfillItem && (
+        <FulfillModal item={fulfillItem} onClose={() => setFulfillItem(null)} onConfirm={handleFulfillConfirm} />
       )}
 
       {toast && <div className={styles.toast} role="status">{toast}</div>}

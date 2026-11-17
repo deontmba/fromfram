@@ -67,6 +67,16 @@ Three full-repo audits were run on `develop`. Every finding below was fixed on `
 - Show only numbers that come from the database. The hardcoded KPIs, fallbacks (`|| 128`, `|| 14850`, `Math.max(1, …)`) and placeholder cards were removed. Do not add them back.
 - `GET /api/admin/ledgers/ingredients` returns `kpis: { currentStockKg, lowStockCount }` only. `getAdminReports` still computes invented deltas and rates; the UI no longer shows them.
 - Activity icons from `getAdminDashboardStats` are the keys `user`, `delivery`, `payment` (not emoji).
+- Prediksi AI: a CONFIRMED PO gets a "Terima panen" button that opens `FulfillModal` and calls `POST /api/admin/forecast/[poId]/fulfill` with `actualReceivedQtyKg`. Ported from `feat/DFA` into the panel styles; that branch's own copies of `ForecastingPage`, `FarmerGroup` and `IngredientRow` are superseded.
+
+### Customer flow (rework, 2026-11-17)
+- Checkout pages (select-plan, delivery-address, weekly-menu, payment) use `CheckoutLayout` from `src/components/subscription/checkout-layout.tsx` (step indicator Paket, Alamat, Menu, Bayar). Signed-in pages (subscription, delivery, payment history, profile and its subpages) use `CustomerPage` from `src/components/ui/customer-page.tsx`.
+- Customer UI is Indonesian, with no emoji and no hand-written `<svg>`; use `lucide-react`.
+- The delivery address form takes recipient name and phone (pre-filled from `/api/auth/me`, never from `profileMockData`) and only offers DKI JAKARTA, JAWA BARAT and BANTEN (`SERVICE_PROVINCES`).
+- `applyTransactionStatus(id, status, paymentMethod?)` creates the `TransactionLedger` row (code `TRX-xxxxxxxx`, reference `INV/FF/<order tail>`) when none exists yet, so Snap payments show up in admin Pencatatan.
+- Delivery ETA follows the meal slot: lunch about 11.30, dinner about 17.30 WIB (`slotTime` in `deliveryController.ts`). One `Delivery` row exists per portion, so the tracking page groups them per meal with a portion count.
+- `src/proxy.ts` also protects `/onboarding` and `/delivery`; role redirects go to `/unauthorized`.
+- Known mismatch, not fixed on purpose: select-plan multiplies the price by servings (`calculatePrice`), but the server charges the flat `PLAN_PRICES`. The team must pick one.
 
 ## Environment variables
 - `DATABASE_URL`: required. Set it in `.env` locally and in Vercel project settings.
@@ -74,7 +84,7 @@ Three full-repo audits were run on `develop`. Every finding below was fixed on `
 - `MIDTRANS_SERVER_KEY`: required. If it is empty, every webhook is rejected.
 
 ## Tests
-- `tests/unit/flows/*.test.ts` (520 tests) cover payment, subscriptions, weekly box and meals, admin and stock, auth and uploads. They mock `@/lib/prisma` and never touch a database. `jose` is ESM-only and fails to load under this Jest config, so these tests mock `@/lib/session`.
+- `tests/unit/flows/*.test.ts` (522 tests) cover payment, subscriptions, weekly box and meals, admin and stock, auth and uploads. They mock `@/lib/prisma` and never touch a database. `jose` is ESM-only and fails to load under this Jest config, so these tests mock `@/lib/session`.
 - `tests/unit/guard-test-db.ts` stops Jest unless `DATABASE_URL` points at localhost, because the older `tests/unit/*.test.ts` write real rows.
 - Run the mocked tests: `DATABASE_URL=postgresql://u:p@localhost:5432/x npx jest tests/unit/flows`
 - Python (47 tests): `python -I -m pytest services/forecasting/tests -q`. Install `services/forecasting/requirements.txt` plus `pytest httpx` first.
@@ -92,9 +102,7 @@ Third pass: the never-reachable email-verification UI in `auth-screen.tsx` and i
 - No code path writes `USER_PURCHASE` ingredient-ledger rows any more (only the deleted, never-called `saveMealSelection` did). Add it to `saveWeeklyMenuSelections` if the ledger should show customer usage.
 - Bulk import does not write a ledger row for newly created ingredients.
 - Snap token reuse does not check whether the token has expired.
-- Snap payments do not create a `TransactionLedger` row.
 - Upload storage on Vercel (see above).
 - A password reset does not end existing sessions (JWT lives 7 days, no server check).
 - No rate limit on login or forgot-password.
 - Nutritionists can edit or delete a weekly menu after customers picked meals from it.
-- Delivery ETA texts in `deliveryController.ts` and `src/app/delivery/page.tsx` still say 06:00–12:00; real slots are 11:30 and 17:30.

@@ -422,7 +422,7 @@ export function mapSubscriptionResponseToViewModel(payload: unknown): ManageSubs
   return {
     id: pickString(record.id),
     planKey: inferredPlanKey,
-    planLabel: pickString(record.planLabel, record.planName) ?? `${planOption.title} Plan`,
+    planLabel: pickString(record.planLabel, record.planName) ?? `Paket ${planOption.title}`,
     priceLabel: formattedPrice ? formatCurrency(formattedPrice) : planOption.priceLabel,
     billingLabel: planOption.billingLabel,
     status,

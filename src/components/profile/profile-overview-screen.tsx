@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CustomerPage } from "@/components/ui/customer-page";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { motion, type Variants } from "framer-motion";
@@ -15,7 +16,7 @@ import {
 import { 
   ArrowLeft, Edit2, LogOut, User, MapPin, 
   Settings, ChevronRight, Activity, 
-  Flame, CreditCard, Shield, Bell, Zap, Sparkles, Star, Package, Plus
+  Flame, CreditCard, Shield, LifeBuoy, X, Zap, Sparkles, Star, Package, Plus
 } from 'lucide-react';
 
 const containerVariants: Variants = {
@@ -169,9 +170,9 @@ export function ProfileOverviewScreen() {
           email: user.email ?? profileMockData.email,
           phoneNumber: user.phoneNumber ?? profileMockData.phoneNumber,
           avatarUrl: user.avatarUrl ?? profileMockData.avatarUrl,
-          memberLabel: isActiveSubscription ? "Premium Member" : "Reguler",
+          memberLabel: isActiveSubscription ? "Pelanggan aktif" : "Reguler",
           joinedAt: user.createdAt
-            ? `Joined ${new Intl.DateTimeFormat("en", {
+            ? `Bergabung ${new Intl.DateTimeFormat("id-ID", {
                 month: "short",
                 year: "numeric",
               }).format(new Date(user.createdAt))}`
@@ -347,30 +348,8 @@ export function ProfileOverviewScreen() {
 
   return (
     <>
-      <main className="relative min-h-screen overflow-hidden bg-[#fafafb] px-4 py-8 sm:px-6 sm:py-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,#d6f2e5_0%,transparent_60%)] opacity-40"
-        />
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="relative mx-auto w-full max-w-[960px]"
-        >
-          {/* Header */}
-          <motion.div variants={itemVariants} className="mb-8 flex items-center justify-between">
-            <Link
-              href="/"
-              className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-neutral-100 text-neutral-600 transition hover:bg-neutral-50 hover:text-neutral-900"
-            >
-              <ArrowLeft size={20} />
-            </Link>
-            <h1 className="text-[1.35rem] font-bold text-neutral-900 tracking-tight">Profile Management</h1>
-            <div className="h-12 w-12"></div> {/* Spacer for center alignment */}
-          </motion.div>
-
+      <CustomerPage title="Profil" width="lg">
+        <motion.div variants={containerVariants} initial="hidden" animate="visible">
           {message ? (
             <motion.div variants={itemVariants} className="mb-6">
               <div className={`rounded-2xl p-4 text-sm font-semibold text-center border ${message.tone === "error" ? "bg-red-50 text-red-600 border-red-100" : "bg-[#eafff5] text-[#13b987] border-[#13b987]/20"}`}>
@@ -409,7 +388,7 @@ export function ProfileOverviewScreen() {
               <div className="mt-4 flex items-center justify-center gap-2">
                 <div className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[0.9rem] font-bold shadow-sm border ${profile.isSubscribed ? "bg-[#13b987]/10 text-[#13b987] border-[#13b987]/20" : "bg-neutral-100 text-neutral-600 border-neutral-200"}`}>
                   <Star size={16} className={profile.isSubscribed ? "fill-[#13b987]" : ""} />
-                  {profile.isSubscribed ? "Premium Member" : "Belum Langganan"}
+                  {profile.isSubscribed ? "Pelanggan aktif" : "Belum Langganan"}
                 </div>
               </div>
               
@@ -417,15 +396,15 @@ export function ProfileOverviewScreen() {
                 <div className="mt-10 flex w-full max-w-[480px] justify-between divide-x divide-neutral-100 border-t border-neutral-100 pt-8">
                   <div className="flex-1 text-center">
                     <p className="text-[1.7rem] font-bold text-neutral-900">24</p>
-                    <p className="text-[0.85rem] font-bold text-neutral-400 uppercase tracking-widest mt-1">Boxes</p>
+                    <p className="text-[0.85rem] font-bold text-neutral-400 uppercase tracking-widest mt-1">Box</p>
                   </div>
                   <div className="flex-1 text-center">
                     <p className="text-[1.7rem] font-bold text-[#13b987]">12</p>
-                    <p className="text-[0.85rem] font-bold text-[#13b987]/60 uppercase tracking-widest mt-1">Favs</p>
+                    <p className="text-[0.85rem] font-bold text-[#13b987]/60 uppercase tracking-widest mt-1">Favorit</p>
                   </div>
                   <div className="flex-1 text-center">
-                    <p className="text-[1.7rem] font-bold text-neutral-900">6<span className="text-xl text-neutral-400">mo</span></p>
-                    <p className="text-[0.85rem] font-bold text-neutral-400 uppercase tracking-widest mt-1">Streak</p>
+                    <p className="text-[1.7rem] font-bold text-neutral-900">6<span className="text-xl text-neutral-400"> bln</span></p>
+                    <p className="text-[0.85rem] font-bold text-neutral-400 uppercase tracking-widest mt-1">Berlangganan</p>
                   </div>
                 </div>
               ) : (
@@ -445,29 +424,29 @@ export function ProfileOverviewScreen() {
                     <div className="h-12 w-12 rounded-[18px] bg-neutral-100 flex items-center justify-center text-neutral-600 shadow-sm border border-neutral-200/50">
                       <User size={22} />
                     </div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Personal Info</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Data diri</h3>
                   </div>
-                  <button className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition" onClick={openEditDialog}>Edit</button>
+                  <button className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition" onClick={openEditDialog}>Ubah</button>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between items-center py-3.5 border-b border-neutral-100/80">
-                    <span className="text-neutral-500 font-medium">Full Name</span>
+                    <span className="text-neutral-500 font-medium">Nama lengkap</span>
                     <span className="font-bold text-neutral-900">{profile.fullName}</span>
                   </div>
                   <div className="flex justify-between items-center py-3.5 border-b border-neutral-100/80">
-                    <span className="text-neutral-500 font-medium">Gender</span>
+                    <span className="text-neutral-500 font-medium">Jenis kelamin</span>
                     <span className={`font-bold ${profile.gender ? 'text-neutral-900' : 'text-neutral-400 italic'}`}>
                       {profile.gender || "Belum diisi"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-3.5 border-b border-neutral-100/80">
-                    <span className="text-neutral-500 font-medium">Age</span>
+                    <span className="text-neutral-500 font-medium">Umur</span>
                     <span className={`font-bold ${profile.age ? 'text-neutral-900' : 'text-neutral-400 italic'}`}>
                       {profile.age ? `${profile.age} Years` : "Belum diisi"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-3.5">
-                    <span className="text-neutral-500 font-medium">Phone</span>
+                    <span className="text-neutral-500 font-medium">Nomor HP</span>
                     <span className={`font-bold ${profile.phoneNumber ? 'text-neutral-900' : 'text-neutral-400 italic'}`}>
                       {profile.phoneNumber || "Belum diisi"}
                     </span>
@@ -483,29 +462,29 @@ export function ProfileOverviewScreen() {
                     <Sparkles size={22} />
                   </div>
                   <div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">AI Personalization</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Personalisasi menu</h3>
                     <div className="inline-flex items-center gap-1.5 mt-1">
                       <span className="relative flex h-2.5 w-2.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#13b987] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#13b987]"></span>
                       </span>
-                      <p className="text-[0.8rem] text-[#13b987] font-bold uppercase tracking-wider">Active</p>
+                      <p className="text-[0.8rem] text-[#13b987] font-bold uppercase tracking-wider">Aktif</p>
                     </div>
                   </div>
                 </div>
                 <div className="rounded-[20px] bg-[#fafafa] p-5 border border-neutral-100 mb-5 shadow-inner">
                   <p className="text-[0.95rem] text-neutral-600 leading-relaxed font-medium">
-                    FromFram AI is currently tailoring your weekly meal plan to support <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded-lg shadow-sm">{(profile as any).goals || healthMockData.goals}</span> while avoiding <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded-lg shadow-sm">{(profile as any).allergies || healthMockData.allergies || "Nothing"}</span>.
+                    Rekomendasi menu mingguanmu disesuaikan untuk <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded-lg shadow-sm">{(profile as any).goals || healthMockData.goals}</span> dan menghindari <span className="font-bold text-neutral-900 bg-white px-2 py-0.5 rounded-lg shadow-sm">{(profile as any).allergies || healthMockData.allergies || "tidak ada"}</span>.
                   </p>
                 </div>
                 <div className="flex items-center justify-between py-3.5 border-b border-neutral-100/80">
-                  <span className="text-[1rem] font-bold text-neutral-800">Auto-adjust portions</span>
+                  <span className="text-[1rem] font-bold text-neutral-800">Sesuaikan porsi otomatis</span>
                   <div className="h-7 w-12 rounded-full bg-[#13b987] relative cursor-pointer shadow-inner">
                     <div className="absolute right-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform" />
                   </div>
                 </div>
                 <div className="flex items-center justify-between py-3.5">
-                  <span className="text-[1rem] font-bold text-neutral-800">Discover new cuisines</span>
+                  <span className="text-[1rem] font-bold text-neutral-800">Coba menu baru</span>
                   <div className="h-7 w-12 rounded-full bg-[#13b987] relative cursor-pointer shadow-inner">
                     <div className="absolute right-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform" />
                   </div>
@@ -519,9 +498,9 @@ export function ProfileOverviewScreen() {
                     <div className="h-12 w-12 rounded-[18px] bg-neutral-100 flex items-center justify-center text-neutral-600 shadow-sm border border-neutral-200/50">
                       <MapPin size={22} />
                     </div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Addresses</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Alamat</h3>
                   </div>
-                  <Link href="/profile/address" className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition">Manage</Link>
+                  <Link href="/profile/address" className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition">Kelola</Link>
                 </div>
                 <div className="space-y-4">
                   {addresses.length > 0 ? (
@@ -529,7 +508,7 @@ export function ProfileOverviewScreen() {
                       <div key={address.id} className={`rounded-[20px] p-5 relative transition cursor-pointer ${address.isDefault ? "border-2 border-[#13b987]/30 bg-[#eafff5]/40 hover:border-[#13b987]/60" : "border border-neutral-100 bg-[#fafafa] hover:bg-white hover:border-neutral-200 hover:shadow-sm"}`}>
                         {address.isDefault && (
                           <div className="absolute top-5 right-5">
-                            <span className="text-[0.75rem] font-extrabold text-[#13b987] bg-[#13b987]/15 px-2.5 py-1 rounded-lg uppercase tracking-wider">Primary</span>
+                            <span className="text-[0.75rem] font-extrabold text-[#13b987] bg-[#13b987]/15 px-2.5 py-1 rounded-lg uppercase tracking-wider">Utama</span>
                           </div>
                         )}
                         <p className="font-bold text-neutral-900 text-[1.1rem] mb-1">{address.label}</p>
@@ -556,9 +535,9 @@ export function ProfileOverviewScreen() {
                     <div className="h-12 w-12 rounded-[18px] bg-[#fff0f2] flex items-center justify-center text-[#e11d48] shadow-sm border border-[#ffe4e8]">
                       <Activity size={22} />
                     </div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Health Profile</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Profil kesehatan</h3>
                   </div>
-                  <Link href="/profile/health" className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition">Update</Link>
+                  <Link href="/profile/health" className="text-[0.95rem] font-bold text-[#13b987] hover:bg-[#eafff5] px-4 py-2 rounded-xl transition">Perbarui</Link>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-7">
@@ -576,7 +555,7 @@ export function ProfileOverviewScreen() {
                       <div className="p-1.5 bg-[#eafff5] rounded-lg text-[#13b987]">
                         <Zap size={16} />
                       </div>
-                      <span className="text-[0.85rem] font-bold text-neutral-500 uppercase tracking-wide">Goal</span>
+                      <span className="text-[0.85rem] font-bold text-neutral-500 uppercase tracking-wide">Tujuan</span>
                     </div>
                     <p className="font-black text-neutral-900 text-[1.1rem] truncate">{(profile as any).goals || healthMockData.goals || "Not set"}</p>
                   </div>
@@ -584,7 +563,7 @@ export function ProfileOverviewScreen() {
 
                 <div className="space-y-6">
                   <div>
-                    <p className="text-[0.9rem] font-bold text-neutral-400 uppercase tracking-wider mb-3">Dietary Preference</p>
+                    <p className="text-[0.9rem] font-bold text-neutral-400 uppercase tracking-wider mb-3">Preferensi makan</p>
                     <div className="flex flex-wrap gap-2.5">
                       {(profile as any).dietPreference ? (
                         <span className="inline-flex items-center px-4 py-2 rounded-xl bg-[#13b987]/10 text-[#13b987] text-[0.95rem] font-bold border border-[#13b987]/20 shadow-sm">{(profile as any).dietPreference}</span>
@@ -594,7 +573,7 @@ export function ProfileOverviewScreen() {
                     </div>
                   </div>
                   <div>
-                    <p className="text-[0.9rem] font-bold text-neutral-400 uppercase tracking-wider mb-3">Allergies & Dislikes</p>
+                    <p className="text-[0.9rem] font-bold text-neutral-400 uppercase tracking-wider mb-3">Alergi</p>
                     <div className="flex flex-wrap gap-2.5">
                       {(profile as any).allergies ? parseArrayData((profile as any).allergies).map((allergy, idx) => (
                         <span key={idx} className="inline-flex items-center px-4 py-2 rounded-xl bg-red-50 text-red-600 text-[0.95rem] font-bold border border-red-100 shadow-sm">{allergy}</span>
@@ -621,7 +600,7 @@ export function ProfileOverviewScreen() {
                         Terakhir diperbarui: {dateFormatter.format(lastUpdated)}
                       </p>
                       <p className={`text-[0.82rem] font-bold ${isStale ? "text-red-500 animate-pulse" : "text-[#13b987]"}`}>
-                        {isStale ? `⚠ Sebaiknya diperbarui pada: ${dateFormatter.format(recommendedDate)}` : `Saran pembaruan berikutnya: ${dateFormatter.format(recommendedDate)}`}
+                        {isStale ? `Sebaiknya diperbarui pada: ${dateFormatter.format(recommendedDate)}` : `Saran pembaruan berikutnya: ${dateFormatter.format(recommendedDate)}`}
                       </p>
                     </div>
                   );
@@ -636,7 +615,7 @@ export function ProfileOverviewScreen() {
                     <div className="h-12 w-12 rounded-[18px] bg-[#fefce8] flex items-center justify-center text-yellow-500 shadow-sm border border-[#fef08a]/50">
                       <CreditCard size={22} />
                     </div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Subscription</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Langganan</h3>
                   </div>
                 </div>
                 
@@ -647,18 +626,18 @@ export function ProfileOverviewScreen() {
                     </div>
                     <div className="relative">
                       <div className="inline-flex rounded-xl bg-white/20 px-3 py-1.5 text-[0.75rem] font-extrabold tracking-widest backdrop-blur-md text-white shadow-sm border border-white/10 uppercase">
-                        Active Plan
+                        Paket aktif
                       </div>
-                      <h4 className="mt-5 text-[1.8rem] font-bold tracking-tight">{formatPlanLabel(subscriptionInfo.planType)} Plan</h4>
-                      <p className="mt-1.5 text-neutral-300 text-[1rem] font-medium">{subscriptionInfo.servings} Porsi • Free Delivery</p>
+                      <h4 className="mt-5 text-[1.8rem] font-bold tracking-tight">Paket {formatPlanLabel(subscriptionInfo.planType)}</h4>
+                      <p className="mt-1.5 text-neutral-300 text-[1rem] font-medium">{subscriptionInfo.servings} porsi · Gratis ongkir</p>
                       
                       <div className="mt-8 flex items-end justify-between bg-black/20 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
                         <div>
-                          <p className="text-[0.8rem] text-neutral-400 font-bold uppercase tracking-wider">Next billing date</p>
+                          <p className="text-[0.8rem] text-neutral-400 font-bold uppercase tracking-wider">Tagihan berikutnya</p>
                           <p className="text-[1.1rem] font-bold mt-1 text-white">{getNextBillingDate(subscriptionInfo.startDate, subscriptionInfo.planType)}</p>
                         </div>
                         <button className="rounded-xl bg-white text-neutral-900 px-5 py-2.5 text-[0.95rem] font-bold hover:bg-neutral-100 transition shadow-md hover:scale-105">
-                          Manage
+                          Kelola
                         </button>
                       </div>
                     </div>
@@ -697,7 +676,7 @@ export function ProfileOverviewScreen() {
                     <div className="h-12 w-12 rounded-[18px] bg-neutral-100 flex items-center justify-center text-neutral-600 shadow-sm border border-neutral-200/50">
                       <Shield size={22} />
                     </div>
-                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Account</h3>
+                    <h3 className="text-[1.3rem] font-bold text-neutral-900 tracking-tight">Akun</h3>
                   </div>
                 </div>
 
@@ -708,21 +687,21 @@ export function ProfileOverviewScreen() {
                         <Settings size={20} />
                       </div>
                       <div>
-                        <p className="font-bold text-neutral-900 text-[1.05rem]">Password & Security</p>
-                        <p className="text-[0.9rem] font-medium text-neutral-500 mt-0.5">Change password, 2FA</p>
+                        <p className="font-bold text-neutral-900 text-[1.05rem]">Password</p>
+                        <p className="text-[0.9rem] font-medium text-neutral-500 mt-0.5">Ubah password akun</p>
                       </div>
                     </div>
                     <ChevronRight size={20} className="text-neutral-400 group-hover:text-[#13b987] group-hover:translate-x-1 transition-all" />
                   </Link>
                   
-                  <Link href="/profile/notifications" className="flex items-center justify-between p-4 hover:bg-[#fafafa] rounded-[20px] transition group border border-transparent hover:border-neutral-100">
+                  <Link href="/profile/help" className="flex items-center justify-between p-4 hover:bg-[#fafafa] rounded-[20px] transition group border border-transparent hover:border-neutral-100">
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-[16px] bg-white border border-neutral-100 flex items-center justify-center text-neutral-500 shadow-sm group-hover:text-[#13b987] transition-colors">
-                        <Bell size={20} />
+                        <LifeBuoy size={20} />
                       </div>
                       <div>
-                        <p className="font-bold text-neutral-900 text-[1.05rem]">Notifications</p>
-                        <p className="text-[0.9rem] font-medium text-neutral-500 mt-0.5">Push, email, SMS alerts</p>
+                        <p className="font-bold text-neutral-900 text-[1.05rem]">Bantuan</p>
+                        <p className="text-[0.9rem] font-medium text-neutral-500 mt-0.5">Pertanyaan yang sering diajukan</p>
                       </div>
                     </div>
                     <ChevronRight size={20} className="text-neutral-400 group-hover:text-[#13b987] group-hover:translate-x-1 transition-all" />
@@ -735,7 +714,7 @@ export function ProfileOverviewScreen() {
                       className="w-full mt-2 flex items-center justify-center gap-2.5 p-4 text-[#e11d48] font-bold hover:bg-[#fff0f2] rounded-[20px] transition border border-transparent hover:border-[#ffe4e8] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <LogOut size={20} />
-                      {isLoggingOut ? "Logging out..." : "Log out"}
+                      {isLoggingOut ? "Keluar..." : "Keluar"}
                     </button>
                   </div>
                 </div>
@@ -743,7 +722,7 @@ export function ProfileOverviewScreen() {
             </div>
           </div>
         </motion.div>
-      </main>
+      </CustomerPage>
 
       {/* Edit Dialog Modal */}
       {isEditOpen ? (
@@ -755,7 +734,7 @@ export function ProfileOverviewScreen() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-[0.85rem] font-bold text-[#13b987] uppercase tracking-wider">Profile</p>
+                <p className="text-[0.85rem] font-bold text-[#13b987] uppercase tracking-wider">Profil</p>
                 <h3 className="mt-1 text-[1.6rem] font-bold tracking-tight text-neutral-900">
                   Edit details
                 </h3>
@@ -765,7 +744,7 @@ export function ProfileOverviewScreen() {
                 onClick={closeEditDialog}
                 className="rounded-full h-10 w-10 flex items-center justify-center bg-neutral-100 text-neutral-600 transition hover:bg-neutral-200"
               >
-                ✕
+                <X size={18} aria-hidden="true" />
               </button>
             </div>
 
@@ -806,7 +785,7 @@ export function ProfileOverviewScreen() {
               
               <div className="grid grid-cols-2 gap-4">
                 <label className="block">
-                  <span className="block text-[1.05rem] font-bold text-neutral-800">Gender</span>
+                  <span className="block text-[1.05rem] font-bold text-neutral-800">Jenis kelamin</span>
                   <select
                     className={inputClassName + " appearance-none"}
                     required
@@ -818,14 +797,14 @@ export function ProfileOverviewScreen() {
                       }))
                     }
                   >
-                    <option value="" disabled>Pilih Gender</option>
+                    <option value="" disabled>Pilih jenis kelamin</option>
                     <option value="Male">Laki-laki</option>
                     <option value="Female">Perempuan</option>
                   </select>
                 </label>
                 
                 <label className="block">
-                  <span className="block text-[1.05rem] font-bold text-neutral-800">Age</span>
+                  <span className="block text-[1.05rem] font-bold text-neutral-800">Umur</span>
                   <input
                     type="number"
                     className={inputClassName}
@@ -844,7 +823,7 @@ export function ProfileOverviewScreen() {
               </div>
 
               <label className="block">
-                <span className="block text-[1.05rem] font-bold text-neutral-800">Phone number</span>
+                <span className="block text-[1.05rem] font-bold text-neutral-800">Nomor HP</span>
                 <input
                   type="tel"
                   className={inputClassName}
@@ -867,7 +846,7 @@ export function ProfileOverviewScreen() {
                 disabled={isSaving}
                 className="mt-6 h-14 w-full rounded-2xl bg-[#13b987] text-[1.1rem] font-bold text-white shadow-[0_8px_20px_rgba(19,185,135,0.35)] transition hover:bg-[#0f996f] disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-[0_8px_25px_rgba(19,185,135,0.45)] hover:-translate-y-0.5"
               >
-                {isSaving ? "Saving changes..." : "Save changes"}
+                {isSaving ? "Menyimpan..." : "Simpan"}
               </button>
             </form>
           </motion.div>
@@ -876,10 +855,10 @@ export function ProfileOverviewScreen() {
       
       <ConfirmDialog
         isOpen={isSaveConfirmOpen}
-        title="Confirm Profile Changes"
+        title="Simpan perubahan profil?"
         message="Are you sure you want to save the changes to your profile data?"
-        confirmLabel="Yes, Save"
-        cancelLabel="Cancel"
+        confirmLabel="Ya, simpan"
+        cancelLabel="Batal"
         isConfirming={isSaving}
         onCancel={() => setIsSaveConfirmOpen(false)}
         onConfirm={handleConfirmSave}
@@ -888,8 +867,8 @@ export function ProfileOverviewScreen() {
         isOpen={isLogoutConfirmOpen}
         title="Confirm Logout"
         message="Are you sure you want to log out of your account?"
-        confirmLabel="Yes, Log out"
-        cancelLabel="Cancel"
+        confirmLabel="Ya, keluar"
+        cancelLabel="Batal"
         variant="destructive"
         isConfirming={isLoggingOut}
         onCancel={() => setIsLogoutConfirmOpen(false)}

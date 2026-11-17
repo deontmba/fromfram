@@ -13,7 +13,7 @@ export function ForecastHeader({
 }: any) {
   const hasData = data && data.length > 0;
   const allConfirmed = hasData
-    ? data.every((group: any) => group.purchaseOrders.every((po: any) => po.status === 'CONFIRMED'))
+    ? data.every((group: any) => group.purchaseOrders.every((po: any) => po.status !== 'DRAFT'))
     : true;
 
   const handleConfirmAllClick = () => {

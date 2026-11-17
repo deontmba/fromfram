@@ -4,7 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
+import {
+  User as UserIcon,
+  Package as BoxIcon,
+  CalendarDays as CalendarIcon,
+  ChefHat as ChefHatIcon,
+  TriangleAlert as AlertIcon,
+  Clock as ClockIcon,
+  History as HistoryIcon,
+  MapPin as PinIcon,
+  CreditCard as CardIcon,
+  ChevronDown,
+  X,
+} from "lucide-react";
 
 type DayOfWeek = "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU";
 type PlanType = "MINGGUAN" | "BULANAN" | "TAHUNAN";
@@ -342,15 +354,15 @@ function getPlanLabel(value: unknown) {
   const normalizedValue = pickString(value)?.toUpperCase();
 
   if (normalizedValue === "MINGGUAN") {
-    return "Mingguan Plan";
+    return "Paket Mingguan";
   }
 
   if (normalizedValue === "BULANAN") {
-    return "Bulanan Plan";
+    return "Paket Bulanan";
   }
 
   if (normalizedValue === "TAHUNAN") {
-    return "Tahunan Plan";
+    return "Paket Tahunan";
   }
 
   return EMPTY_LABEL;
@@ -752,152 +764,6 @@ function BrandMark() {
   );
 }
 
-function UserIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function BoxIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m4 7.5 8 4.5 8-4.5M12 12v9"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <rect
-        x="4"
-        y="5"
-        width="16"
-        height="15"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M8 3v4M16 3v4M4 10h16"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ChefHatIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M6 11.5a4 4 0 0 1 6-5.1 4 4 0 0 1 6 5.1V19H6v-7.5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path d="M8 15h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AlertIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M12 7v6M12 17h.01"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ClockIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M12 7v5l3 2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function HistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M4 4v6h6M5 13a7 7 0 1 0 2-7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function PinIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="10" r="2" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function CardIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <rect
-        x="3"
-        y="5"
-        width="18"
-        height="14"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path d="M3 10h18M7 15h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function QuickActionIcon({ icon }: { icon: QuickAction["icon"] }) {
   if (icon === "history") {
     return <HistoryIcon className="h-5 w-5" />;
@@ -936,21 +802,22 @@ function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <main className="min-h-screen bg-[#f7f7f5] text-neutral-950">
       <header className="sticky top-0 z-50 border-b border-black/5 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-4 sm:px-6 lg:px-8">
           <BrandMark />
           <div className="flex items-center gap-2">
             <Link
               href="/subscription"
-              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#e1f6ee] px-5 text-sm font-bold text-[#0f8f6d] shadow-[0_8px_18px_rgba(18,184,134,0.12)] transition hover:bg-[#d5f1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+              className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#e1f6ee] px-3 sm:px-5 text-sm font-bold text-[#0f8f6d] shadow-[0_8px_18px_rgba(18,184,134,0.12)] transition hover:bg-[#d5f1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
             >
-              Kelola Langganan
+              <span className="sm:hidden">Langganan</span>
+              <span className="hidden sm:inline">Kelola Langganan</span>
             </Link>
             <Link
               href="/profile"
-              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#12b886] px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(18,184,134,0.18)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#12b886] px-3 sm:px-5 text-sm font-bold text-white shadow-[0_8px_18px_rgba(18,184,134,0.18)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
             >
-              <UserIcon />
-              Profil
+              <UserIcon aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">Profil</span>
             </Link>
           </div>
         </div>
@@ -1197,12 +1064,10 @@ export function DashboardScreen() {
                             </span>
                           )}
                           {/* Chevron */}
-                          <svg
-                            viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                          <ChevronDown
+                            aria-hidden="true"
                             className={`h-4 w-4 text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                          >
-                            <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          />
                         </div>
                       </button>
 
@@ -1364,7 +1229,7 @@ export function DashboardScreen() {
                     {dashboard.nextWeek.heading}
                   </h3>
                   <p className="mt-2 text-sm text-neutral-500">
-                    Deadline:{" "}
+                    Batas pilih:{" "}
                     <span className="font-medium text-[#ff6767]">
                       {dashboard.nextWeek.deadline}
                     </span>

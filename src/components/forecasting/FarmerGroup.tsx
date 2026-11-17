@@ -2,9 +2,10 @@ import React from 'react';
 import { IngredientRow } from './IngredientRow';
 import styles from '../operations/role-portal-screen.module.css';
 
-export function FarmerGroup({ farmerData, onConfirm, onCancel }: any) {
+export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill }: any) {
   const { farmer, purchaseOrders } = farmerData;
-  const isAllConfirmed = purchaseOrders.every((po: any) => po.status === 'CONFIRMED');
+  const isAllFulfilled = purchaseOrders.every((po: any) => po.status === 'FULFILLED');
+  const isAllConfirmed = purchaseOrders.every((po: any) => po.status === 'CONFIRMED' || po.status === 'FULFILLED');
   const subtotal = purchaseOrders.reduce((sum: number, po: any) => sum + po.totalPrice, 0);
 
   const formatCurrency = (val: number) =>
@@ -18,8 +19,8 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel }: any) {
           <span>{farmer.region}</span>
           <span className={`${styles.tag} ${styles.tagGray}`}>{farmer.commodityType}</span>
         </h3>
-        <span className={`${styles.tag} ${isAllConfirmed ? styles.tagGreen : styles.tagAmber}`}>
-          {isAllConfirmed ? 'Terkonfirmasi' : 'Belum dikonfirmasi'}
+        <span className={`${styles.tag} ${isAllFulfilled ? styles.tagGreen : isAllConfirmed ? styles.tagBlue : styles.tagAmber}`}>
+          {isAllFulfilled ? 'Semua panen diterima' : isAllConfirmed ? 'Terkonfirmasi' : 'Belum dikonfirmasi'}
         </span>
       </div>
 
@@ -28,16 +29,23 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel }: any) {
           <thead>
             <tr>
               <th>Bahan</th>
-              <th className={styles.alignRight}>Prediksi</th>
+              <th className={styles.alignRight}>Kebutuhan</th>
+              <th className={styles.alignRight}>Perlu dibeli</th>
               <th>Keyakinan</th>
               <th className={styles.alignRight}>Harga / kg</th>
               <th className={styles.alignRight}>Estimasi</th>
-              <th>Jumlah pesan</th>
+              <th>Status / aksi</th>
             </tr>
           </thead>
           <tbody>
             {purchaseOrders.map((po: any) => (
-              <IngredientRow key={po.id} item={po} onConfirm={onConfirm} onCancel={onCancel} />
+              <IngredientRow
+                key={po.id}
+                item={po}
+                onConfirm={onConfirm}
+                onCancel={onCancel}
+                onOpenFulfill={(item: any) => onOpenFulfill?.({ ...item, farmer })}
+              />
             ))}
           </tbody>
         </table>

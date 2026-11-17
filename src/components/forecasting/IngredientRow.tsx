@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { PackageCheck } from 'lucide-react';
 import styles from '../operations/role-portal-screen.module.css';
 
-export function IngredientRow({ item, onConfirm }: any) {
+export function IngredientRow({ item, onConfirm, onOpenFulfill }: any) {
+  const isFulfilled = item.status === 'FULFILLED';
   const isConfirmed = item.status === 'CONFIRMED';
+  const isLocked = isConfirmed || isFulfilled;
+  const currentStock = Number(item.currentStockKg ?? item.ingredient?.stockKg ?? 0);
+  const grossDemand = Number(item.grossForecastKg ?? item.forecastedQtyKg ?? 0);
   const [qty, setQty] = useState(item.orderedQtyKg);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -22,16 +27,28 @@ export function IngredientRow({ item, onConfirm }: any) {
 
   return (
     <tr>
-      <td className={styles.tableKey}>{item.ingredient.name}</td>
-      <td className={`${styles.alignRight} ${styles.nowrap}`}>{Number(item.forecastedQtyKg).toFixed(1)} kg</td>
+      <td>
+        <span className={styles.tableKey}>{item.ingredient.name}</span>
+        <span className={styles.cellSub}>Stok gudang {currentStock.toFixed(1)} kg</span>
+      </td>
+      <td className={`${styles.alignRight} ${styles.nowrap}`}>{grossDemand.toFixed(1)} kg</td>
+      <td className={`${styles.alignRight} ${styles.nowrap} ${styles.tableKey}`}>{Number(item.forecastedQtyKg).toFixed(1)} kg</td>
       <td><ConfidenceBadge score={item.confidenceScore} /></td>
       <td className={`${styles.alignRight} ${styles.nowrap}`}>{formatCurrency(item.pricePerKg)}</td>
       <td className={`${styles.alignRight} ${styles.nowrap} ${styles.tableKey}`}>
-        {formatCurrency(item.pricePerKg * (isConfirmed ? item.orderedQtyKg : qty))}
+        {formatCurrency(item.pricePerKg * (isLocked ? item.orderedQtyKg : qty))}
       </td>
       <td>
-        {isConfirmed ? (
-          <span className={`${styles.tag} ${styles.tagGreen}`}>{Number(item.orderedQtyKg).toFixed(1)} kg dipesan</span>
+        {isFulfilled ? (
+          <span className={`${styles.tag} ${styles.tagGreen}`}>Panen diterima</span>
+        ) : isConfirmed ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span className={`${styles.tag} ${styles.tagBlue}`}>{Number(item.orderedQtyKg).toFixed(1)} kg dipesan</span>
+            <button type="button" className={styles.tabButton} onClick={() => onOpenFulfill?.(item)}>
+              <PackageCheck aria-hidden="true" />
+              Terima panen
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <input
