@@ -1,33 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyMidtransSignature } from '@/controllers/transactionController';
-import { SubscriptionStatus, TransactionStatus } from '@prisma/client';
-
-/**
- * Map Midtrans transaction_status + fraud_status ke TransactionStatus enum Prisma.
- * Return null jika tidak perlu update (status tidak dikenal).
- */
-function resolveTransactionStatus(
-  transactionStatus: string,
-  fraudStatus?: string,
-): TransactionStatus | null {
-  switch (transactionStatus) {
-    case 'capture':
-      if (fraudStatus === 'challenge') return TransactionStatus.PENDING;
-      if (fraudStatus === 'accept') return TransactionStatus.COMPLETED;
-      return TransactionStatus.PENDING;
-    case 'settlement':
-      return TransactionStatus.COMPLETED;
-    case 'pending':
-      return TransactionStatus.PENDING;
-    case 'cancel':
-    case 'deny':
-    case 'expire':
-      return TransactionStatus.FAILED;
-    default:
-      return null;
-  }
-}
+import {
+  applyTransactionStatus,
+  resolveTransactionStatus,
+  verifyMidtransSignature,
+} from '@/controllers/transactionController';
+import { TransactionStatus } from '@prisma/client';
 
 export async function POST(req: NextRequest) {
   try {
@@ -62,47 +40,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'ignored' }, { status: 200 });
     }
 
-    // Update transaksi
-    const transaction = await prisma.transaction.update({
+    const existing = await prisma.transaction.findUnique({
       where: { id: order_id },
-      data: {
-        status: dbStatus,
-        ...(dbStatus === TransactionStatus.COMPLETED && { paidAt: new Date() }),
-      },
-      select: { id: true, userId: true, status: true },
+      select: { amount: true, status: true },
     });
-
-    // Aktifkan subscription jika pembayaran sukses
-    if (dbStatus === TransactionStatus.COMPLETED) {
-      const subscription = await prisma.subscription.findUnique({
-        where: { userId: transaction.userId },
-        select: { id: true, status: true },
-      });
-
-      if (subscription && subscription.status === SubscriptionStatus.UNPAID) {
-        await prisma.subscription.update({
-          where: { id: subscription.id },
-          data: { status: SubscriptionStatus.ACTIVE, startDate: new Date() },
-        });
-        console.info('[MIDTRANS WEBHOOK] Subscription activated for user:', transaction.userId);
-      }
-    }
-
-    console.info('[MIDTRANS WEBHOOK] Processed:', { order_id, dbStatus });
-    return NextResponse.json({ status: 'success' }, { status: 200 });
-  } catch (error) {
-    // Jika transaksi tidak ditemukan di DB
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code: string }).code === 'P2025'
-    ) {
-      console.warn('[MIDTRANS WEBHOOK] Transaction not found in DB:', error);
+    if (!existing) {
+      console.warn('[MIDTRANS WEBHOOK] Transaction not found in DB:', order_id);
       // Return 200 supaya Midtrans tidak terus retry
       return NextResponse.json({ error: 'Transaction not found.' }, { status: 200 });
     }
 
+    // COMPLETED is final: late/out-of-order or replayed notifications must not downgrade a paid order
+    if (existing.status === TransactionStatus.COMPLETED && dbStatus !== TransactionStatus.COMPLETED) {
+      console.info('[MIDTRANS WEBHOOK] Ignoring downgrade of completed order:', order_id, dbStatus);
+      return NextResponse.json({ status: 'ignored' }, { status: 200 });
+    }
+
+    // Jangan tandai lunas jika nominal yang dibayar beda dengan tagihan
+    if (dbStatus === TransactionStatus.COMPLETED && Number(gross_amount) !== existing.amount) {
+      console.warn('[MIDTRANS WEBHOOK] Amount mismatch for order:', order_id, gross_amount, existing.amount);
+      return NextResponse.json({ error: 'Amount mismatch.' }, { status: 200 });
+    }
+
+    await applyTransactionStatus(order_id, dbStatus, body.payment_type);
+
+    console.info('[MIDTRANS WEBHOOK] Processed:', { order_id, dbStatus });
+    return NextResponse.json({ status: 'success' }, { status: 200 });
+  } catch (error) {
     console.error('[MIDTRANS WEBHOOK ERROR]', error);
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }

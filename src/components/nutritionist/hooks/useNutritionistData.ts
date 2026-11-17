@@ -126,9 +126,9 @@ export function useNutritionistData() {
         const kpiJson = await kpiRes.json();
         const d = kpiJson.data ?? kpiJson;
         setDashboardKpis([
-          { label: "Total Recipes", value: String(d.totalRecipes ?? 0), delta: "Realtime" },
-          { label: "Weekly Menus", value: String(d.weeklyMenusCount ?? 0), delta: "Active" },
-          { label: "Active Users", value: String(d.activeUsers ?? 0), delta: "Healthy" },
+          { label: "Total Resep", value: String(d.totalRecipes ?? 0), delta: "" },
+          { label: "Menu Mingguan", value: String(d.weeklyMenusCount ?? 0), delta: "" },
+          { label: "Pengguna Aktif", value: String(d.activeUsers ?? 0), delta: "" },
         ]);
       }
 

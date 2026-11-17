@@ -1,20 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import { NextRequest } from 'next/server';
 import { getMe } from '@/controllers/authController';
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
+import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
-  try {
-    const token = req.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
-    }
+  const session = await getSessionUserId(req);
+  if ('error' in session) return getAuthErrorResponse(session.error);
 
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return getMe(payload.id as string);
-  } catch (error) {
-    console.error('[ME ERROR]', error);
-    return NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
-  }
+  return getMe(session.userId);
 }

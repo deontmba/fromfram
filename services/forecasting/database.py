@@ -12,6 +12,9 @@ if not DATABASE_URL:
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Name the installed driver explicitly: SQLAlchemy 2.1 defaults postgresql:// to psycopg v3, which is not installed.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # Remove parameters which are not supported by psycopg2.
 # Split at the last '@' to isolate credentials from host/query params,

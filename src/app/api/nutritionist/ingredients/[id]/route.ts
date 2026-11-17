@@ -1,31 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyRequestRole } from '@/lib/auth';
 
-async function verifyNutritionist(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'NUTRITIONIST') return { error: 'UNAUTHENTICATED' as const };
-  return { userId: session.userId };
-}
+const verifyNutritionist = (req: NextRequest) => verifyRequestRole(req, 'NUTRITIONIST');
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyNutritionist(req);
-  if ('error' in auth) return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  if ('error' in auth) return auth.error === 'FORBIDDEN'
+    ? NextResponse.json({ error: 'Forbidden.' }, { status: 403 })
+    : NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 
   const { id } = await params;
 
   try {
     const body = await req.json();
-    const { name, origin, supplierName, isAllergen, stockKg, pricePerKg } = body;
+    const { name, origin, supplierName, isAllergen, pricePerKg } = body;
 
     const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = String(name).trim();
     if (origin !== undefined) data.origin = String(origin).trim() || '-';
     if (supplierName !== undefined) data.supplierName = String(supplierName).trim() || '-';
     if (isAllergen !== undefined) data.isAllergen = Boolean(isAllergen);
-    if (stockKg !== undefined) data.stockKg = Math.max(0, Number(stockKg) || 0);
+    // Stock is not editable here: a stale form value would overwrite restocks. Admin restock/adjust-stock write the ledger.
     if (pricePerKg !== undefined) data.pricePerKg = Math.max(0, Number(pricePerKg) || 0);
 
     const ingredient = await prisma.ingredient.update({ where: { id }, data });
@@ -40,7 +36,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyNutritionist(req);
-  if ('error' in auth) return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  if ('error' in auth) return auth.error === 'FORBIDDEN'
+    ? NextResponse.json({ error: 'Forbidden.' }, { status: 403 })
+    : NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 
   const { id } = await params;
 

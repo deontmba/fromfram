@@ -1,7 +1,6 @@
 import prisma from '@/lib/prisma';
 import { PlanType } from '@prisma/client';
-import { setCache, deleteCache } from '@/lib/cache';
-import { DAYS_OF_WEEK, DayKey, getEndOfWeek, getNextWeekStart, getStartOfWeek } from '@/lib/week';
+import { DAYS_OF_WEEK, DayKey, addDays, atJakartaTime, getEndOfWeek, getNextWeekStart, getStartOfWeek } from '@/lib/week';
 import { CreateSubscriptionInput } from '@/schemas';
 
 const subscriptionSelect = {
@@ -60,20 +59,48 @@ function isAllowedPlanType(value: unknown): value is AllowedPlanType {
   return typeof value === 'string' && allowedPlanTypes.has(value as AllowedPlanType);
 }
 
+// setMonth rolls over (Jan 31 + 1 month = Mar 3); clamp to the target month's last day instead.
+function addMonthsClamped(date: Date, months: number) {
+  const day = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + months);
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDay));
+}
+
+function isCancelledNow(sub: { status: string; endDate: Date | null }) {
+  return sub.status === 'CANCELLED' || (sub.endDate !== null && sub.endDate <= new Date());
+}
+
+/**
+ * No cron job exists, so time-based transitions happen when a subscription is read:
+ * a pause ends at pausedUntil, a cancellation takes effect at endDate.
+ */
+export async function refreshSubscriptionStatus(userId: string) {
+  const now = new Date();
+  await prisma.subscription.updateMany({
+    where: { userId, status: { not: 'CANCELLED' }, endDate: { lte: now } },
+    data: { status: 'CANCELLED', pausedUntil: null },
+  });
+  await prisma.subscription.updateMany({
+    where: { userId, status: 'PAUSED', pausedUntil: { lte: now } },
+    data: { status: 'ACTIVE', pausedUntil: null },
+  });
+}
+
 function buildWeeklyBoxDates(weekStart: Date) {
   const weekEndDate = getEndOfWeek(weekStart);
-  const selectionDeadline = new Date(weekStart);
-  selectionDeadline.setDate(selectionDeadline.getDate() - 1);
-  selectionDeadline.setHours(18, 0, 0, 0);
+  // Sunday 18:00 WIB before the week starts
+  const selectionDeadline = atJakartaTime(addDays(weekStart, -1), 18);
   return { weekEndDate, selectionDeadline };
 }
 
-export async function getAllSubscriptions() {
+// Customers only need the goals list; the subscriber list is admin-only.
+export async function getAllSubscriptions(includeSubscriptions: boolean) {
   const [subscriptions, goals] = await Promise.all([
-    prisma.subscription.findMany({
-      orderBy: [{ startDate: 'desc' }],
-      select: subscriptionSelect,
-    }),
+    includeSubscriptions
+      ? prisma.subscription.findMany({ orderBy: [{ startDate: 'desc' }], select: subscriptionSelect })
+      : [],
     prisma.goal.findMany({
       orderBy: [{ name: 'asc' }],
       select: { id: true, name: true },
@@ -122,22 +149,29 @@ export async function createSubscription(
     return { error: 'Target user not found', status: 404 };
   }
 
-  const existingSub = await prisma.subscription.findFirst({
-    where: { userId: targetUserId, status: { not: 'CANCELLED' } },
+  const existingSub = await prisma.subscription.findUnique({
+    where: { userId: targetUserId },
+    select: { status: true, endDate: true },
   });
 
-  if (existingSub) {
+  if (existingSub && !isCancelledNow(existingSub)) {
     return { error: 'User already has an active subscription', status: 400 };
   }
 
-  const newSubscription = await prisma.subscription.create({
-    data: {
-      userId: targetUserId,
-      goalId,
-      planType: planType as PlanType, // cast setelah validasi di atas
-      servings,
-      status: 'UNPAID',
-    },
+  // userId is unique: a cancelled user re-subscribes by reusing their row.
+  const subscriptionData = {
+    goalId,
+    planType: planType as PlanType, // cast setelah validasi di atas
+    servings,
+    status: 'UNPAID' as const,
+    startDate: new Date(),
+    endDate: null,
+    pausedUntil: null,
+  };
+  const newSubscription = await prisma.subscription.upsert({
+    where: { userId: targetUserId },
+    update: subscriptionData,
+    create: { userId: targetUserId, ...subscriptionData },
     select: subscriptionSelect,
   });
 
@@ -145,6 +179,7 @@ export async function createSubscription(
 }
 
 export async function getMySubscription(userId: string) {
+  await refreshSubscriptionStatus(userId);
   const subscription = await prisma.subscription.findFirst({
     where: { userId },
     select: subscriptionSelectMe,
@@ -192,11 +227,17 @@ export async function updateMySubscription(
 
   const subscription = await prisma.subscription.findFirst({
     where: { userId },
-    select: { id: true },
+    select: { id: true, status: true, planType: true, servings: true },
   });
 
   if (!subscription) {
     return { error: 'Subscription not found', status: 404 };
+  }
+
+  // Plan and servings set the price, so they can only change before payment. Goal can always change.
+  const priceChanged = planType !== subscription.planType || servings !== subscription.servings;
+  if (priceChanged && subscription.status !== 'UNPAID') {
+    return { error: 'Paket hanya bisa diubah sebelum pembayaran.', status: 400 };
   }
 
   const goal = await prisma.goal.findUnique({
@@ -250,8 +291,6 @@ export async function pauseSubscription(userId: string, resumeDate: unknown) {
     return { error: 'Current status MUST be ACTIVE to pause', status: 400 };
   }
 
-  setCache(`pause_resume_${subscription.id}`, parsedResumeDate.toISOString());
-
   const updatedSub = await prisma.subscription.update({
     where: { id: subscription.id },
     data: { status: 'PAUSED', pausedUntil: parsedResumeDate },
@@ -280,8 +319,6 @@ export async function resumeSubscription(userId: string) {
     return { error: 'Current status MUST be PAUSED to resume', status: 400 };
   }
 
-  deleteCache(`pause_resume_${subscription.id}`);
-
   const updatedSub = await prisma.subscription.update({
     where: { id: subscription.id },
     data: { status: 'ACTIVE', pausedUntil: null },
@@ -306,21 +343,28 @@ export async function cancelSubscription(userId: string) {
     return { error: 'Cannot cancel a subscription that is not ACTIVE or PAUSED', status: 400 };
   }
 
+  if (subscription.endDate) {
+    return { error: 'Subscription is already set to cancel at the end of the cycle', status: 400 };
+  }
+
   const cycleEndDate = new Date(subscription.startDate);
   if (subscription.planType === 'MINGGUAN') {
     cycleEndDate.setDate(cycleEndDate.getDate() + 7);
   } else if (subscription.planType === 'BULANAN') {
-    cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
+    addMonthsClamped(cycleEndDate, 1);
   } else if (subscription.planType === 'TAHUNAN') {
-    cycleEndDate.setFullYear(cycleEndDate.getFullYear() + 1);
+    addMonthsClamped(cycleEndDate, 12);
   } else {
     cycleEndDate.setDate(cycleEndDate.getDate() + 7);
   }
 
-  const updatedSub = await prisma.subscription.update({
+  // Status stays as is; refreshSubscriptionStatus flips it to CANCELLED once endDate passes.
+  await prisma.subscription.update({
     where: { id: subscription.id },
-    data: { status: 'CANCELLED', endDate: cycleEndDate, pausedUntil: null },
+    data: { endDate: cycleEndDate },
   });
+  await refreshSubscriptionStatus(userId);
+  const updatedSub = await prisma.subscription.findUniqueOrThrow({ where: { id: subscription.id } });
 
   return {
     data: {
@@ -450,7 +494,7 @@ export async function saveWeeklyMenuSelections(
 
   const existingWeeklyBox = await prisma.weeklyBox.findFirst({
     where: { userId, weekStartDate: { gte: weekStart, lt: nextWeekStart } },
-    select: { id: true, status: true },
+    select: { id: true, status: true, selectionDeadline: true },
   });
 
   let weeklyBoxId = existingWeeklyBox?.id;
@@ -462,17 +506,23 @@ export async function saveWeeklyMenuSelections(
     };
   }
 
+  const deadline = existingWeeklyBox?.selectionDeadline ?? buildWeeklyBoxDates(weekStart).selectionDeadline;
+  if (new Date() > deadline) {
+    return { error: 'Batas waktu pemilihan menu sudah lewat.', status: 400 };
+  }
+
   if (!weeklyBoxId) {
     const subscription = await prisma.subscription.findFirst({
       where: { userId },
-      select: { id: true, status: true, pausedUntil: true },
+      select: { id: true, status: true, pausedUntil: true, endDate: true },
     });
 
     if (!subscription) {
       return { error: 'Subscription tidak ditemukan. Silakan pilih plan terlebih dahulu.', status: 404 };
     }
 
-    if (subscription.status === 'CANCELLED') {
+    // A cancellation takes effect at endDate: no boxes for weeks starting after it.
+    if (subscription.status === 'CANCELLED' || (subscription.endDate && weekStart >= subscription.endDate)) {
       return { error: 'Subscription kamu sudah CANCELLED. Aktifkan subscription untuk memilih menu.', status: 400 };
     }
 

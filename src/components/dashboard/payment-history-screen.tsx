@@ -111,7 +111,7 @@ export function PaymentHistoryScreen() {
                     <div>
                       <h3 className="text-[1.1rem] font-bold text-neutral-900">Pembayaran Langganan</h3>
                       <div className="mt-1 flex items-center gap-2 text-sm text-neutral-500">
-                        <span className="font-medium text-neutral-700">INV-{payment.id?.slice(0, 6).toUpperCase() ?? "UNKNOWN"}</span>
+                        <span className="font-medium text-neutral-700">INV-{payment.id ? payment.id.split("-").pop()?.toUpperCase() : "-"}</span>
                         <span>•</span>
                         <span>{formatDate(payment.createdAt)}</span>
                       </div>

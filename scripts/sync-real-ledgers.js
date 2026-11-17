@@ -1,5 +1,6 @@
+// Run with: node --env-file=.env scripts/sync-real-ledgers.js
 const { Client } = require('pg');
-const client = new Client({ connectionString: 'postgresql://postgres.knsuarluopssgsxhbvwo:FromFram123!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true' });
+const client = new Client({ connectionString: process.env.DATABASE_URL });
 
 async function syncRealLedgers() {
   await client.connect();

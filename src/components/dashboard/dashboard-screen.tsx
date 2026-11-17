@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { X } from "lucide-react";
 
 type DayOfWeek = "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU";
 type PlanType = "MINGGUAN" | "BULANAN" | "TAHUNAN";
@@ -521,8 +522,8 @@ function buildQuickActions(recentDeliveries: DashboardDelivery[]): QuickAction[]
       tone: "teal",
     },
     {
-      title: "Payment History",
-      description: EMPTY_LABEL,
+      title: "Riwayat Pembayaran",
+      description: "Lihat semua pembayaran",
       href: "/dashboard/payment-history",
       icon: "payment",
       tone: "red",
@@ -593,13 +594,22 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
   return {
     subscription: subscription
       ? {
-        label: "Subscription",
+        label: "Langganan",
         plan: getPlanLabel(subscription.planType),
         servings:
           typeof subscription.servings === "number" && Number.isFinite(subscription.servings)
             ? `${subscription.servings} orang`
             : EMPTY_LABEL,
-        status: pickString(subscription.status) ?? EMPTY_LABEL,
+        status: (() => {
+          const raw = pickString(subscription.status)?.toUpperCase();
+          const labels: Record<string, string> = {
+            ACTIVE: "Aktif",
+            PAUSED: "Dijeda",
+            CANCELLED: "Dibatalkan",
+            UNPAID: "Menunggu pembayaran",
+          };
+          return raw ? labels[raw] ?? raw : EMPTY_LABEL;
+        })(),
         nextBilling: (() => {
           if (!subscription.startDate || !subscription.planType) return EMPTY_LABEL;
           const start = new Date(subscription.startDate);
@@ -631,8 +641,8 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
         isEmpty: false,
       }
       : {
-          label: "Subscription",
-          plan: "Belum ada subscription aktif",
+          label: "Langganan",
+          plan: "Kamu belum berlangganan",
           servings: EMPTY_LABEL,
           status: EMPTY_LABEL,
           nextBilling: EMPTY_LABEL,
@@ -660,7 +670,7 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
         },
     nextWeek: displayBox
       ? {
-          title: isDisplayingFutureWeek ? "Minggu Berikutnya" : "Minggu Depan",
+          title: "Pilihan Menu",
           dateRange: formatDateRange(displayBox.weekStartDate, displayBox.weekEndDate),
           heading: isDisplayingFutureWeek
             ? (displayCanSelectMenu ? "Pilih Menu Sekarang" : isLockedDisplayBox ? "Menu sudah dikunci" : "Menu belum bisa dipilih")
@@ -691,7 +701,7 @@ function mapDashboardPayloadToViewModel(payload: DashboardPayload): DashboardVie
             : EMPTY_LABEL,
         }
       : {
-        title: "Minggu Depan",
+        title: "Pilihan Menu",
         dateRange: EMPTY_LABEL,
         heading: "Menu minggu depan belum tersedia",
         deadline: EMPTY_LABEL,
@@ -933,7 +943,7 @@ function DashboardShell({ children }: { children: ReactNode }) {
               href="/subscription"
               className="inline-flex h-11 items-center justify-center rounded-2xl bg-[#e1f6ee] px-5 text-sm font-bold text-[#0f8f6d] shadow-[0_8px_18px_rgba(18,184,134,0.12)] transition hover:bg-[#d5f1e6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
             >
-              Kelola Subscription
+              Kelola Langganan
             </Link>
             <Link
               href="/profile"
@@ -1054,7 +1064,7 @@ export function DashboardScreen() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-extrabold text-[#0d7d59] flex items-center gap-2">
-                  <span>🎉</span> Pembayaran Berhasil!
+                  Pembayaran berhasil
                 </h3>
                 <p className="mt-1.5 text-sm font-medium leading-relaxed text-[#1b6b50]">
                   Pesanan subscription Anda telah aktif dan terverifikasi. Menu makanan Anda untuk minggu depan telah resmi dikunci dan tim koki serta ahli gizi kami siap menyiapkannya untuk Anda!
@@ -1065,7 +1075,7 @@ export function DashboardScreen() {
                 className="grid h-8 w-8 place-items-center rounded-xl bg-white/60 text-[#0d7d59] border border-[#10b981]/20 hover:bg-[#d1fae5] hover:text-[#0b6b4c] transition"
                 aria-label="Tutup"
               >
-                ✕
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -1079,27 +1089,61 @@ export function DashboardScreen() {
               <h1 className="mt-1 text-[1.35rem] font-bold leading-tight tracking-[-0.02em]">
                 {dashboard.subscription.plan}
               </h1>
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-white">
-                <span>{dashboard.subscription.servings}</span>
-                <span className="h-1 w-1 rounded-full bg-white" />
-                <span>{dashboard.subscription.status}</span>
-              </div>
               {dashboard.subscription.isEmpty ? (
-                <p className="mt-3 max-w-xl text-sm text-white/80">
-                  Buat subscription dulu untuk mulai menerima weekly box.
+                <p className="mt-2 max-w-xl text-sm text-white/85">
+                  Pilih paket dan jumlah porsi, lalu menu sehat mulai diantar ke rumahmu setiap hari.
                 </p>
-              ) : null}
+              ) : (
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-white">
+                  <span>{dashboard.subscription.servings}</span>
+                  <span className="h-1 w-1 rounded-full bg-white" />
+                  <span>{dashboard.subscription.status}</span>
+                </div>
+              )}
             </div>
 
-            <div className="w-fit rounded-xl bg-white/12 px-4 py-3 text-right">
-              <p className="text-xs font-semibold text-white/65">Next Billing</p>
-              <p className="mt-1 text-[1.2rem] font-bold leading-none">
-                {dashboard.subscription.nextBilling}
-              </p>
-            </div>
+            {dashboard.subscription.isEmpty ? (
+              <Link
+                href="/subscription/select-plan"
+                className="inline-flex h-11 w-fit items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-[#087b58] shadow-[0_8px_18px_rgba(0,0,0,0.12)] transition hover:bg-[#f0fdf7]"
+              >
+                Pilih Paket
+              </Link>
+            ) : (
+              <div className="w-fit rounded-xl bg-white/12 px-4 py-3 text-right">
+                <p className="text-xs font-semibold text-white/65">Tagihan berikutnya</p>
+                <p className="mt-1 text-[1.2rem] font-bold leading-none">
+                  {dashboard.subscription.nextBilling}
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
+        {dashboard.subscription.isEmpty ? (
+          <section className="mt-5 rounded-2xl border border-neutral-200 bg-white px-5 py-6 shadow-[0_3px_12px_rgba(15,23,42,0.13)] sm:px-7">
+            <h2 className="text-lg font-bold text-neutral-950">Mulai dalam 3 langkah</h2>
+            <ol className="mt-5 grid gap-4 sm:grid-cols-3">
+              {[
+                ["1", "Pilih paket", "Tentukan durasi dan jumlah porsi."],
+                ["2", "Isi alamat", "Kami antar siang dan malam ke alamatmu."],
+                ["3", "Pilih menu", "Pilih menu mingguan, lalu bayar."],
+              ].map(([n, title, desc]) => (
+                <li key={n} className="rounded-xl bg-[#f6fbf9] p-4">
+                  <span className="text-3xl font-black text-[#12b886]">{n}</span>
+                  <p className="mt-2 text-sm font-bold text-neutral-950">{title}</p>
+                  <p className="mt-1 text-sm text-neutral-500">{desc}</p>
+                </li>
+              ))}
+            </ol>
+            <Link
+              href="/subscription/select-plan"
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-[#12b886] px-6 text-sm font-bold text-white transition hover:bg-[#0fa878]"
+            >
+              Mulai Berlangganan
+            </Link>
+          </section>
+        ) : (
         <div className="mt-5 grid gap-5 lg:grid-cols-2">
           <section className="rounded-2xl border border-neutral-200 bg-white px-5 py-5 shadow-[0_3px_12px_rgba(15,23,42,0.13)]">
             <WeekHeader
@@ -1293,7 +1337,7 @@ export function DashboardScreen() {
                 href="/delivery"
                 className="mt-5 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[#12b886] px-4 text-sm font-bold text-white shadow-[0_8px_16px_rgba(18,184,134,0.25)] transition hover:bg-[#0fa878] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
               >
-                Lihat Detail Tracking
+                Lacak Pengiriman
               </Link>
             ) : (
               <button
@@ -1301,7 +1345,7 @@ export function DashboardScreen() {
                 disabled
                 className="mt-5 inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-4 text-sm font-bold text-neutral-500"
               >
-                Tracking belum tersedia
+                Belum ada pengiriman
               </button>
             )}
           </section>
@@ -1357,23 +1401,20 @@ export function DashboardScreen() {
               >
                 Pilih Menu Sekarang
               </Link>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="mt-4 inline-flex h-10 w-full cursor-not-allowed items-center justify-center rounded-lg bg-neutral-200 px-4 text-sm font-bold text-neutral-500"
-              >
-                Pilih Menu Sekarang
-              </button>
-            )}
+            ) : null}
 
             {/* Katalog Menu Minggu Ini/Depan */}
             {dashboard.nextWeek.catalogRecipes && dashboard.nextWeek.catalogRecipes.length > 0 ? (
               <div className="mt-6 border-t border-neutral-100 pt-5">
                 <div className="flex items-center justify-between mb-3.5">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-neutral-500">
-                    Menu Tersedia ({dashboard.nextWeek.catalogDateRange})
-                  </h3>
+                  <div>
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-neutral-500">
+                      Menu pekan {dashboard.nextWeek.catalogDateRange}
+                    </h3>
+                    {!dashboard.nextWeek.canSelectMenu ? (
+                      <p className="mt-1 text-xs text-neutral-400">Bisa dipilih setelah periode pemilihan dibuka.</p>
+                    ) : null}
+                  </div>
                   <span className="text-[11px] font-bold text-teal-600 bg-teal-50 border border-teal-200/65 px-2.5 py-0.5 rounded-full shadow-sm">
                     {dashboard.nextWeek.catalogRecipes.length} Menu Pilihan
                   </span>
@@ -1424,8 +1465,7 @@ export function DashboardScreen() {
                                     : "bg-neutral-50 text-neutral-500 border-neutral-200"
                                 }`}
                               >
-                                {ing.ingredient?.isAllergen && <span className="mr-0.5">⚠️</span>}
-                                {ing.ingredient?.name}
+                                                {ing.ingredient?.name}
                               </span>
                             ))}
                             {recipe.ingredients.length > 4 && (
@@ -1453,6 +1493,7 @@ export function DashboardScreen() {
             )}
           </section>
         </div>
+        )}
 
         <section aria-label="Aksi cepat" className="mt-5 grid gap-5 md:grid-cols-3">
           {dashboard.quickActions.map((action) => {
@@ -1505,14 +1546,14 @@ export function DashboardScreen() {
             <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl transition-all duration-300">
               <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
                 <h3 className="text-base font-extrabold text-neutral-900 flex items-center gap-2">
-                  <span>📦</span> Riwayat Pengiriman
+                  Riwayat Pengiriman
                 </h3>
                 <button
                   onClick={() => setShowHistoryModal(false)}
                   className="grid h-8 w-8 place-items-center rounded-xl bg-neutral-50 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 transition"
                   aria-label="Tutup"
                 >
-                  ✕
+                  <X aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
 

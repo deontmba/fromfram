@@ -18,6 +18,12 @@ body {
   font-family: var(--font-poppins), sans-serif;
 }
 
+/* Endless testimonial row: content is duplicated, so shifting by -50% loops seamlessly. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @layer utilities {
   .bg-grid-pattern {
     background-image: linear-gradient(to right, rgba(29, 183, 136, 0.05) 1px, transparent 1px),

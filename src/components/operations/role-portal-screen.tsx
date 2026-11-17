@@ -7,14 +7,35 @@ import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import { ForecastingPage } from "@/components/forecasting/ForecastingPage";
 import { AdminIngredientsTab } from "./tabs/AdminIngredientsTab";
 import { AdminPencatatanTab } from "./tabs/AdminPencatatanTab";
+import {
+  Activity as PulseIcon,
+  BookOpen as BookIcon,
+  BrainCircuit,
+  CalendarDays as CalendarIcon,
+  ChevronRight,
+  CircleAlert,
+  CircleCheck as CheckCircleIcon,
+  Clock as ClockIcon,
+  CreditCard,
+  LayoutDashboard,
+  NotebookTabs,
+  Package as BoxIcon,
+  Plus,
+  ShieldCheck,
+  Target as TargetIcon,
+  TrendingUp as ChartArrowIcon,
+  TriangleAlert as AlertIcon,
+  Truck as TruckIcon,
+  Users as PeopleIcon,
+  Wheat,
+} from "lucide-react";
+import { PageHeader, PortalShell } from "./portal-shell";
+import type { PortalTab } from "./portal-shell";
 import styles from "./role-portal-screen.module.css";
 
 type RoleVariant = "admin" | "nutritionist";
 
-type TabItem = {
-  id: string;
-  label: string;
-};
+type TabItem = PortalTab;
 
 type KpiItem = {
   label: string;
@@ -218,12 +239,12 @@ const adminConfig: RoleConfig = {
   title: "Panel Admin",
   subtitle: "Operasional FromFram",
   tabs: [
-    { id: "dashboard", label: "Beranda" },
-    { id: "deliveries", label: "Pengiriman" },
-    { id: "users", label: "Pengguna" },
-    { id: "ingredients", label: "Bahan Baku" },
-    { id: "reports", label: "Prediksi AI" },
-    { id: "ledgers", label: "Pencatatan" },
+    { id: "dashboard", label: "Beranda", icon: LayoutDashboard },
+    { id: "deliveries", label: "Pengiriman", icon: TruckIcon },
+    { id: "users", label: "Pengguna", icon: PeopleIcon },
+    { id: "ingredients", label: "Bahan Baku", icon: Wheat },
+    { id: "reports", label: "Prediksi AI", icon: BrainCircuit },
+    { id: "ledgers", label: "Pencatatan", icon: NotebookTabs },
   ],
   heroTitle: {
     dashboard: "Dasbor Operasional",
@@ -241,55 +262,16 @@ const adminConfig: RoleConfig = {
     reports: "Pantau estimasi kebutuhan bahan baku dan buat Purchase Order ke petani mitra secara otomatis.",
     ledgers: "Kelola alur transaksi pesanan, penerimaan bahan baku, serta log harian operasional.",
   },
+  // Shown only until the real numbers load.
   kpis: {
     dashboard: [
-      { label: "Total Pengguna", value: "1,234", delta: "+12%", icon: <PeopleIcon /> },
-      { label: "Langganan Aktif", value: "856", delta: "+8%", icon: <ChartArrowIcon /> },
-      { label: "Pengiriman Hari Ini", value: "342", delta: "89%", icon: <BoxIcon /> },
-    ],
-    deliveries: [
-      { label: "Menyiapkan", value: "0", delta: "Langsung", icon: <ClockIcon /> },
-      { label: "Dikirim", value: "0", delta: "Langsung", icon: <TruckIcon /> },
-      { label: "Terkirim", value: "0", delta: "Langsung", icon: <CheckCircleIcon /> },
-    ],
-    users: [
-      { label: "Total Pengguna", value: "0", delta: "", icon: undefined },
-      { label: "Aktif", value: "0", delta: "", icon: undefined },
-      { label: "Jeda/Batal", value: "0", delta: "", icon: undefined },
-    ],
-    reports: [
-      { label: "Volume Pesanan", value: "2.4k", delta: "+14%", icon: <ChartArrowIcon /> },
-      { label: "Tepat Waktu", value: "96%", delta: "+2.1%", icon: <CheckCircleIcon /> },
-      { label: "Tingkat Kendala", value: "1.8%", delta: "-0.6%", icon: <AlertIcon /> },
+      { label: "Total Pengguna", value: "-", delta: "", icon: <PeopleIcon /> },
+      { label: "Langganan Aktif", value: "-", delta: "", icon: <ChartArrowIcon /> },
+      { label: "Pengiriman Hari Ini", value: "-", delta: "", icon: <BoxIcon /> },
     ],
   },
-  activities: {
-    dashboard: [
-      { text: "Pengguna baru mendaftar: john@email.com", time: "10 menit lalu", icon: <PeopleIcon /> },
-      { text: "15 langganan akan kedaluwarsa minggu depan", time: "2 jam lalu", icon: <CalendarIcon /> },
-      { text: "Batch pengiriman pagi selesai (342 pengiriman)", time: "3 jam lalu", icon: <BoxIcon /> },
-    ],
-    deliveries: [
-      { text: "3 pesanan baru pindah ke MENYIAPKAN", time: "6 menit lalu", icon: <ClockIcon /> },
-      { text: "Kurir A menandai 2 pesanan sebagai DIKIRIM", time: "14 menit lalu", icon: <TruckIcon /> },
-      { text: "Semua pesanan batch malam sudah TERTKIRIM", time: "42 menit lalu", icon: <CheckCircleIcon /> },
-    ],
-    users: [
-      { text: "2 pengguna menjeda langganan selama 1 minggu", time: "12 menit lalu", icon: <AlertIcon /> },
-      { text: "4 pengguna meningkatkan ke paket tahunan", time: "1 jam lalu", icon: <ChartArrowIcon /> },
-      { text: "Admin memperbarui alamat pengguna korporat", time: "2 jam lalu", icon: <MapPinIcon /> },
-    ],
-    reports: [
-      { text: "Volume pesanan naik 14% dibanding minggu lalu", time: "5 menit lalu", icon: <ChartArrowIcon /> },
-      { text: "Tingkat kendala turun setelah audit alamat batch", time: "28 menit lalu", icon: <AlertIcon /> },
-      { text: "Ketepatan waktu pengiriman tetap di atas 95%", time: "1 jam lalu", icon: <CheckCircleIcon /> },
-    ],
-  },
-  actions: [
-    { title: "Kelola Pengguna", subtitle: "Lihat dan perbarui data pengguna", icon: <PeopleIcon /> },
-    { title: "Pengiriman", subtitle: "Pantau dan kelola pengiriman", icon: <TruckIcon /> },
-    { title: "Laporan", subtitle: "Pantau tren operasional", icon: undefined },
-  ],
+  activities: {},
+  actions: [],
   accentStrong: "#e12533",
   accentMid: "#ff575f",
   accentSoft: "#ffd5d8",
@@ -299,9 +281,9 @@ const nutritionConfig: RoleConfig = {
   title: "Panel Ahli Gizi",
   subtitle: "Manajemen Gizi FromFram",
   tabs: [
-    { id: "dashboard", label: "Beranda" },
-    { id: "recipes", label: "Resep" },
-    { id: "weekly-menu", label: "Menu Mingguan" },
+    { id: "dashboard", label: "Beranda", icon: LayoutDashboard },
+    { id: "recipes", label: "Resep", icon: BookIcon },
+    { id: "weekly-menu", label: "Menu Mingguan", icon: CalendarIcon },
   ],
   heroTitle: {
     dashboard: "Pusat Kontrol Gizi",
@@ -522,11 +504,6 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const [deliveryPageSize, setDeliveryPageSize] = useState(25);
   const [userPageSize, setUserPageSize] = useState(25);
 
-  const themeVars = {
-    "--accent-strong": config.accentStrong,
-    "--accent-mid": config.accentMid,
-    "--accent-soft": config.accentSoft,
-  } as CSSProperties;
 
   // ── Fetch: Dashboard KPIs & Activities ─────────────────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -664,8 +641,8 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
       const mapped = (data.activities || []).map((act: any) => {
         let icon = <PeopleIcon />;
-        if (act.icon === "🚚") icon = <BoxIcon />;
-        if (act.icon === "💳") icon = <ChartArrowIcon />;
+        if (act.icon === "delivery") icon = <TruckIcon />;
+        if (act.icon === "payment") icon = <CreditCard />;
         return {
           text: act.text,
           time: act.time,
@@ -750,8 +727,6 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
           await Promise.all([fetchUsers(), fetchDeliveries()]);
         } else if (activeTab === "users") {
           await fetchUsers();
-        } else if (activeTab === "reports") {
-          await fetchAdminReports();
         }
       } else if (role === "nutritionist") {
         if (activeTab === "dashboard") {
@@ -1187,9 +1162,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     const shipped = deliveries.filter((d) => d.status === "SHIPPED").length;
     const delivered = deliveries.filter((d) => d.status === "DELIVERED").length;
     return [
-      { label: "Preparing", value: String(preparing), delta: "Live", icon: <ClockIcon /> },
-      { label: "Shipped", value: String(shipped), delta: "Live", icon: <TruckIcon /> },
-      { label: "Delivered", value: String(delivered), delta: "Live", icon: <CheckCircleIcon /> },
+      { label: "Menyiapkan", value: String(preparing), delta: "", icon: <ClockIcon /> },
+      { label: "Dikirim", value: String(shipped), delta: "", icon: <TruckIcon /> },
+      { label: "Terkirim", value: String(delivered), delta: "", icon: <CheckCircleIcon /> },
     ];
   }, [deliveries]);
 
@@ -1201,9 +1176,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
         u.subscriptionStatus === "PAUSED" || u.subscriptionStatus === "CANCELLED"
     ).length;
     return [
-      { label: "Total Pengguna", value: String(total), delta: "", icon: undefined },
-      { label: "Aktif", value: String(active), delta: "", icon: undefined },
-      { label: "Ditangguhkan/Dibatalkan", value: String(pausedCancelled), delta: "", icon: undefined },
+      { label: "Total Pengguna", value: String(total), delta: "", icon: <PeopleIcon /> },
+      { label: "Langganan Aktif", value: String(active), delta: "", icon: <CheckCircleIcon /> },
+      { label: "Jeda / Batal", value: String(pausedCancelled), delta: "", icon: <AlertIcon /> },
     ];
   }, [users, userPagination]);
 
@@ -1509,20 +1484,13 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
   const currentKpis = useMemo(() => {
     if (role === "admin" && activeTab === "dashboard" && adminStats) {
       return [
-        { label: "Total Pengguna", value: String(adminStats.totalUsers), delta: "Live", icon: <PeopleIcon /> },
-        { label: "Langganan Aktif", value: String(adminStats.activeSubscriptions), delta: "Live", icon: <ChartArrowIcon /> },
-        { label: "Pengiriman Hari Ini", value: String(adminStats.todayDeliveries), delta: "Live", icon: <BoxIcon /> },
+        { label: "Total Pengguna", value: String(adminStats.totalUsers), delta: "", icon: <PeopleIcon /> },
+        { label: "Langganan Aktif", value: String(adminStats.activeSubscriptions), delta: "", icon: <ChartArrowIcon /> },
+        { label: "Pengiriman Hari Ini", value: String(adminStats.todayDeliveries), delta: "", icon: <BoxIcon /> },
       ];
     }
     if (role === "admin" && activeTab === "deliveries") return deliveryKpis;
     if (role === "admin" && activeTab === "users") return userKpis;
-    if (role === "admin" && activeTab === "reports" && adminReportData && adminReportData.trends) {
-      return [
-        { label: "Volume Pesanan", value: adminReportData.trends[0]?.value || "0 porsi", delta: adminReportData.trends[0]?.delta || "", icon: <ChartArrowIcon /> },
-        { label: "Tepat Waktu", value: adminReportData.trends[1]?.value || "100%", delta: adminReportData.trends[1]?.delta || "", icon: <CheckCircleIcon /> },
-        { label: "Tingkat Kendala", value: adminReportData.trends[2]?.value || "0%", delta: adminReportData.trends[2]?.delta || "", icon: <AlertIcon /> },
-      ];
-    }
     if (role === "nutritionist" && activeTab === "dashboard" && nutritionKpis) return nutritionKpis;
     if (role === "nutritionist" && activeTab === "weekly-menu") return weeklyMenuKpis;
     return config.kpis[activeTab] || [];
@@ -1539,100 +1507,68 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     return config.activities[activeTab] || [];
   }, [role, activeTab, config.activities, adminActivities, nutritionActivities]);
 
+  // These tabs render their own header.
+  const showPageHeader = !["ledgers", "reports", "ingredients"].includes(activeTab);
+
   return (
     <>
-      <main className={styles.shell} style={themeVars}>
-        <div className={styles.page}>
-          <header className={styles.topbar}>
-            <div className={styles.brand}>
-              <span className={styles.brandIcon}>
-                {role === "admin" ? <ShieldIcon /> : <PulseIcon />}
-              </span>
-              <div>
-                <h1 className={styles.brandTitle}>{config.title}</h1>
-                <p className={styles.brandSub}>{config.subtitle}</p>
-              </div>
-            </div>
-            <button type="button" className={styles.logoutButton} onClick={() => {
-              fetch("/api/auth/logout", { method: "POST", credentials: "include" }).then(() => {
-                window.location.href = "/login";
-              });
-            }}>
-              Keluar
-            </button>
-          </header>
-
-          <section className={styles.panelCard}>
-            <div className={styles.tabList}>
-              {config.tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={clsx(
-                    styles.tabButton,
-                    activeTab === tab.id && styles.tabButtonActive
-                  )}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className={styles.contentWrap}>
-              {activeTab !== "ledgers" && (
+      <PortalShell
+        title={config.title}
+        subtitle={config.subtitle}
+        icon={role === "admin" ? ShieldCheck : PulseIcon}
+        accent={{ strong: config.accentStrong, mid: config.accentMid, soft: config.accentSoft }}
+        tabs={config.tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      >
+            <div className={styles.contentWrap} key={activeTab}>
+              {showPageHeader && (
                 <>
-                  <h2 className={styles.sectionTitle}>{config.heroTitle[activeTab]}</h2>
-                  <p className={styles.sectionSub}>{config.heroSubtitle[activeTab]}</p>
+                  <PageHeader
+                    title={config.heroTitle[activeTab]}
+                    subtitle={config.heroSubtitle[activeTab]}
+                    actions={
+                      role === "admin" && activeTab === "deliveries" ? (
+                        <button type="button" className={styles.actionCard} onClick={openCreateDelivery}>
+                          <Plus aria-hidden="true" />
+                          Tambah Pengiriman
+                        </button>
+                      ) : null
+                    }
+                  />
 
                   {error && (
-                    <div
-                      className={styles.notice}
-                      style={{ background: "#fee2e2", borderColor: "#ef4444" }}
-                    >
-                      <p
-                        className={styles.noticeTitle}
-                        style={{ color: "#dc2626" }}
-                      >
-                        Error:
-                      </p>
-                      <p style={{ color: "#dc2626" }}>{error}</p>
+                    <div className={styles.notice} role="alert">
+                      <CircleAlert aria-hidden="true" />
+                      <p className={styles.noticeTitle}>{error}</p>
                     </div>
                   )}
 
-                  {/* KPI Cards */}
-                  <div className={styles.kpiGrid}>
-                    {currentKpis.map((kpi, index) => (
-                      <article
-                        key={kpi.label}
-                        className={styles.kpiCard}
-                        style={{ animationDelay: `${index * 80}ms` }}
-                      >
-                        <div className={styles.kpiRow}>
-                          {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : <span />}
-                          {kpi.delta ? <span className={styles.deltaBadge}>{kpi.delta}</span> : <span />}
-                        </div>
-                        <p className={styles.kpiValue}>{kpi.value}</p>
-                        <p className={styles.kpiLabel}>{kpi.label}</p>
-                      </article>
-                    ))}
-                  </div>
+                  {currentKpis.length > 0 && (
+                    <div className={styles.kpiGrid}>
+                      {currentKpis.map((kpi) => (
+                        <article key={kpi.label} className={styles.kpiCard}>
+                          <div className={styles.kpiRow}>
+                            <p className={styles.kpiLabel} style={{ margin: 0 }}>{kpi.label}</p>
+                            {kpi.icon ? <span className={styles.activityIcon}>{kpi.icon}</span> : null}
+                          </div>
+                          <p className={styles.kpiValue}>{kpi.value}</p>
+                          {kpi.delta ? <p className={styles.deltaBadge}>{kpi.delta}</p> : null}
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
-              {isLoading && (
-                <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
-                  Memuat data...
-                </div>
-              )}
+              {isLoading && <div className={styles.emptyState}>Memuat data...</div>}
 
               {/* ── ADMIN: DELIVERIES TAB ─────────────────────────────────── */}
               {role === "admin" && activeTab === "deliveries" && !deliveriesLoading ? (
                 <>
-                  {/* add button moved next to area select */}
-
                   {showDeliveryForm && (
-                    <form onSubmit={handleSaveDelivery} style={{ marginBottom: "1rem", marginTop: "1rem", padding: "1.65rem 1rem 1rem", border: "1px solid #e6e6e6", borderRadius: 8, background: "#fff" }}>
+                    <form onSubmit={handleSaveDelivery} className={styles.formCard}>
+                      <h2 className={styles.formTitle}>{deliveryForm.id ? "Ubah Pengiriman" : "Pengiriman Baru"}</h2>
                       <div className={styles.deliveryFormGrid}>
                         <label className={styles.deliveryField}>
                           <span className={styles.deliveryFieldLabel}>User ID</span>
@@ -1660,7 +1596,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
                         <label className={styles.deliveryField}>
                           <span className={styles.deliveryFieldLabel}>Tanggal Pengiriman</span>
-                          <input className={styles.input} type="datetime-local" placeholder="2026-05-12T00:30" value={deliveryForm.deliveryDate} onChange={e => setDeliveryForm({ ...deliveryForm, deliveryDate: e.target.value })} />
+                          <input className={styles.input} type="datetime-local" value={deliveryForm.deliveryDate} onChange={e => setDeliveryForm({ ...deliveryForm, deliveryDate: e.target.value })} />
                         </label>
 
                         <label className={styles.deliveryField}>
@@ -1672,12 +1608,12 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                           </select>
                         </label>
                       </div>
-                      <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                        <button type="submit" className={styles.actionCard} disabled={isDeliverySubmitting} style={{ padding: "0.45rem 0.7rem" }}>
-                          {isDeliverySubmitting ? "Menyimpan..." : deliveryForm.id ? "Simpan Perubahan" : "Buat Pengiriman"}
-                        </button>
-                        <button type="button" className={clsx(styles.actionCard, styles.deliveryCancelButton)} onClick={() => setShowDeliveryForm(false)}>
+                      <div className={styles.formActions}>
+                        <button type="button" className={styles.tabButton} onClick={() => setShowDeliveryForm(false)}>
                           Batal
+                        </button>
+                        <button type="submit" className={styles.actionCard} disabled={isDeliverySubmitting}>
+                          {isDeliverySubmitting ? "Menyimpan..." : deliveryForm.id ? "Simpan Perubahan" : "Buat Pengiriman"}
                         </button>
                       </div>
                     </form>
@@ -1687,12 +1623,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <div className={styles.searchRow}>
                     <input
                       className={styles.input}
-                      placeholder="Cari pengiriman berdasarkan ID, pengguna, atau menu"
+                      type="search"
+                      aria-label="Cari pengiriman"
+                      placeholder="Cari ID, pengguna, atau menu"
                       value={deliverySearch}
                       onChange={(e) => setDeliverySearch(e.target.value)}
                     />
                     <select
                       className={styles.select}
+                      aria-label="Filter status"
                       value={deliveryStatusFilter}
                       onChange={(e) => setDeliveryStatusFilter(e.target.value)}
                     >
@@ -1703,15 +1642,17 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     </select>
                     <select
                       className={styles.select}
+                      aria-label="Filter waktu makan"
                       value={deliveryMealTypeFilter}
                       onChange={(e) => setDeliveryMealTypeFilter(e.target.value)}
                     >
-                      <option value="all">Semua meal</option>
+                      <option value="all">Semua waktu makan</option>
                       <option value="lunch">Makan Siang</option>
                       <option value="dinner">Makan Malam</option>
                     </select>
                     <select
                       className={styles.select}
+                      aria-label="Filter area"
                       value={deliveryAreaFilter}
                       onChange={(e) => setDeliveryAreaFilter(e.target.value)}
                     >
@@ -1721,11 +1662,6 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                       <option value="bekasi">Bekasi</option>
                       <option value="depok">Depok</option>
                     </select>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <button type="button" className={clsx(styles.tabButton)} onClick={openCreateDelivery} style={{ marginLeft: '0.5rem' }}>
-                        + Tambah Delivery
-                      </button>
-                    </div>
                   </div>
 
                   {/* Table */}
@@ -1733,22 +1669,19 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <table className={styles.table}>
                       <thead>
                         <tr>
-                          <th>ID Pengiriman</th>
+                          <th>Pekan</th>
                           <th>Pengguna</th>
                           <th>Menu</th>
                           <th>Alamat</th>
                           <th>Status</th>
-                          <th>Aksi</th>
+                          <th aria-label="Aksi" />
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedDeliveries.length === 0 ? (
                           <tr>
-                            <td
-                              colSpan={9}
-                              style={{ textAlign: "center", padding: "2rem", color: "#666" }}
-                            >
-                              Tidak ada data delivery
+                            <td colSpan={6} className={styles.emptyState}>
+                              Belum ada data pengiriman.
                             </td>
                           </tr>
                         ) : (
@@ -1761,10 +1694,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                             let statusText = "Menyiapkan";
                             let statusVariant: "PREPARING" | "SHIPPED" | "DELIVERED" = "PREPARING";
                             if (delivered === total) {
-                              statusText = "Terkirim Semua";
+                              statusText = "Terkirim semua";
                               statusVariant = "DELIVERED";
                             } else if (delivered > 0 || shipped > 0) {
-                              statusText = `Proses (${delivered}/${total} Terkirim)`;
+                              statusText = `Proses (${delivered}/${total} terkirim)`;
                               statusVariant = "SHIPPED";
                             }
 
@@ -1781,103 +1714,96 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
                             return (
                               <Fragment key={row.key}>
-                                <tr style={{ cursor: "pointer", borderBottom: isExpanded ? "none" : "1px solid #e2e8f0" }} onClick={() => toggleExpandDelivery(row.key)}>
+                                <tr style={{ cursor: "pointer" }} onClick={() => toggleExpandDelivery(row.key)}>
                                   <td className={styles.tableKey}>
-                                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontWeight: 700 }}>
-                                      <span style={{ fontSize: "0.6rem", transition: "transform 0.2s", transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", color: "var(--accent-strong)" }}>▶</span>
-                                      Pekan {new Date(row.weekStart).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                    <span className={clsx(styles.expandToggle, isExpanded && styles.expandToggleOpen)}>
+                                      <ChevronRight aria-hidden="true" />
+                                      {new Date(row.weekStart).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                                     </span>
                                   </td>
-                                  <td style={{ fontWeight: 600 }}>{row.user}</td>
-                                  <td style={{ fontWeight: 700, color: "var(--accent-strong)" }}>{total} Menu</td>
-                                  <td style={{ fontSize: "0.92rem", color: "#475569" }}>{row.address}</td>
+                                  <td className={styles.tableKey}>{row.user}</td>
+                                  <td className={styles.nowrap}>{total} menu</td>
+                                  <td>{row.address}</td>
                                   <td>
                                     <span className={clsx(styles.tag, statusClass[statusVariant])}>
                                       {statusText}
                                     </span>
                                   </td>
-                                  <td>
+                                  <td style={{ textAlign: "right" }}>
                                     <button
                                       type="button"
                                       className={styles.tabButton}
-                                      style={{ padding: "0.35rem 0.65rem", fontSize: "0.82rem" }}
+                                      aria-expanded={isExpanded}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         toggleExpandDelivery(row.key);
                                       }}
                                     >
-                                      {isExpanded ? "Tutup" : "Lihat Detail"}
+                                      {isExpanded ? "Tutup" : "Detail"}
                                     </button>
                                   </td>
                                 </tr>
                                 {isExpanded && (
-                                  <tr style={{ background: "#f8fafc" }}>
-                                    <td colSpan={6} style={{ padding: "1.2rem 1.6rem 1.6rem", borderTop: "none" }}>
-                                      <div style={{ display: 'grid', gap: '0.8rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem' }}>
-                                          <p style={{ margin: 0, fontWeight: 800, color: 'var(--accent-strong)', fontSize: '0.94rem' }}>
-                                            Detail Jadwal Pengiriman Harian ({weekLabel})
-                                          </p>
-                                          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
-                                            Total: <span style={{ color: '#0f172a' }}>{total}</span> | Menyiapkan: <span style={{ color: '#d97706' }}>{preparing}</span> | Dikirim: <span style={{ color: '#2563eb' }}>{shipped}</span> | Terkirim: <span style={{ color: '#16a34a' }}>{delivered}</span>
-                                          </div>
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-                                          {row.deliveries.map((d) => {
-                                            const dateLabel = new Date(d.deliveryDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
-                                            return (
-                                              <div key={d.id} style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.9rem', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', position: 'relative' }}>
-                                                <div>
-                                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{dateLabel}</span>
-                                                    <span className={clsx(styles.tag, statusClass[d.status])} style={{ fontSize: '0.75rem', padding: '0.15rem 0.45rem' }}>
-                                                      {formatDeliveryStatusLabel(d.status)}
-                                                    </span>
-                                                  </div>
-                                                  <p style={{ margin: 0, fontWeight: 800, color: '#0f172a', fontSize: '0.92rem', lineHeight: 1.3 }}>{d.menu}</p>
-                                                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.74rem', color: '#94a3b8' }}>ID Pengiriman: {d.id.slice(0, 8)}...</p>
+                                  <tr className={styles.detailRow}>
+                                    <td colSpan={6}>
+                                      <div className={styles.detailHead}>
+                                        <p className={styles.detailTitle}>Jadwal harian {weekLabel}</p>
+                                        <span>
+                                          {total} total · {preparing} menyiapkan · {shipped} dikirim · {delivered} terkirim
+                                        </span>
+                                      </div>
+                                      <div className={styles.detailGrid}>
+                                        {row.deliveries.map((d) => {
+                                          const dateLabel = new Date(d.deliveryDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+                                          return (
+                                            <div key={d.id} className={styles.detailCard}>
+                                              <div>
+                                                <div className={styles.detailCardHead}>
+                                                  <span>{dateLabel}</span>
+                                                  <span className={clsx(styles.tag, statusClass[d.status])}>
+                                                    {formatDeliveryStatusLabel(d.status)}
+                                                  </span>
                                                 </div>
-                                                <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '0.7rem' }}>
+                                                <p className={styles.detailCardTitle}>{d.menu}</p>
+                                                <span className={styles.cellSub}>ID {d.id.slice(0, 8)}</span>
+                                              </div>
+                                              <div className={styles.detailCardActions}>
+                                                <button
+                                                  type="button"
+                                                  className={clsx(styles.tabButton, styles.dangerButton)}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPendingDeliveryAction({ type: "delete", id: d.id });
+                                                  }}
+                                                >
+                                                  Hapus
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className={styles.tabButton}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openEditDelivery(d);
+                                                  }}
+                                                >
+                                                  Ubah
+                                                </button>
+                                                {d.status !== 'DELIVERED' && (
                                                   <button
                                                     type="button"
                                                     className={styles.actionCard}
-                                                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px' }}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      openEditDelivery(d);
+                                                      setPendingDeliveryAction({ type: "advance", id: d.id });
                                                     }}
                                                   >
-                                                    Ubah
+                                                    {d.status === 'PREPARING' ? 'Kirim' : 'Selesai'}
                                                   </button>
-                                                  {d.status !== 'DELIVERED' && (
-                                                    <button
-                                                      type="button"
-                                                      className={styles.actionCard}
-                                                      style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px', background: 'var(--accent-strong)', color: '#ffffff', border: 'none' }}
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setPendingDeliveryAction({ type: "advance", id: d.id });
-                                                      }}
-                                                    >
-                                                      {d.status === 'PREPARING' ? 'Kirim' : 'Selesai'}
-                                                    </button>
-                                                  )}
-                                                  <button
-                                                    type="button"
-                                                    className={clsx(styles.actionCard, styles.deliveryCancelButton)}
-                                                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', borderRadius: '8px' }}
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      setPendingDeliveryAction({ type: "delete", id: d.id });
-                                                    }}
-                                                  >
-                                                    Hapus
-                                                  </button>
-                                                </div>
+                                                )}
                                               </div>
-                                            );
-                                          })}
-                                        </div>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     </td>
                                   </tr>
@@ -1892,15 +1818,16 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
                   <div className={styles.paginationBar}>
                     <p className={styles.paginationInfo}>
-                      Menampilkan {groupedDeliveries.length === 0 ? 0 : (deliveryPage - 1) * deliveryPageSize + 1}
+                      {groupedDeliveries.length === 0 ? 0 : (deliveryPage - 1) * deliveryPageSize + 1}
                       -{Math.min(deliveryPage * deliveryPageSize, groupedDeliveries.length)} dari {groupedDeliveries.length} batch mingguan
                     </p>
                     <div className={styles.paginationControls}>
                       <select
                         className={styles.select}
+                        aria-label="Baris per halaman"
                         value={deliveryPageSize}
                         onChange={(e) => setDeliveryPageSize(Number(e.target.value))}
-                        style={{ width: "auto", minWidth: "110px" }}
+                        style={{ width: "auto" }}
                       >
                         <option value="10">10 / halaman</option>
                         <option value="25">25 / halaman</option>
@@ -1913,10 +1840,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                         onClick={() => setDeliveryPage((currentPage) => Math.max(1, currentPage - 1))}
                         disabled={deliveryPage === 1}
                       >
-                        Prev
+                        Sebelumnya
                       </button>
                       <span className={styles.paginationPageLabel}>
-                        Halaman {deliveryPage} / {totalDeliveryPages}
+                        {deliveryPage} / {totalDeliveryPages}
                       </span>
                       <button
                         type="button"
@@ -1924,20 +1851,9 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                         onClick={() => setDeliveryPage((currentPage) => Math.min(totalDeliveryPages, currentPage + 1))}
                         disabled={deliveryPage === totalDeliveryPages}
                       >
-                        Next
+                        Berikutnya
                       </button>
                     </div>
-                  </div>
-
-                  <div className={styles.notice}>
-                    <p className={styles.noticeTitle}>
-                      Force Advance Status:
-                    </p>
-                    <ul>
-                      <li>Menyiapkan -&gt; Dikirim -&gt; Terkirim</li>
-                      <li>Digunakan untuk testing flow logistik massal.</li>
-                      <li>Pada production, status idealnya diupdate otomatis dari sistem kurir.</li>
-                    </ul>
                   </div>
                 </>
               ) : null}
@@ -1948,12 +1864,15 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                   <div className={styles.searchRow}>
                     <input
                       className={styles.input}
-                      placeholder="Cari pengguna berdasarkan nama atau email"
+                      type="search"
+                      aria-label="Cari pengguna"
+                      placeholder="Cari nama atau email"
                       value={userSearch}
                       onChange={(e) => setUserSearch(e.target.value)}
                     />
                     <select
                       className={styles.select}
+                      aria-label="Filter paket"
                       value={userPlanFilter}
                       onChange={(e) => setUserPlanFilter(e.target.value)}
                     >
@@ -1964,6 +1883,7 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     </select>
                     <select
                       className={styles.select}
+                      aria-label="Filter status"
                       value={userStatusFilter}
                       onChange={(e) => setUserStatusFilter(e.target.value)}
                     >
@@ -1978,61 +1898,50 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                     <table className={styles.table}>
                       <thead>
                         <tr>
-                          <th>Nama</th>
-                          <th>Kontak</th>
+                          <th>Pengguna</th>
                           <th>Alamat</th>
                           <th>Paket</th>
-                          <th>Porsi</th>
                           <th>Status</th>
+                          <th>Porsi</th>
+                          <th>Pengiriman</th>
                           <th>Bergabung</th>
-                          <th>Pengiriman Berikutnya</th>
+                          <th>Kirim berikutnya</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedUsers.length === 0 ? (
                           <tr>
-                            <td
-                              colSpan={10}
-                              style={{ textAlign: "center", padding: "2rem", color: "#666" }}
-                            >
-                              Tidak ada data user
+                            <td colSpan={8} className={styles.emptyState}>
+                              Tidak ada pengguna yang cocok.
                             </td>
                           </tr>
                         ) : (
                           paginatedUsers.map((row) => (
                             <tr key={row.id}>
-                              <td>{row.name}</td>
                               <td>
-                                {row.email}
-                                {row.phoneNumber && (
-                                  <>
-                                    <br />
-                                    {row.phoneNumber}
-                                  </>
-                                )}
+                                <span className={styles.tableKey}>{row.name}</span>
+                                <span className={styles.cellSub}>{row.email}</span>
+                                {row.phoneNumber && <span className={styles.cellSub}>{row.phoneNumber}</span>}
                               </td>
                               <td>{row.address || "-"}</td>
                               <td>
-                                <span className={clsx(styles.tag, styles.tagRed)}>
-                                  {row.plan || "-"}
-                                </span>
+                                {row.plan ? (
+                                  <span className={clsx(styles.tag, styles.tagGray)}>{row.plan}</span>
+                                ) : "-"}
                               </td>
                               <td>
                                 <span className={clsx(styles.tag, statusClass[row.subscriptionStatus || ""])}>
                                   {formatSubscriptionStatusLabel(row.subscriptionStatus)}
                                 </span>
                               </td>
-                              <td style={{ textAlign: "center" }}>
-                                {row.totalDeliveries}
-                              </td>
-                              <td>
+                              <td className={styles.nowrap}>{row.servings ?? "-"}</td>
+                              <td className={styles.nowrap}>{row.totalDeliveries}</td>
+                              <td className={styles.nowrap}>
                                 {new Date(row.joinedAt).toLocaleDateString("id-ID")}
                               </td>
-                              <td>
+                              <td className={styles.nowrap}>
                                 {row.nextDelivery
-                                  ? new Date(row.nextDelivery).toLocaleDateString(
-                                    "id-ID"
-                                  )
+                                  ? new Date(row.nextDelivery).toLocaleDateString("id-ID")
                                   : "-"}
                               </td>
                             </tr>
@@ -2044,15 +1953,16 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
 
                   <div className={styles.paginationBar}>
                     <p className={styles.paginationInfo}>
-                      Menampilkan {filteredUsers.length === 0 ? 0 : (userPage - 1) * userPageSize + 1}
-                      -{Math.min(userPage * userPageSize, filteredUsers.length)} dari {filteredUsers.length} user
+                      {filteredUsers.length === 0 ? 0 : (userPage - 1) * userPageSize + 1}
+                      -{Math.min(userPage * userPageSize, filteredUsers.length)} dari {filteredUsers.length} pengguna
                     </p>
                     <div className={styles.paginationControls}>
                       <select
                         className={styles.select}
+                        aria-label="Baris per halaman"
                         value={userPageSize}
                         onChange={(e) => setUserPageSize(Number(e.target.value))}
-                        style={{ width: "auto", minWidth: "110px" }}
+                        style={{ width: "auto" }}
                       >
                         <option value="10">10 / halaman</option>
                         <option value="25">25 / halaman</option>
@@ -2065,10 +1975,10 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                         onClick={() => setUserPage((currentPage) => Math.max(1, currentPage - 1))}
                         disabled={userPage === 1}
                       >
-                        Prev
+                        Sebelumnya
                       </button>
                       <span className={styles.paginationPageLabel}>
-                        Halaman {userPage} / {totalUserPages}
+                        {userPage} / {totalUserPages}
                       </span>
                       <button
                         type="button"
@@ -2076,540 +1986,42 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
                         onClick={() => setUserPage((currentPage) => Math.min(totalUserPages, currentPage + 1))}
                         disabled={userPage === totalUserPages}
                       >
-                        Next
+                        Berikutnya
                       </button>
                     </div>
                   </div>
-
-                  <div className={styles.notice}>
-                    <p className={styles.noticeTitle}>User Management:</p>
-                    <ul>
-                      <li>
-                        Informasi user dan subscription ditampilkan langsung dalam
-                        satu tabel.
-                      </li>
-                      <li>
-                        Status otomatis mengikuti lifecycle subscription user.
-                      </li>
-                      <li>
-                        Kolom next delivery membantu tim operasional prioritas
-                        jadwal.
-                      </li>
-                    </ul>
-                  </div>
                 </>
               ) : null}
 
-              {role === "admin" && activeTab === "reports" ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <ForecastingPage />
-                </div>
-              ) : null}
+              {role === "admin" && activeTab === "reports" ? <ForecastingPage /> : null}
 
-              {role === "admin" && activeTab === "ledgers" ? (
-                <div style={{ marginTop: "1rem" }}>
-                  <AdminPencatatanTab />
-                </div>
-              ) : null}
+              {role === "admin" && activeTab === "ledgers" ? <AdminPencatatanTab /> : null}
 
-              {role === "admin" && activeTab === "ingredients" ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <AdminIngredientsTab />
-                </div>
-              ) : null}
+              {role === "admin" && activeTab === "ingredients" ? <AdminIngredientsTab /> : null}
 
-              {role === "nutritionist" && activeTab === "recipes" ? (
-                <>
-                  <div
-                    className={styles.notice}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <p className={styles.noticeTitle}>Daftar Resep Sistem</p>
-                      <p>Kelola resep. Klik Tambah Resep untuk menyimpan resep baru.</p>
-                    </div>
-                    <button className={clsx(styles.tabButton, styles.tabButtonActive)} onClick={() => {
-                      setRecipeForm({ id: "", name: "", description: "", calories: "", protein: "", servings: "6", imageUrl: "" });
-                      setRecipeImageFile(null);
-                      setShowRecipeForm(!showRecipeForm);
-                    }}>
-                      {showRecipeForm ? "Batal" : "+ Tambah Resep"}
-                    </button>
-                  </div>
-
-                  {showRecipeForm && (
-                    <form onSubmit={handleSaveRecipe} className={styles.recipeForm}>
-                      <div className={styles.recipeFormRow}>
-                        <input className={clsx(styles.input, styles.recipeFormField)} placeholder="Nama resep" required value={recipeForm.name} onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })} />
-                        <input className={clsx(styles.input, styles.recipeFormFieldSmall)} type="number" placeholder="Kalori" required value={recipeForm.calories} onChange={e => setRecipeForm({ ...recipeForm, calories: e.target.value })} />
-                        <input className={clsx(styles.input, styles.recipeFormFieldSmall)} type="number" step="0.1" placeholder="Protein (g)" required value={recipeForm.protein} onChange={e => setRecipeForm({ ...recipeForm, protein: e.target.value })} />
-                      </div>
-                      <textarea className={clsx(styles.input, styles.recipeFormTextarea)} placeholder="Deskripsi singkat" required value={recipeForm.description} onChange={e => setRecipeForm({ ...recipeForm, description: e.target.value })} />
-                      <div className={styles.recipeFormRow} style={{ marginTop: '0.5rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#64748b' }}>Gambar Resep (Opsional):</span>
-                          <label style={{
-                            display: 'inline-block',
-                            padding: '0.5rem 1rem',
-                            background: '#e0f7f4',
-                            color: '#0ea5a5',
-                            borderRadius: '8px',
-                            border: '1px dashed #0ea5a5',
-                            cursor: 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: 600,
-                            textAlign: 'center'
-                          }}>
-                            {recipeImageFile ? recipeImageFile.name : recipeForm.imageUrl ? 'Ganti Gambar...' : '+ Pilih Gambar...'}
-                            <input type="file" accept="image/*" onChange={e => setRecipeImageFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
-                          </label>
-                        </div>
-                        {recipeForm.imageUrl && !recipeImageFile && (
-                          <div style={{ fontSize: '0.8rem', color: '#0ea5a5', fontStyle: 'italic', background: '#e0f7f4', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>✓ Memakai gambar yang sudah ada</div>
-                        )}
-                      </div>
-                      <div className={styles.recipeFormActions}>
-                        <button type="submit" disabled={isSubmitting} className={styles.actionCard}>
-                          {isSubmitting ? "Menyimpan..." : "Simpan Resep"}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {isLoading ? (
-                    <div style={{ textAlign: "center", padding: "2rem" }}>
-                      Memuat...
-                    </div>
-                  ) : (
-                    <div className={styles.tableShell}>
-                      <table className={styles.table}>
-                        <thead>
-                          <tr>
-                            <th>Resep</th>
-                            <th>Deskripsi</th>
-                            <th>Kalori</th>
-                            <th>Protein</th>
-                            <th>Porsi</th>
-                            <th>Aksi</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recipes.length === 0 ? (
-                            <tr>
-                              <td
-                                colSpan={6}
-                                style={{
-                                  textAlign: "center",
-                                  padding: "2rem",
-                                  color: "#666",
-                                }}
-                              >
-                                Tidak ada data resep
-                              </td>
-                            </tr>
-                          ) : (
-                            recipes.map((row) => (
-                              <tr key={row.id}>
-                                <td>{row.name}</td>
-                                <td>
-                                  {row.description
-                                    ? row.description.slice(0, 50) + "..."
-                                    : "-"}
-                                </td>
-                                <td>{row.calories} kcal</td>
-                                <td>{row.protein} g</td>
-                                <td>{row.servings}</td>
-                                <td style={{ position: "relative", width: "1%" }}>
-                                  <button
-                                    type="button"
-                                    className={styles.actionCard}
-                                    onClick={(event) => {
-                                      const rect = event.currentTarget.getBoundingClientRect();
-                                      setOpenRecipeActionMenu((current) => {
-                                        if (current?.id === row.id) return null;
-                                        return {
-                                          id: row.id,
-                                          top: rect.bottom + 8,
-                                          left: Math.max(12, rect.right - 152),
-                                        };
-                                      });
-                                    }}
-                                    aria-expanded={openRecipeActionMenu?.id === row.id}
-                                    aria-controls={`recipe-actions-${row.id}`}
-                                    style={{ padding: "0.45rem 0.7rem" }}
-                                  >
-                                    Aksi
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
-              ) : null}
-
-              {/* ── NUTRITIONIST: WEEKLY MENU TAB ────────────────────────── */}
-              {role === "nutritionist" && activeTab === "weekly-menu" ? (
-                <>
-                  <div
-                    className={styles.notice}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "1rem",
-                    }}
-                  >
-                    <div>
-                      <p className={styles.noticeTitle}>Menu Minggu Ini:</p>
-                      <p>Setiap kartu mewakili satu minggu kalender. Label <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.</p>
-                    </div>
-                    <button
-                      type="button"
-                      className={clsx(styles.tabButton, styles.tabButtonActive)}
-                      onClick={() => handleAutoGenerateNextWeek()}
-                      disabled={isGenerating}
-                    >
-                      {isGenerating ? "Menganalisis..." : "Auto-Generate Minggu Depan"}
-                    </button>
-                  </div>
-
-                  <div
-                    className={styles.searchRow}
-                    style={{
-                      marginTop: "1rem",
-                      gridTemplateColumns: "1fr 1fr 1fr",
-                    }}
-                  >
-                    <select
-                      className={styles.select}
-                      value={weeklyYearFilter}
-                      onChange={(event) => setWeeklyYearFilter(event.target.value)}
-                    >
-                      <option value="all">Semua Tahun</option>
-                      {weeklyYearOptions.map((year) => (
-                        <option key={year} value={String(year)}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className={styles.select}
-                      value={weeklyMonthFilter}
-                      onChange={(event) =>
-                        setWeeklyMonthFilter(event.target.value)
-                      }
-                    >
-                      <option value="all">Semua Bulan</option>
-                      {weeklyMonthOptions.map((month) => (
-                        <option key={month} value={String(month)}>
-                          {formatMonthLabel(month)}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className={styles.tabButton}
-                      onClick={() => {
-                        const now = new Date();
-                        setWeeklyYearFilter(String(now.getFullYear()));
-                        setWeeklyMonthFilter(String(now.getMonth()));
-                      }}
-                    >
-                      Kembali ke bulan ini
-                    </button>
-                  </div>
-
-                  {showMenuForm && (
-                    <form onSubmit={handleAddMenu} className={styles.weeklyMenuForm}>
-                      <select className={styles.select} required value={menuForm.recipeId} onChange={e => setMenuForm({ ...menuForm, recipeId: e.target.value })}>
-                        <option value="">-- Pilih Resep --</option>
-                        {recipes.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input className={styles.input} type="date" required value={menuForm.weekStartDate} onChange={e => setMenuForm({ ...menuForm, weekStartDate: e.target.value })} />
-                      <div className={styles.weeklyMenuFormActions}>
-                        <button type="submit" disabled={isSubmitting} className={styles.actionCard}>
-                          {isSubmitting ? "Menambah..." : "Tambah"}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {isLoading ? (
-                    <div style={{ textAlign: "center", padding: "2rem" }}>
-                      Memuat...
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: "1rem" }}>
-                      {visibleWeeklyMenus.length === 0 ? (
-                        <div
-                          className={styles.notice}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <p className={styles.noticeTitle}>
-                            Belum ada menu pada periode ini.
-                          </p>
-                          <p>
-                            Coba ubah filter bulan/tahun, atau tambahkan resep ke
-                            minggu ini lewat kartu minggu yang tersedia.
-                          </p>
-                        </div>
-                      ) : (
-                        visibleWeeklyMenus.map((week) => {
-                          const isExpanded =
-                            expandedWeekStartDate === week.weekStartDate;
-                          return (
-                            <section
-                              key={week.weekStartDate}
-                              className={clsx(styles.weeklyMenuSection, week.isActiveWeek && "active")}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setExpandedWeekStartDate(isExpanded ? null : week.weekStartDate)}
-                                className={styles.weeklyMenuHeader}
-                              >
-                                <div className={styles.weeklyMenuHeaderContent}>
-                                  <p className={clsx(styles.noticeTitle, styles.weeklyMenuHeaderTitle)}>
-                                    {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
-                                  </p>
-                                  <p className={styles.weeklyMenuHeaderSub}>
-                                    {week.menus.length} menu tersimpan untuk minggu ini.
-                                  </p>
-                                </div>
-
-                                <div className={styles.weeklyMenuHeaderRight}>
-                                  {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>}
-                                  <span aria-hidden="true" style={{ fontSize: "1.15rem", color: "#64748b" }}>{isExpanded ? "▾" : "▸"}</span>
-                                </div>
-                              </button>
-
-                              {isExpanded && (
-                                <div className={styles.weeklyMenuContent}>
-                                  <div className={styles.weeklyMenuAddButton}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setMenuForm({
-                                          recipeId: "",
-                                          weekStartDate:
-                                            week.weekStartDate.slice(0, 10),
-                                        });
-                                        setShowMenuForm(true);
-                                      }}
-                                    >
-                                      + Tambah resep ke minggu ini
-                                    </button>
-                                  </div>
-
-                                  <div className={styles.tableShell}>
-                                    <table className={styles.table}>
-                                      <thead>
-                                        <tr>
-                                          <th>Resep</th>
-                                          <th>Kalori</th>
-                                          <th>Protein</th>
-                                          <th>Tujuan Sesuai</th>
-                                          <th>Aksi</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {week.menus.map((row) => {
-                                          const previewGoals = buildGoalPreview(
-                                            row,
-                                            goalOverrides
-                                          );
-                                          const isEditingGoal =
-                                            goalEditorMenuId === row.id;
-                                          return (
-                                            <tr key={row.id}>
-                                              <td>{row.recipeName}</td>
-                                              <td>{row.calories} kcal</td>
-                                              <td>{row.protein} g</td>
-                                              <td>
-                                                <div
-                                                  style={{
-                                                    position: "relative",
-                                                    display: "inline-flex",
-                                                    alignItems: "center",
-                                                    gap: "0.45rem",
-                                                    flexWrap: "wrap",
-                                                  }}
-                                                >
-                                                  {previewGoals.length > 0 ? (
-                                                    previewGoals.map((goal) => (
-                                                      <span key={goal} className={clsx(styles.tag, styles.tagBlue)}>{formatGoalLabel(goal)}</span>
-                                                    ))
-                                                  ) : (
-                                                    <button
-                                                      type="button"
-                                                      className={
-                                                        styles.goalLinkButton
-                                                      }
-                                                      onClick={() =>
-                                                        setGoalEditorMenuId(
-                                                          row.id
-                                                        )
-                                                      }
-                                                    >
-                                                      + Hubungkan tujuan
-                                                    </button>
-                                                  )}
-                                                  <button
-                                                    type="button"
-                                                    className={styles.goalEditButton}
-                                                    onClick={() => setGoalEditorMenuId((current) => current === row.id ? null : row.id)}
-                                                    aria-label="Ubah target kesehatan"
-                                                  >
-                                                    ✎
-                                                  </button>
-                                                  {isEditingGoal && (
-                                                    <div className={styles.goalPopover}>
-                                                      <div className={styles.goalPopoverTitle}>Hubungkan tujuan kesehatan</div>
-                                                      <div className={styles.goalPopoverList}>
-                                                        {weeklyGoals.length === 0 ? (
-                                                          <p style={{ margin: 0, color: "#64748b" }}>Belum ada data tujuan master.</p>
-                                                        ) : weeklyGoals.map((goal) => {
-                                                          const currentGoals = new Set(goalOverrides[row.id] ?? row.suitableGoals);
-                                                          const checked = currentGoals.has(goal.name);
-
-                                                          return (
-                                                            <label key={goal.id} className={styles.goalPopoverItem}>
-                                                              <input
-                                                                type="checkbox"
-                                                                checked={checked}
-                                                                onChange={() => {
-                                                                  setGoalOverrides((prev) => {
-                                                                    const next = new Set(prev[row.id] ?? row.suitableGoals);
-                                                                    if (next.has(goal.name)) next.delete(goal.name);
-                                                                    else next.add(goal.name);
-                                                                    return { ...prev, [row.id]: Array.from(next) };
-                                                                  });
-                                                                }}
-                                                              />
-                                                              <span>{goal.name}</span>
-                                                            </label>
-                                                          );
-                                                        })}
-                                                      </div>
-                                                      <div
-                                                        className={
-                                                          styles.goalPopoverActions
-                                                        }
-                                                      >
-                                                        <button
-                                                          type="button"
-                                                          className={
-                                                            styles.tabButton
-                                                          }
-                                                          onClick={() =>
-                                                            setGoalEditorMenuId(
-                                                              null
-                                                            )
-                                                          }
-                                                        >
-                                                          Tutup
-                                                        </button>
-                                                        <button
-                                                          type="button"
-                                                          className={clsx(
-                                                            styles.tabButton,
-                                                            styles.tabButtonActive
-                                                          )}
-                                                          onClick={() =>
-                                                            setGoalEditorMenuId(
-                                                              null
-                                                            )
-                                                          }
-                                                        >
-                                                          Simpan tampilan
-                                                        </button>
-                                                      </div>
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              </td>
-                                              <td style={{ position: "relative", width: "1%" }}>
-                                                <button
-                                                  type="button"
-                                                  className={styles.actionCard}
-                                                  onClick={(event) => {
-                                                    const rect = event.currentTarget.getBoundingClientRect();
-                                                    setOpenMenuActionMenu((current) => {
-                                                      if (current?.id === row.id) return null;
-                                                      return {
-                                                        id: row.id,
-                                                        top: rect.bottom + 8,
-                                                        left: Math.max(12, rect.right - 152),
-                                                      };
-                                                    });
-                                                  }}
-                                                  aria-expanded={openMenuActionMenu?.id === row.id}
-                                                  aria-controls={`menu-actions-${row.id}`}
-                                                  style={{ padding: "0.45rem 0.7rem" }}
-                                                >
-                                                  Aksi
-                                                </button>
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              )}
-                            </section>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : null}
-
-              {/* ── DASHBOARD TAB: Activities & Actions ──────────────────── */}
+              {/* ── DASHBOARD TAB: Activities ────────────────────────────── */}
               {activeTab === "dashboard" ? (
-                <>
-                  <section className={styles.activityCard}>
-                    <h3 className={styles.activityHeader}>Aktivitas Terkini</h3>
+                <section className={styles.activityCard}>
+                  <h2 className={styles.activityHeader}>Aktivitas Terkini</h2>
+                  {currentActivities.length === 0 ? (
+                    <p className={styles.emptyState}>Belum ada aktivitas.</p>
+                  ) : (
                     <ul className={styles.activityList}>
                       {currentActivities.map((activity, index) => (
                         <li key={`${activity.text}-${index}`} className={styles.activityItem}>
                           <span className={styles.activityIcon}>{activity.icon}</span>
                           <div>
                             <p className={styles.activityText}>{activity.text}</p>
+                            {activity.time ? <p className={styles.activityTime}>{activity.time}</p> : null}
                           </div>
                         </li>
                       ))}
                     </ul>
-                  </section>
-
-                  <div className={styles.actionGrid}>
-                    {config.actions.map((action) => (
-                      <button key={action.title} type="button" className={styles.actionCard}>
-                        {action.icon ? <span>{action.icon}</span> : null}
-                        <p className={action.title === "Laporan" ? styles.actionTitleActive : styles.actionTitle}>{action.title}</p>
-                        <p className={styles.actionSub}>{action.subtitle}</p>
-                      </button>
-                    ))}
-                  </div>
-                </>
+                  )}
+                </section>
               ) : null}
             </div>
-          </section>
-        </div>
-      </main>
+      </PortalShell>
       {openActionMenu && openActionRow
         ? createPortal(
           <div
@@ -2769,126 +2181,3 @@ export function RolePortalScreen({ role }: { role: RoleVariant }) {
     </>
   );
 }
-
-// --- Icons ---
-
-function PeopleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M16 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M5 20a3.5 3.5 0 0 1 7 0M13 20a3 3 0 0 1 6 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChartArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="m6 14 4-4 3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M17 7h3v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BoxIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="m3.5 7.5 8.5-4 8.5 4-8.5 4-8.5-4Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M3.5 7.5V16l8.5 4 8.5-4V7.5" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M12 3 5 6v5c0 5 3.5 8 7 10 3.5-2 7-5 7-10V6l-7-3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TruckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M2 6h11v9H2zM13 9h4l3 3v3h-7z" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="7" cy="17" r="2" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="18" cy="17" r="2" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function CheckCircleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="m8.5 12.2 2.1 2.1 4.9-4.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M12 4 3.5 19h17L12 4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M12 9v4m0 3h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function MapPinIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M12 21s6-5.3 6-10a6 6 0 1 0-12 0c0 4.7 6 10 6 10Z" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="12" cy="11" r="2.2" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function PulseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M3 12h4l2-4 3 8 2-4h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function BookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <path d="M5 5.5A2.5 2.5 0 0 1 7.5 3H19v16H7.5A2.5 2.5 0 0 0 5 21V5.5Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M8 7h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function TargetIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-    </svg>
-  );
-}
-
-// Suppress unused warning — MapPinIcon dipakai di activityIconMap extension future
-void MapPinIcon;

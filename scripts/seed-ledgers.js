@@ -1,6 +1,7 @@
+// Run with: node --env-file=.env scripts/seed-ledgers.js
 const { Client } = require('pg');
 
-const connectionString = 'postgresql://postgres.knsuarluopssgsxhbvwo:FromFram123!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+const connectionString = process.env.DATABASE_URL;
 
 async function seedLedgers() {
   const client = new Client({ connectionString });

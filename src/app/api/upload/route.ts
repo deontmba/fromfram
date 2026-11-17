@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { getSessionUserId, getAuthErrorResponse } from "@/lib/session";
+import { verifyRole } from "@/lib/auth";
 
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+const MAX_BYTES = 5 * 1024 * 1024;
+
+// shortcut: writes to local public/uploads, which is read-only on Vercel; move to object storage before relying on uploads in prod.
 export async function POST(request: NextRequest) {
+  const session = await getSessionUserId(request);
+  if ("error" in session) return getAuthErrorResponse(session.error);
+  const roleError = await verifyRole(session.userId, "NUTRITIONIST");
+  if (roleError) return NextResponse.json({ error: roleError.error }, { status: roleError.status });
+
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
@@ -14,12 +30,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Extension comes from the checked MIME type, never from the user's filename.
+    const extension = IMAGE_EXTENSIONS[file.type];
+    if (!extension) {
+      return NextResponse.json({ error: "Hanya file gambar (JPG, PNG, WEBP, GIF)." }, { status: 400 });
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: "Ukuran file maksimal 5 MB." }, { status: 400 });
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    
+
     // Create unique filename
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = file.name.split('.').pop();
-    const filename = `recipe-${uniqueSuffix}.${extension}`;
+    const filename = `recipe-${crypto.randomUUID()}.${extension}`;
     
     // Ensure public/uploads directory exists
     const uploadDir = path.join(process.cwd(), "public/uploads");

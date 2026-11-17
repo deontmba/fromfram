@@ -13,7 +13,7 @@ const config: Config = {
   transformIgnorePatterns: [
     '/node_modules/(?!jose|@prisma)/',
   ],
-  setupFiles: ['dotenv/config'],
+  setupFiles: ['dotenv/config', '<rootDir>/tests/unit/guard-test-db.ts'],
 };
 
 export default config;

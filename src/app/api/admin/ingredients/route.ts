@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 // GET all ingredients with stock info (for admin)
 export async function GET(req: NextRequest) {
@@ -49,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nama bahan baku sudah terdaftar di sistem.' }, { status: 409 });
     }
 
-    const initialStock = Math.max(0, Number(stockKg) || 0);
+    const initialStock = Math.max(0, Number.isFinite(Number(stockKg)) ? Number(stockKg) : 0);
     const ingredient = await prisma.ingredient.create({
       data: {
         name: trimmedName,
@@ -57,12 +50,12 @@ export async function POST(req: NextRequest) {
         supplierName: supplierName && typeof supplierName === 'string' && supplierName.trim() ? supplierName.trim() : '-',
         isAllergen: Boolean(isAllergen),
         stockKg: initialStock,
-        pricePerKg: Math.max(0, Number(pricePerKg) || 0),
+        pricePerKg: Math.max(0, Number.isFinite(Number(pricePerKg)) ? Number(pricePerKg) : 0),
       },
     });
 
     // Otomatis catat bahan baku baru di IngredientLedger
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = crypto.randomUUID().slice(0, 8).toUpperCase(); // unique code column: 4 random digits collided
     const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
     const refCode = `TIK/IN/${randomSuffix}`;
 

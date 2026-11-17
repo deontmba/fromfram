@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 // PATCH /api/admin/ingredients/[id]/restock — tambah stok ingredient dari Dashboard Admin
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,25 +15,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const addQty = Number(body.addQtyKg);
     const newPrice = body.pricePerKg !== undefined ? Number(body.pricePerKg) : undefined;
 
-    if (isNaN(addQty) || addQty <= 0) {
+    if (!Number.isFinite(addQty) || addQty <= 0) {
       return NextResponse.json({ error: 'addQtyKg harus berupa angka positif.' }, { status: 400 });
     }
 
-    const existing = await prisma.ingredient.findUnique({ where: { id }, select: { stockKg: true, name: true } });
-    if (!existing) return NextResponse.json({ error: 'Ingredient tidak ditemukan.' }, { status: 404 });
-
-    const newStock = existing.stockKg + addQty;
+    // Atomic increment so concurrent restocks never overwrite each other.
     const updateData: Record<string, unknown> = {
-      stockKg: newStock,
+      stockKg: { increment: addQty },
     };
-    if (newPrice !== undefined && !isNaN(newPrice) && newPrice >= 0) {
+    if (newPrice !== undefined && Number.isFinite(newPrice) && newPrice >= 0) {
       updateData.pricePerKg = newPrice;
     }
 
-    const updated = await prisma.ingredient.update({ where: { id }, data: updateData });
+    const updated = await prisma.ingredient.update({ where: { id }, data: updateData }).catch((err: { code?: string }) => {
+      if (err?.code === 'P2025') return null;
+      throw err;
+    });
+    if (!updated) return NextResponse.json({ error: 'Ingredient tidak ditemukan.' }, { status: 404 });
+    const newStock = updated.stockKg;
 
     // Otomatis catat di IngredientLedger
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = crypto.randomUUID().slice(0, 8).toUpperCase(); // unique code column: 4 random digits collided
     const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
     const refCode = `TIK/IN/${randomSuffix}`;
 
@@ -53,7 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         referenceCode: refCode,
         adminUserId: auth.userId,
         qtyChangeKg: addQty,
-        stockBeforeKg: existing.stockKg,
+        stockBeforeKg: newStock - addQty,
         stockAfterKg: newStock,
         notes: `Restock bahan baku (+${addQty.toFixed(2)} Kg)`,
       },

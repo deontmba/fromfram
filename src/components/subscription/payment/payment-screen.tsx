@@ -7,6 +7,13 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import { Check, CreditCard } from "lucide-react";
+import {
+  CheckoutLayout,
+  cardClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/components/subscription/checkout-layout";
 
 type PlanKey = "weekly" | "monthly" | "yearly";
 
@@ -81,7 +88,7 @@ const PLAN_CONFIG: Record<PlanKey, Omit<PaymentSummary, "servingLabel" | "addres
 const benefits = [
   "Gratis ongkir",
   "28 meal kit (menu sudah dipilih)",
-  "Priority customer support",
+  "Layanan prioritas",
 ];
 
 // ---------------------------------------------------------------------------
@@ -191,24 +198,6 @@ function mapTransaction(payload: unknown): TransactionViewModel | null {
   };
 }
 
-function PaymentIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
-      <line x1="2" y1="10" x2="22" y2="10" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
-function QrisIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-6 w-6">
-      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" />
-      <path d="M7 7h3v3H7zm7 0h3v3h-3zm-7 7h3v3H7z" fill="currentColor" />
-    </svg>
-  );
-}
-
 function getDefaultAddressLabel(payload: unknown): string | null {
   const root = toRecord(payload);
   if (!root) return null;
@@ -244,21 +233,12 @@ async function lockCurrentWeeklyBox() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
-      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function SnapPlaceholder({ message, action }: { message: string; action?: ReactNode }) {
   return (
-    <div className="mx-auto grid min-h-[560px] w-full place-items-center rounded-2xl border border-dashed border-[#d7d7d7] bg-[#f8f8f8] px-6 py-8 text-center">
+    <div className="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50 px-6 py-8 text-center">
       <div className="max-w-sm">
-        <div className="mx-auto mb-4 h-14 w-14 rounded-2xl bg-[#e6faf3]" />
-        <p className="text-[1rem] font-bold text-neutral-900">Midtrans Snap belum siap</p>
-        <p className="mt-2 text-[0.9rem] leading-6 text-neutral-500">{message}</p>
+        <p className="font-semibold text-neutral-900">Pembayaran belum siap</p>
+        <p className="mt-2 text-sm leading-6 text-neutral-500">{message}</p>
         {action ? <div className="mt-4">{action}</div> : null}
       </div>
     </div>
@@ -283,7 +263,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
   const [isPreparing, setIsPreparing] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
   const [isOpening, setIsOpening] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran Midtrans Snap...");
+  const [statusMessage, setStatusMessage] = useState("Menyiapkan pembayaran...");
   const [autoPoll, setAutoPoll] = useState(true);
   const [isSnapScriptLoaded, setIsSnapScriptLoaded] = useState(false);
   const [snapScriptError, setSnapScriptError] = useState<string | null>(null);
@@ -371,9 +351,9 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
               console.error("[lock weekly box after completed payment]", error);
             });
           } else if (normalizedStatus === "PENDING") {
-            setStatusMessage("Checkout Midtrans siap digunakan. Pilih metode pembayaran di panel kanan.");
+            setStatusMessage("Pilih metode pembayaran untuk menyelesaikan pesanan.");
           } else {
-            setStatusMessage("Checkout Midtrans siap digunakan. Pilih metode pembayaran di panel kanan.");
+            setStatusMessage("Pilih metode pembayaran untuk menyelesaikan pesanan.");
           }
         } else {
           const errMsg =
@@ -427,8 +407,8 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
 
   const summaryRows = useMemo(
     () => [
-      { label: "Plan", value: summary.planLabel },
-      { label: "Serving Size", value: summary.servingLabel },
+      { label: "Paket", value: summary.planLabel },
+      { label: "Porsi", value: summary.servingLabel },
       { label: "Durasi", value: summary.durationLabel },
       { label: "Alamat", value: summary.addressLabel },
     ],
@@ -505,7 +485,7 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
     }
 
     if (!window.snap?.embed || !snapContainerRef.current) {
-      setStatusMessage("Midtrans Snap belum siap dimuat.");
+      setStatusMessage("Pembayaran belum siap dimuat.");
       return;
     }
 
@@ -521,10 +501,10 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
         void handleCheckStatus(true);
       },
       onError: () => {
-        setStatusMessage("Checkout Midtrans mengalami kendala. Coba muat ulang atau gunakan tautan cadangan.");
+        setStatusMessage("Pembayaran mengalami kendala. Muat ulang halaman atau buka di tab baru.");
       },
       onClose: () => {
-        setStatusMessage("Checkout Midtrans ditutup. Kamu bisa lanjutkan pembayaran kapan saja.");
+        setStatusMessage("Pembayaran ditutup. Kamu bisa melanjutkannya kapan saja.");
       },
     });
     embeddedSnapTokenRef.current = transaction.snapToken;
@@ -546,19 +526,13 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
 
   if (!isMounted) {
     return (
-      <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10 flex items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 inline-flex items-center gap-2 text-[#10b981]">
-            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} priority />
-            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
-          </div>
-          <p className="text-neutral-500 font-semibold animate-pulse text-[0.98rem]">
-            Menyiapkan halaman pembayaran...
-          </p>
-        </div>
-      </main>
+      <CheckoutLayout step="Bayar" width="lg" title="Pembayaran">
+        <div className="h-96 animate-pulse rounded-2xl bg-neutral-200/70" />
+      </CheckoutLayout>
     );
   }
+
+  const statusLabels: Record<string, string> = { PENDING: "Menunggu pembayaran", COMPLETED: "Lunas", FAILED: "Gagal" };
 
   return (
     <>
@@ -568,209 +542,146 @@ export function PaymentScreen({ midtransClientKey, isMidtransProduction }: Payme
           data-client-key={resolvedMidtransClientKey}
           strategy="afterInteractive"
           onLoad={() => setIsSnapScriptLoaded(true)}
-          onError={() => setSnapScriptError("Gagal memuat Snap.js dari Midtrans.")}
+          onError={() => setSnapScriptError("Gagal memuat halaman pembayaran.")}
         />
       ) : null}
-    <main className="min-h-screen bg-[#ececec] px-4 py-8 sm:px-5 sm:py-10">
-      <section className="mx-auto w-full max-w-[980px]">
-        <header className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 text-[#10b981]">
-            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
-            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
-          </div>
-          <h1 className="text-[2rem] font-bold leading-tight text-neutral-900 sm:text-[2.35rem]">
-            Pembayaran
-          </h1>
-          <p className="mt-2 text-[0.98rem] text-neutral-500 sm:text-[1rem]">
-            Selesaikan checkout Midtrans di panel kanan lalu cek status pembayaran
-          </p>
-        </header>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          {/* Ringkasan Pesanan */}
-          <section className="rounded-2xl border border-[#e0e0e0] bg-[#f8f8f8] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-[#1db788]" />
-              <h2 className="text-[1.15rem] font-bold text-neutral-900">Ringkasan Pesanan</h2>
+      <CheckoutLayout
+        step="Bayar"
+        width="lg"
+        title="Pembayaran"
+        subtitle="Pilih metode pembayaran di bawah. Langganan aktif begitu pembayaran berhasil."
+      >
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          {/* Payment */}
+          <section className={cardClass}>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-neutral-900">Metode pembayaran</h2>
+              <span className="text-sm text-neutral-500">QRIS, e-wallet, transfer bank</span>
             </div>
 
-            <div className="space-y-3 border-b border-[#d8d8d8] pb-5 text-[0.96rem]">
-              {summaryRows.map((row) => (
-                <div key={row.label} className="flex items-start justify-between gap-4">
-                  <span className="text-neutral-500">{row.label}</span>
-                  <span className="max-w-[60%] text-right font-semibold text-neutral-900">{row.value}</span>
+            <div className="mt-4">
+              {transaction.snapToken ? (
+                <div className="overflow-hidden rounded-xl border border-neutral-200">
+                  <div id="snap-container" ref={snapContainerRef} className="min-h-[560px] w-full" />
                 </div>
-              ))}
+              ) : (
+                <SnapPlaceholder
+                  message={
+                    snapScriptError ??
+                    (resolvedMidtransClientKey
+                      ? "Menyiapkan pembayaran..."
+                      : "Pembayaran belum bisa dimuat. Hubungi kami jika ini terus terjadi.")
+                  }
+                  action={
+                    !resolvedMidtransClientKey && transaction.redirectUrl ? (
+                      <a href={transaction.redirectUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+                        Buka halaman pembayaran
+                      </a>
+                    ) : null
+                  }
+                />
+              )}
             </div>
 
-            <div className="space-y-3 py-5 text-[0.96rem]">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-neutral-500">Subtotal</span>
-                <span className="font-semibold text-neutral-900">{formatCurrency(summary.subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-neutral-500">Diskon</span>
-                <span className="font-semibold text-[#0ca978]">
-                  {summary.discount > 0 ? `- ${formatCurrency(summary.discount)}` : formatCurrency(0)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-4 pt-1">
-                <span className="text-[1.08rem] font-bold text-neutral-900">Total</span>
-                <span className="text-[1.15rem] font-extrabold text-[#12af80]">
-                  {formatCurrency(summary.total)}
-                </span>
-              </div>
-            </div>
+            <p className="mt-4 text-sm text-neutral-500" aria-live="polite">
+              {isPreparing ? "Menyiapkan pembayaran..." : statusMessage}
+            </p>
 
-            <ul className="space-y-3 rounded-2xl border border-[#bfe9dc] bg-[#eefaf5] px-4 py-4 text-[0.95rem] text-neutral-800">
-              {benefits.map((benefit) => (
-                <li key={benefit} className="flex items-center gap-2">
-                  <span className="grid h-5 w-5 place-items-center text-[#12af80]">
-                    <CheckIcon />
-                  </span>
-                  {benefit}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Panel Pembayaran */}
-          <section className="rounded-2xl border border-[#e0e0e0] bg-[#f8f8f8] p-5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] sm:p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <PaymentIcon />
-              <h2 className="text-[1.15rem] font-bold text-neutral-900">Metode Pembayaran</h2>
-            </div>
-
-            <div className="mb-5 flex items-center gap-3 rounded-2xl bg-[#12a880] px-4 py-3 text-white shadow-[0_8px_18px_rgba(18,168,128,0.22)]">
-              <QrisIcon />
-              <span className="font-bold">Midtrans Snap</span>
-            </div>
-
-            {/* Total & tombol bayar */}
-            <div className="rounded-2xl border border-[#dedede] bg-white p-5 text-center">
-              <p className="text-[0.9rem] text-neutral-500">Checkout Midtrans dengan QRIS, bank transfer, dan metode aktif lainnya</p>
-              <p className="mt-2 text-[1.45rem] font-extrabold text-[#12af80]">
-                {formatCurrency(paymentAmount)}
-              </p>
-
-              <div className="mt-5">
-                {transaction.snapToken ? (
-                  <div className="mx-auto w-full overflow-hidden rounded-2xl border border-[#e1e1e1] bg-[#f8f8f8] p-2 text-left shadow-[0_4px_10px_rgba(0,0,0,0.04)]">
-                    <div
-                      id="snap-container"
-                      ref={snapContainerRef}
-                      className="min-h-[560px] w-full"
-                    />
-                  </div>
-                ) : (
-                  <SnapPlaceholder
-                    message={
-                      snapScriptError ??
-                      (resolvedMidtransClientKey
-                        ? "Menunggu token Snap dari backend."
-                        : "MIDTRANS_CLIENT_KEY belum diatur di server, jadi Snap belum dapat dimuat.")
-                    }
-                    action={
-                      !resolvedMidtransClientKey && transaction.redirectUrl ? (
-                        <a
-                          href={transaction.redirectUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center justify-center rounded-xl border border-[#12af80] px-4 py-2 text-sm font-semibold text-[#12af80] transition hover:bg-[#eefaf5]"
-                        >
-                          Buka halaman pembayaran Midtrans
-                        </a>
-                      ) : null
-                    }
-                  />
-                )}
-              </div>
-
-              <p className="mt-4 text-[0.82rem] text-neutral-500">Token checkout berlaku selama 24 jam atau sesuai aturan Midtrans</p>
-              {transaction.id ? (
-                <p className="mt-1 px-2 text-[0.78rem] font-medium leading-snug text-neutral-400">
-                  Nomor pesanan: {transaction.id}
-                </p>
-              ) : null}
-              {transaction.status ? (
-                <p className="mt-1 text-[0.78rem] font-semibold text-neutral-500">
-                  Status: {transaction.status}
-                </p>
-              ) : null}
-              {transaction.redirectUrl ? (
-                <a
-                  href={transaction.redirectUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 inline-flex items-center justify-center rounded-xl border border-[#12af80] px-4 py-2 text-sm font-semibold text-[#12af80] transition hover:bg-[#eefaf5]"
-                >
-                  Buka halaman pembayaran Midtrans
-                </a>
-              ) : null}
-            </div>
-
-            <div className="mt-5 border-t border-[#d8d8d8] pt-5">
-              <p className="text-[0.9rem] text-neutral-500">
-                Setelah menyelesaikan pembayaran di Snap, klik tombol di bawah untuk cek status transaksi.
-              </p>
-              <p className="mt-2 min-h-5 text-[0.84rem] font-medium text-neutral-500">
-                {isPreparing ? "Menghubungkan ke layanan transaksi..." : statusMessage}
-              </p>
-
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 disabled={!canPay || isOpening}
                 onClick={handleOpenSnap}
-                className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#1db788] px-8 text-[1rem] font-semibold text-white shadow-[0_8px_18px_rgba(29,183,136,0.32)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#16a679] hover:shadow-[0_12px_22px_rgba(29,183,136,0.36)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60"
+                className={`${primaryButtonClass} sm:flex-1`}
               >
-                <PaymentIcon />
-                {isPreparing ? "Menyiapkan..." : isOpening ? "Membuka..." : "Bayar Sekarang"}
+                <CreditCard aria-hidden="true" className="h-4 w-4" />
+                {isPreparing ? "Menyiapkan..." : isOpening ? "Membuka..." : "Bayar sekarang"}
               </button>
+              {transaction.redirectUrl ? (
+                <a href={transaction.redirectUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+                  Buka di tab baru
+                </a>
+              ) : null}
             </div>
           </section>
-        </div>
 
-        <div className="mt-7 text-center">
-          <Link
-            href="/subscription/weekly-menu"
-            className="inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8]"
-          >
-            Kembali ke pemilihan menu
-          </Link>
-        </div>
-      </section>
-    </main>
+          {/* Order summary */}
+          <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+            <section className={cardClass}>
+              <h2 className="text-base font-semibold text-neutral-900">Ringkasan pesanan</h2>
+              <dl className="mt-4 space-y-2.5 text-sm">
+                {summaryRows.map((row) => (
+                  <div key={row.label} className="flex justify-between gap-4">
+                    <dt className="text-neutral-500">{row.label}</dt>
+                    <dd className="text-right font-medium text-neutral-900">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
 
-    {showSuccessModal && (
-      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-md">
-        <div className="relative w-full max-w-md transform rounded-[28px] border border-[#10b981]/25 bg-white p-6 text-center shadow-2xl transition-all">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#ecfdf5] text-[#10b981]">
-            <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          
-          <h3 className="text-2xl font-black text-neutral-900 leading-tight">
-            Pembayaran Berhasil!
-          </h3>
-          
-          <p className="mt-3 text-sm leading-relaxed text-neutral-600">
-            Transaksi Anda telah sukses diproses dan diverifikasi. Anda sekarang dapat mengakses dashboard utama FromFram untuk melihat detail pesanan Anda.
-          </p>
-          
-          <div className="mt-6">
+              <dl className="mt-4 space-y-2.5 border-t border-neutral-100 pt-4 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-neutral-500">Subtotal</dt>
+                  <dd className="font-medium text-neutral-900">{formatCurrency(summary.subtotal)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-neutral-500">Diskon</dt>
+                  <dd className="font-medium text-[#07845e]">
+                    {summary.discount > 0 ? `- ${formatCurrency(summary.discount)}` : formatCurrency(0)}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 border-t border-neutral-100 pt-3">
+                  <dt className="font-semibold text-neutral-900">Total</dt>
+                  <dd className="text-lg font-bold text-neutral-900">{formatCurrency(summary.total)}</dd>
+                </div>
+              </dl>
+
+              <ul className="mt-4 space-y-2 border-t border-neutral-100 pt-4 text-sm text-neutral-600">
+                {benefits.map((benefit) => (
+                  <li key={benefit} className="flex items-center gap-2">
+                    <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#13b987]" strokeWidth={2.5} />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            {transaction.id ? (
+              <p className="px-1 text-xs leading-5 text-neutral-400">
+                No. pesanan {transaction.id}
+                {transaction.status ? ` · ${statusLabels[transaction.status] ?? transaction.status}` : ""}
+                <br />
+                Halaman pembayaran berlaku 24 jam.
+              </p>
+            ) : null}
+
+            <Link href="/subscription/weekly-menu" className="block px-1 text-sm text-neutral-500 hover:text-neutral-800">
+              Kembali ke pilihan menu
+            </Link>
+          </aside>
+        </div>
+      </CheckoutLayout>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-neutral-900/50 p-4">
+          <div role="dialog" aria-modal="true" aria-label="Pembayaran berhasil" className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#effaf5] text-[#13b987]">
+              <Check aria-hidden="true" className="h-7 w-7" strokeWidth={3} />
+            </div>
+            <h3 className="mt-4 text-xl font-bold text-neutral-900">Pembayaran berhasil</h3>
+            <p className="mt-2 text-sm leading-6 text-neutral-600">
+              Langgananmu sudah aktif. Lihat jadwal pengiriman dan menu di dashboard.
+            </p>
             <button
-              onClick={() => {
-                router.push("/dashboard?payment_success=true");
-              }}
-              className="w-full inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-[#1db788] to-[#16a679] text-base font-bold text-white shadow-[0_8px_20px_rgba(29,183,136,0.3)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(29,183,136,0.35)]"
+              type="button"
+              onClick={() => router.push("/dashboard?payment_success=true")}
+              className={`${primaryButtonClass} mt-6 w-full`}
             >
-              OK
+              Ke dashboard
             </button>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </>
   );
 }

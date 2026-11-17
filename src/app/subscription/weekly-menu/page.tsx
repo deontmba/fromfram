@@ -4,6 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Check, MapPin, Minus, Plus, Sparkles, UtensilsCrossed, X } from "lucide-react";
+import {
+  CheckoutLayout,
+  cardClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/components/subscription/checkout-layout";
 
 type DayKey = "SENIN" | "SELASA" | "RABU" | "KAMIS" | "JUMAT" | "SABTU" | "MINGGU";
 type MealType = "lunch" | "dinner";
@@ -80,24 +87,13 @@ const mealTypes: Array<{ key: MealType; label: string }> = [
   { key: "dinner", label: "Makan Malam" },
 ];
 
-function ChefHatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-10 w-10 text-neutral-500">
-      <path
-        d="M7.5 10.5A3.5 3.5 0 0 1 8 3.6a4.5 4.5 0 0 1 8 .8 3.4 3.4 0 0 1 .8-.1 3.7 3.7 0 0 1 .6 7.3"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.3 11.6h7.4v6H8.3zM8.3 17.6h7.4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+function RecipeImage({ recipe, sizes }: { recipe: Recipe; sizes: string }) {
+  return recipe.imageUrl ? (
+    <Image src={recipe.imageUrl} alt={recipe.name} fill sizes={sizes} className="object-cover" />
+  ) : (
+    <div className="flex h-full items-center justify-center text-neutral-400">
+      <UtensilsCrossed aria-hidden="true" className="h-8 w-8" />
+    </div>
   );
 }
 
@@ -130,13 +126,6 @@ function getAddressLabel(addressId: string | undefined, addresses: AddressData[]
   return addr ? addr.label : null;
 }
 
-function getAddressEmoji(label: string): string {
-  const lower = label.toLowerCase();
-  if (lower.includes("kantor") || lower.includes("office") || lower.includes("kerja")) return "🏢";
-  if (lower.includes("rumah") || lower.includes("home")) return "🏠";
-  return "📍";
-}
-
 // ---------- Detail Modal ----------
 function DetailModal({
   recipe,
@@ -149,136 +138,91 @@ function DetailModal({
   onClose: () => void;
   onToggleSelect: () => void;
 }) {
+  const nutrients: Array<[string, number | undefined, string]> = [
+    ["Kalori", recipe.calories, "kkal"],
+    ["Protein", recipe.protein, "g"],
+    ["Karbo", recipe.carbs, "g"],
+    ["Lemak", recipe.fat, "g"],
+    ["Serat", recipe.fiber, "g"],
+    ["Gula", recipe.sugar, "g"],
+    ["Natrium", recipe.sodium, "mg"],
+  ];
+
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-neutral-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-neutral-900/50 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-hidden rounded-[24px] border border-[#1db788]/30 bg-white shadow-2xl flex flex-col">
-        {/* Image */}
-        <div className="relative h-48 shrink-0 bg-gradient-to-br from-[#d4f8f5] to-[#e8f9f7] overflow-hidden">
-          {recipe.imageUrl ? (
-            <Image
-              src={recipe.imageUrl}
-              alt={recipe.name}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <ChefHatIcon />
-            </div>
-          )}
-          <div className="absolute top-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
-            {recipe.calories} kkal
-          </div>
+      <div role="dialog" aria-modal="true" aria-label={recipe.name} className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="relative h-52 shrink-0 bg-neutral-100">
+          <RecipeImage recipe={recipe} sizes="512px" />
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-3 left-3 grid h-8 w-8 place-items-center rounded-full bg-black/40 text-white hover:bg-black/60 transition"
+            aria-label="Tutup"
+            className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-neutral-700 shadow transition hover:bg-white"
           >
-            ✕
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-5">
-          <h3 className="text-2xl font-black leading-tight text-neutral-900">{recipe.name}</h3>
-          {recipe.description && (
-            <p className="mt-2 text-sm leading-relaxed text-neutral-600">{recipe.description}</p>
-          )}
+          <h3 className="text-xl font-bold leading-tight text-neutral-900">{recipe.name}</h3>
+          {recipe.description ? <p className="mt-2 text-sm leading-6 text-neutral-600">{recipe.description}</p> : null}
 
-          {/* Nutrition grid */}
-          <div className="mt-4">
-            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-neutral-400">Informasi Nutrisi</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <NutriCell label="Kalori" value={`${recipe.calories}`} unit="kkal" color="text-orange-500" />
-              <NutriCell label="Protein" value={`${recipe.protein}`} unit="g" color="text-blue-500" />
-              {recipe.carbs !== undefined && (
-                <NutriCell label="Karbo" value={`${recipe.carbs}`} unit="g" color="text-yellow-600" />
-              )}
-              {recipe.fat !== undefined && (
-                <NutriCell label="Lemak" value={`${recipe.fat}`} unit="g" color="text-red-500" />
-              )}
-              {recipe.fiber !== undefined && (
-                <NutriCell label="Serat" value={`${recipe.fiber}`} unit="g" color="text-green-600" />
-              )}
-              {recipe.sodium !== undefined && (
-                <NutriCell label="Sodium" value={`${recipe.sodium}`} unit="mg" color="text-purple-500" />
-              )}
-              {recipe.sugar !== undefined && (
-                <NutriCell label="Gula" value={`${recipe.sugar}`} unit="g" color="text-pink-500" />
-              )}
-            </div>
-          </div>
+          <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-neutral-400">Nilai gizi per porsi</p>
+          <dl className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {nutrients
+              .filter(([, value]) => value !== undefined)
+              .map(([label, value, unit]) => (
+                <div key={label} className="rounded-xl bg-neutral-50 px-3 py-2">
+                  <dt className="text-xs text-neutral-500">{label}</dt>
+                  <dd className="text-sm font-semibold text-neutral-900">
+                    {value} <span className="font-normal text-neutral-500">{unit}</span>
+                  </dd>
+                </div>
+              ))}
+          </dl>
 
-          {/* Ingredients */}
-          {recipe.ingredients && recipe.ingredients.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-neutral-400">🧪 Bahan Baku</p>
-              <div className="flex flex-wrap gap-1.5">
+          {recipe.ingredients && recipe.ingredients.length > 0 ? (
+            <>
+              <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-neutral-400">Bahan</p>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
                 {recipe.ingredients.map((ing, i) => (
-                  <span
+                  <li
                     key={i}
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      ing.isAllergen
-                        ? "bg-amber-100 text-amber-700 border border-amber-200"
-                        : "bg-teal-50 text-teal-700 border border-teal-100"
+                    className={`rounded-full px-2.5 py-1 text-xs ${
+                      ing.isAllergen ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200" : "bg-neutral-100 text-neutral-700"
                     }`}
                   >
-                    {ing.isAllergen && <span title="Alergen">⚠️</span>}
-                    {ing.name}{" "}
-                    <span className="opacity-60">
-                      ({ing.quantity}
-                      {ing.unit})
-                    </span>
-                  </span>
+                    {ing.name} {ing.quantity} {ing.unit}
+                    {ing.isAllergen ? <span className="ml-1 font-semibold">(alergen)</span> : null}
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
+              </ul>
+            </>
+          ) : null}
         </div>
 
-        {/* Action button */}
-        <div className="border-t border-gray-100 bg-white p-4">
+        <div className="border-t border-neutral-100 p-4">
           <button
+            type="button"
             onClick={() => {
               onToggleSelect();
               onClose();
             }}
-            className={`w-full rounded-xl py-3 font-bold text-white transition ${
+            className={`h-11 w-full rounded-xl text-[0.95rem] font-semibold transition ${
               isSelected
-                ? "bg-gradient-to-r from-red-400 to-red-500 hover:from-red-500 hover:to-red-600"
-                : "bg-gradient-to-r from-[#1db788] to-[#16a679] hover:shadow-lg hover:-translate-y-0.5"
+                ? "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
+                : "bg-[#13b987] text-white hover:bg-[#0f996f]"
             }`}
           >
-            {isSelected ? "Batal Pilih" : "Pilih Menu Ini"}
+            {isSelected ? "Batal pilih" : "Pilih menu ini"}
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function NutriCell({
-  label,
-  value,
-  unit,
-  color,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
-      <p className="text-[0.65rem] font-bold uppercase tracking-wider text-neutral-400">{label}</p>
-      <p className={`text-lg font-black ${color}`}>
-        {value}
-        <span className="text-xs font-normal text-neutral-500 ml-0.5">{unit}</span>
-      </p>
     </div>
   );
 }
@@ -301,139 +245,69 @@ function MenuCard({
   const isDisabled = !isSelected && maxPortions <= 0;
 
   return (
-    <div
-      className={`flex flex-col rounded-2xl border-2 bg-white shadow-sm transition overflow-hidden ${
+    <article
+      className={`flex flex-col overflow-hidden rounded-2xl border bg-white transition ${
         isSelected
-          ? "border-[#1db788] shadow-[0_4px_16px_rgba(29,183,136,0.2)]"
+          ? "border-[#13b987] ring-1 ring-[#13b987]"
           : isDisabled
-          ? "border-white/20 opacity-50 cursor-not-allowed"
-          : "border-[#1db788]/20 hover:border-[#1db788]/50 hover:-translate-y-0.5"
+            ? "border-neutral-200 opacity-50"
+            : "border-neutral-200 hover:border-neutral-300 hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)]"
       }`}
     >
-      {/* Image area */}
-      <div className="relative h-36 shrink-0 overflow-hidden bg-gradient-to-br from-[#d4f8f5] to-[#e8f9f7]">
-        {recipe.imageUrl ? (
-          <Image
-            src={recipe.imageUrl}
-            alt={recipe.name}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <ChefHatIcon />
-          </div>
-        )}
-        {/* Calorie badge top-right */}
-        <div className="absolute top-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[0.65rem] font-bold text-white backdrop-blur-sm">
-          {recipe.calories} kkal
-        </div>
-        {/* Selected badge */}
-        {isSelected && (
-          <div className="absolute top-2 left-2 rounded-full bg-[#1db788] px-2 py-0.5 text-[0.65rem] font-bold text-white">
-            ✓ Dipilih
-          </div>
-        )}
-      </div>
+      <button type="button" onClick={() => onOpenDetail(recipe)} className="relative aspect-[4/3] w-full bg-neutral-100 text-left" aria-label={`Detail ${recipe.name}`}>
+        <RecipeImage recipe={recipe} sizes="(min-width: 1280px) 20vw, (min-width: 640px) 33vw, 50vw" />
+        {isSelected ? (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#13b987] px-2 py-0.5 text-xs font-semibold text-white">
+            <Check aria-hidden="true" className="h-3 w-3" strokeWidth={3} />
+            {portions} porsi
+          </span>
+        ) : null}
+      </button>
 
-      {/* Card body */}
-      <div className="flex flex-col flex-1 p-3 gap-2">
-        <p className="line-clamp-2 text-sm font-bold leading-tight text-neutral-900">{recipe.name}</p>
-
-        {recipe.description && (
-          <p className="line-clamp-2 text-[0.7rem] leading-snug text-neutral-500">{recipe.description}</p>
-        )}
-
-        {/* Nutrition row */}
-        <div className="flex items-center gap-1 mt-auto">
-          <NutriBadge label="PROTEIN" value={recipe.protein} unit="g" color="text-blue-600" />
-          {recipe.carbs !== undefined && (
-            <NutriBadge label="KARBO" value={recipe.carbs} unit="g" color="text-yellow-600" />
-          )}
-          {recipe.fat !== undefined && (
-            <NutriBadge label="LEMAK" value={recipe.fat} unit="g" color="text-red-500" />
-          )}
-        </div>
-
-        {/* "Lihat Lebih Detail" */}
-        <button
-          type="button"
-          onClick={() => onOpenDetail(recipe)}
-          className="text-left text-[0.7rem] font-semibold text-[#0ea5a5] hover:underline"
-        >
-          Lihat Lebih Detail →
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-neutral-900">{recipe.name}</h3>
+        <p className="mt-1 text-xs text-neutral-500">
+          {recipe.calories} kkal · {recipe.protein} g protein
+        </p>
+        <button type="button" onClick={() => onOpenDetail(recipe)} className="mt-1 w-fit text-xs font-medium text-[#07845e] hover:underline">
+          Lihat detail
         </button>
 
-        {/* Portion controls or select button */}
-        {isSelected ? (
-          <div className="rounded-lg border-2 border-[#1db788]/30 bg-[#f0fff9] p-2">
-            <div className="flex items-center gap-1.5">
+        <div className="mt-auto pt-3">
+          {isSelected ? (
+            <div className="flex items-center justify-between rounded-xl border border-neutral-200">
               <button
+                type="button"
+                aria-label="Kurangi porsi"
                 onClick={() => onSelect(recipe.id, Math.max(0, portions - 1))}
-                className="flex-1 rounded-md border border-[#1db788]/40 bg-white py-1.5 text-sm font-bold text-neutral-900 transition hover:bg-gray-50"
+                className="grid h-9 w-10 place-items-center text-neutral-700 transition hover:bg-neutral-50"
               >
-                −
+                <Minus aria-hidden="true" className="h-4 w-4" />
               </button>
-              <input
-                type="number"
-                min="0"
-                max={maxPortions}
-                value={portions}
-                onChange={(e) =>
-                  onSelect(
-                    recipe.id,
-                    Math.max(0, Math.min(maxPortions, parseInt(e.target.value) || 0))
-                  )
-                }
-                className="flex-1 rounded-md border border-[#1db788]/40 bg-white px-1 py-1.5 text-center text-sm font-bold text-neutral-900"
-              />
+              <span className="text-sm font-semibold text-neutral-900">{portions}</span>
               <button
+                type="button"
+                aria-label="Tambah porsi"
                 onClick={() => onSelect(recipe.id, Math.min(maxPortions, portions + 1))}
                 disabled={portions >= maxPortions}
-                className="flex-1 rounded-md border border-[#1db788]/40 bg-white py-1.5 text-sm font-bold text-neutral-900 transition hover:bg-gray-50 disabled:opacity-50"
+                className="grid h-9 w-10 place-items-center text-neutral-700 transition hover:bg-neutral-50 disabled:opacity-30"
               >
-                +
+                <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            disabled={isDisabled}
-            onClick={() => !isDisabled && onSelect(recipe.id, 1)}
-            className={`w-full rounded-xl py-2 text-sm font-bold text-white transition ${
-              isDisabled
-                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-[#1db788] to-[#16a679] hover:shadow-md hover:-translate-y-0.5"
-            }`}
-          >
-            Pilih Menu Ini
-          </button>
-        )}
+          ) : (
+            <button
+              type="button"
+              disabled={isDisabled}
+              onClick={() => !isDisabled && onSelect(recipe.id, 1)}
+              className="h-9 w-full rounded-xl bg-[#13b987] text-sm font-semibold text-white transition hover:bg-[#0f996f] disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400"
+            >
+              Pilih Menu Ini
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
-
-function NutriBadge({
-  label,
-  value,
-  unit,
-  color,
-}: {
-  label: string;
-  value: number;
-  unit: string;
-  color: string;
-}) {
-  return (
-    <div className="flex-1 rounded-lg bg-gray-50 px-1 py-1 text-center border border-gray-100">
-      <p className="text-[0.55rem] font-bold uppercase tracking-wide text-neutral-400">{label}</p>
-      <p className={`text-xs font-black ${color}`}>
-        {value}
-        <span className="text-[0.55rem] font-normal text-neutral-400">{unit}</span>
-      </p>
-    </div>
+    </article>
   );
 }
 
@@ -486,7 +360,7 @@ export default function WeeklyMenuPage() {
           const message =
             payload && "error" in payload && payload.error
               ? payload.error
-              : "Failed to fetch weekly menu";
+              : "Gagal memuat menu mingguan";
 
           if (response.status === 404) {
             const currentWeekStart = getStartOfWeek(new Date());
@@ -708,6 +582,33 @@ export default function WeeklyMenuPage() {
     [activeDay, activeMealType]
   );
 
+  /** Fill every slot that is still short of portions, rotating recipes so the week is varied. */
+  const handleAutoFill = useCallback(() => {
+    const perMeal = Math.max(1, servingSize);
+    setSelectedByDay((prev) => {
+      const next = { ...prev };
+      weeklyMenu.forEach((dayMenu, dayIdx) => {
+        if (dayMenu.recipes.length === 0) return;
+        const daySel: Partial<Record<MealType, RecipeSelection[]>> = {
+          lunch: [...(prev[dayMenu.day]?.lunch ?? [])],
+          dinner: [...(prev[dayMenu.day]?.dinner ?? [])],
+        };
+        mealTypes.forEach(({ key }, mealIdx) => {
+          const list = daySel[key] ?? [];
+          const missing = perMeal - list.reduce((n, sel) => n + sel.portions, 0);
+          if (missing <= 0) return;
+          const recipe = dayMenu.recipes[(dayIdx * 2 + mealIdx) % dayMenu.recipes.length];
+          const existing = list.findIndex((sel) => sel.recipeId === recipe.id);
+          if (existing >= 0) list[existing] = { ...list[existing], portions: list[existing].portions + missing };
+          else list.push({ recipeId: recipe.id, portions: missing });
+          daySel[key] = list;
+        });
+        next[dayMenu.day] = daySel;
+      });
+      return next;
+    });
+  }, [weeklyMenu, servingSize]);
+
   const handleContinue = useCallback(async () => {
     if (!canContinue) return;
 
@@ -737,7 +638,7 @@ export default function WeeklyMenuPage() {
       });
 
       const weekStartDate = weeklyMenu[0]?.date;
-      if (!weekStartDate) throw new Error("Week start date tidak ditemukan.");
+      if (!weekStartDate) throw new Error("Tanggal awal pekan tidak ditemukan.");
 
       const response = await fetch("/api/subscriptions/weekly-menu", {
         method: "POST",
@@ -750,12 +651,12 @@ export default function WeeklyMenuPage() {
 
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
 
-      if (!response.ok) throw new Error(payload?.error ?? "Failed to save meal selections");
+      if (!response.ok) throw new Error(payload?.error ?? "Gagal menyimpan pilihan menu");
 
       router.push("/subscription/payment");
     } catch (err) {
       console.error("[save meal selections error]", err);
-      setError(err instanceof Error ? err.message : "Failed to save selections");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan pilihan menu");
     }
   }, [canContinue, selectedByDay, weeklyMenu, router]);
 
@@ -827,141 +728,104 @@ export default function WeeklyMenuPage() {
 
   if (isLoading) {
     return (
-      <main className="relative min-h-screen overflow-hidden flex items-center justify-center p-2 md:p-3">
-        <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
-      </main>
+      <CheckoutLayout step="Menu" width="xl" title="Pilih menu minggu ini">
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="h-60 animate-pulse rounded-2xl bg-neutral-200/70" />
+          ))}
+        </div>
+      </CheckoutLayout>
     );
   }
 
   if (error) {
     return (
-      <main className="relative min-h-screen overflow-hidden flex items-center justify-center p-2 md:p-3">
-        <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
-        <div className="relative z-10 rounded-2xl border-2 border-[#1db788]/50 bg-white/10 p-6 text-center backdrop-blur-md">
-          <p className="text-red-400 font-medium mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="rounded-lg bg-gradient-to-r from-[#1db788] to-[#16a679] px-4 py-2 text-white font-semibold border-2 border-[#1db788] hover:shadow-lg"
-          >
-            Coba Lagi
+      <CheckoutLayout step="Menu" title="Pilih menu minggu ini">
+        <div className={`${cardClass} text-center`}>
+          <p className="text-sm text-red-700">{error}</p>
+          <button type="button" onClick={() => window.location.reload()} className={`${primaryButtonClass} mt-5`}>
+            Coba lagi
           </button>
         </div>
-      </main>
+      </CheckoutLayout>
     );
   }
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7] p-2 md:p-3">
-      {/* Background Ornaments */}
-      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
-      <div className="absolute -top-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-[#1db788]/40 to-[#0ea5a5]/10 blur-3xl" />
-      <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-gradient-to-tr from-[#1db788]/25 to-transparent blur-3xl" />
-      <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
+  const activeDayLabel = daysOfWeek.find(({ key }) => key === activeDay)?.label;
+  const activeDaySelections = selectedByDay[activeDay] || { lunch: [], dinner: [] };
 
-      {/* Modal Receipt */}
+  return (
+    <CheckoutLayout
+      step="Menu"
+      width="xl"
+      title="Pilih menu minggu ini"
+      subtitle={`${weekRange.start} - ${weekRange.end} · ${servingSize} porsi untuk setiap makan siang dan makan malam`}
+    >
+      {/* Receipt modal */}
       {isReceiptModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-sm transition-all">
-          <div className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-[28px] border border-[#1db788]/30 bg-white shadow-2xl flex flex-col">
-            <div className="bg-gradient-to-r from-[#1db788] to-[#0ea5a5] px-6 py-5 text-white shadow-sm">
-              <h3 className="text-2xl font-black tracking-tight">Ringkasan Pesanan</h3>
-              <p className="text-sm text-white/80 mt-1">
-                Cek kembali menu pilihanmu sebelum lanjut pembayaran
-              </p>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-neutral-900/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsReceiptModalOpen(false);
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-label="Ringkasan pesanan" className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-neutral-100 px-6 py-5">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900">Ringkasan pesanan</h3>
+                <p className="mt-1 text-sm text-neutral-500">Cek lagi menu pilihanmu sebelum bayar.</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsReceiptModalOpen(false)}
-                className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-full bg-white/20 text-white hover:bg-white/30 transition"
+                aria-label="Tutup"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:bg-neutral-50"
               >
-                ✕
+                <X aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 bg-[#f8fdfa]">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
               {receiptData.length === 0 ? (
-                <div className="text-center py-10 text-neutral-500">
-                  Belum ada menu yang dipilih.
-                </div>
+                <p className="py-10 text-center text-neutral-500">Belum ada menu yang dipilih.</p>
               ) : (
-                <div className="space-y-6">
-                  {receiptData.map((dayData, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-2xl border border-[#1db788]/20 bg-white p-4 shadow-sm"
-                    >
-                      <h4 className="mb-3 text-lg font-bold text-[#0ea5a5] border-b border-gray-100 pb-2">
-                        {dayData.dayLabel}
-                      </h4>
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="rounded-xl bg-[#f0fbf7] p-3 border border-[#1db788]/10">
-                          <p className="text-sm font-semibold text-neutral-700 mb-2">Makan Siang</p>
-                          {dayData.lunch.length === 0 ? (
-                            <p className="text-xs text-neutral-400 italic">Belum ada pilihan</p>
+                <div className="divide-y divide-neutral-100">
+                  {receiptData.map((dayData) => (
+                    <div key={dayData.dayLabel} className="grid gap-3 py-4 sm:grid-cols-[6rem_1fr_1fr]">
+                      <p className="font-semibold text-neutral-900">{dayData.dayLabel}</p>
+                      {(["lunch", "dinner"] as const).map((meal) => (
+                        <div key={meal}>
+                          <p className="text-xs font-medium text-neutral-400">{meal === "lunch" ? "Siang" : "Malam"}</p>
+                          {dayData[meal].length === 0 ? (
+                            <p className="text-sm text-neutral-400">Belum dipilih</p>
                           ) : (
-                            <ul className="space-y-1.5">
-                              {dayData.lunch.map((item, i) => (
-                                <li key={i} className="flex justify-between items-start text-sm">
-                                  <span className="text-neutral-600 pr-2 leading-tight">
-                                    {item.name}
-                                  </span>
-                                  <span className="font-bold text-neutral-900 whitespace-nowrap">
-                                    {item.portions}x
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
+                            dayData[meal].map((item, i) => (
+                              <p key={i} className="text-sm text-neutral-700">
+                                {item.name} <span className="text-neutral-400">x{item.portions}</span>
+                              </p>
+                            ))
                           )}
                         </div>
-
-                        <div className="rounded-xl bg-[#f0fbf7] p-3 border border-[#1db788]/10">
-                          <p className="text-sm font-semibold text-neutral-700 mb-2">Makan Malam</p>
-                          {dayData.dinner.length === 0 ? (
-                            <p className="text-xs text-neutral-400 italic">Belum ada pilihan</p>
-                          ) : (
-                            <ul className="space-y-1.5">
-                              {dayData.dinner.map((item, i) => (
-                                <li key={i} className="flex justify-between items-start text-sm">
-                                  <span className="text-neutral-600 pr-2 leading-tight">
-                                    {item.name}
-                                  </span>
-                                  <span className="font-bold text-neutral-900 whitespace-nowrap">
-                                    {item.portions}x
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="border-t border-gray-100 bg-white p-5 flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="text-sm text-neutral-600 font-medium">
-                Total Terpilih:{" "}
-                <span className="font-bold text-[#1db788] text-lg">
+            <div className="flex flex-col gap-3 border-t border-neutral-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-neutral-600">
+                <span className="font-semibold text-neutral-900">
                   {totalSelectedPortions}/{totalRequiredPortions}
                 </span>{" "}
-                porsi
-              </div>
-              <div className="flex gap-3 w-full sm:w-auto">
-                <button
-                  onClick={() => setIsReceiptModalOpen(false)}
-                  className="flex-1 sm:flex-none rounded-xl border-2 border-gray-200 px-5 py-2.5 font-semibold text-neutral-600 hover:bg-gray-50 transition"
-                >
+                porsi terpilih
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setIsReceiptModalOpen(false)} className={secondaryButtonClass}>
                   Tutup
                 </button>
-                <button
-                  disabled={!canContinue}
-                  onClick={handleContinue}
-                  className={`flex-1 sm:flex-none rounded-xl px-6 py-2.5 font-semibold text-white shadow-md transition ${
-                    canContinue
-                      ? "bg-gradient-to-r from-[#1db788] to-[#16a679] hover:-translate-y-0.5 hover:shadow-lg"
-                      : "bg-gray-300 cursor-not-allowed opacity-70"
-                  }`}
-                >
-                  Lanjut Pembayaran →
+                <button type="button" disabled={!canContinue} onClick={handleContinue} className={primaryButtonClass}>
+                  Lanjut bayar
                 </button>
               </div>
             </div>
@@ -969,71 +833,84 @@ export default function WeeklyMenuPage() {
         </div>
       )}
 
-      {/* Detail Modal */}
       {detailRecipe && (
         <DetailModal
           recipe={detailRecipe}
-          isSelected={
-            !!(currentMealSelections.find((s) => s.recipeId === detailRecipe.id)?.portions ?? 0 > 0)
-          }
+          isSelected={(currentMealSelections.find((s) => s.recipeId === detailRecipe.id)?.portions ?? 0) > 0}
           onClose={() => setDetailRecipe(null)}
           onToggleSelect={() => {
             const existing = currentMealSelections.find((s) => s.recipeId === detailRecipe.id);
-            if (existing && existing.portions > 0) {
-              handleSelectRecipe(detailRecipe.id, 0);
-            } else {
-              handleSelectRecipe(detailRecipe.id, 1);
-            }
+            handleSelectRecipe(detailRecipe.id, existing && existing.portions > 0 ? 0 : 1);
           }}
         />
       )}
 
-      <section className="relative z-10 mx-auto flex min-h-[96vh] w-full max-w-[1400px] rounded-[28px] border-2 border-[#1db788]/50 bg-gradient-to-br from-white/30 to-[#f0fff9] backdrop-blur-md shadow-[0_12px_30px_rgba(29,183,136,0.15)] overflow-visible md:overflow-hidden">
-        {/* SIDEBAR */}
-        <aside className="w-full border-b border-[#1db788]/20 bg-gradient-to-br from-[#f0fff9] via-[#e6fff4] to-[#dcfff0] p-4 backdrop-blur-md md:w-[320px] md:border-b-0 md:border-r md:p-5 flex flex-col overflow-y-auto">
-          <div className="mb-6 flex items-center gap-3">
-            <Image src="/icons/leaf-logo.svg" alt="FromFram" width={30} height={30} />
-            <span className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
-              FromFram
-            </span>
-          </div>
-
-          <h1 className="text-4xl font-black leading-none tracking-tight bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] bg-clip-text text-transparent">
-            Pilih Menu
-          </h1>
-          <p className="mt-2 text-sm text-neutral-600">
-            {weekRange.start} - {weekRange.end}
-          </p>
-
-          {/* Progress bar */}
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-sm text-neutral-700">
-              <span className="font-semibold">
+      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+        {/* ── Sidebar ─────────────────────────────────────────── */}
+        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
+          <div className={cardClass}>
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="font-semibold text-neutral-900">
                 {totalSelectedPortions}/{totalRequiredPortions} porsi
               </span>
-              <span>{progressPercent}%</span>
+              <span className="text-neutral-500">{progressPercent}%</span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-white/20 backdrop-blur-sm">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#1db788] via-[#0ea5a5] via-[#84cc16] to-[#1db788] transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-100">
+              <div className="h-full rounded-full bg-[#13b987] transition-all duration-300" style={{ width: `${progressPercent}%` }} />
             </div>
+
+            <ul className="mt-5 space-y-1">
+              {daysOfWeek.map(({ key, label }, idx) => {
+                const isActive = key === activeDay;
+                const daySelections = selectedByDay[key] || { lunch: [], dinner: [] };
+                const dayTotal =
+                  (daySelections.lunch || []).reduce((acc, sel) => acc + sel.portions, 0) +
+                  (daySelections.dinner || []).reduce((acc, sel) => acc + sel.portions, 0);
+                const dayRequired = 2 * Math.max(1, servingSize);
+                const done = dayTotal >= dayRequired;
+                const dayDate = weeklyMenu[idx]?.date;
+                const dayAddrLabel = getAddressLabel(addressSchedules[key]?.LUNCH, addresses);
+
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDay(key)}
+                      aria-current={isActive ? "true" : undefined}
+                      className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                        isActive ? "bg-neutral-900 text-white" : "hover:bg-neutral-50"
+                      }`}
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold">{label}</span>
+                        <span className={`block text-xs ${isActive ? "text-white/70" : "text-neutral-500"}`}>
+                          {dayDate ? dayDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : ""}
+                          {dayAddrLabel ? ` · ${dayAddrLabel}` : ""}
+                        </span>
+                      </span>
+                      {done ? (
+                        <span className="grid h-6 w-6 place-items-center rounded-full bg-[#13b987] text-white">
+                          <Check aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-medium ${isActive ? "text-white/80" : "text-neutral-500"}`}>
+                          {dayTotal}/{dayRequired}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
 
-          {/* Address Schedule Panel */}
-          <div className="mt-4 rounded-2xl border-2 border-[#1db788]/30 bg-white/20 backdrop-blur-sm overflow-hidden">
+          {/* Address per day */}
+          <div className={cardClass}>
             {addresses.length === 0 ? (
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-neutral-800">📍 Alamat Pengiriman Pintar</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">Belum ada alamat tersimpan</p>
-                </div>
-                <Link
-                  href="/subscription/delivery-address"
-                  className="rounded-lg bg-[#1db788] px-2.5 py-1 text-xs font-bold text-white shadow-sm hover:bg-[#16a679] transition"
-                >
-                  + Tambah
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-neutral-600">Belum ada alamat tersimpan.</p>
+                <Link href="/subscription/delivery-address" className="text-sm font-semibold text-[#07845e] hover:underline">
+                  Tambah
                 </Link>
               </div>
             ) : (
@@ -1041,341 +918,162 @@ export default function WeeklyMenuPage() {
                 <button
                   type="button"
                   onClick={() => setIsAddressPanelOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/10 transition"
+                  aria-expanded={isAddressPanelOpen}
+                  className="flex w-full items-center justify-between gap-3 text-left"
                 >
-                  <div>
-                    <p className="text-sm font-bold text-neutral-800">📍 Alamat Pengiriman Pintar</p>
-                    {!isAddressPanelOpen && (
-                      <p className="text-xs text-neutral-500 mt-0.5">
-                        {addressSummaryText || `${addresses.length} alamat tersedia`}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs font-bold text-[#0ea5a5] bg-white/60 px-2 py-0.5 rounded-md border border-[#0ea5a5]/20">
-                    {isAddressPanelOpen ? "Tutup" : "Kelola"}
+                  <span className="flex items-center gap-2">
+                    <MapPin aria-hidden="true" className="h-4 w-4 text-[#13b987]" />
+                    <span>
+                      <span className="block text-sm font-semibold text-neutral-900">Alamat per hari</span>
+                      <span className="block text-xs text-neutral-500">{addressSummaryText || `${addresses.length} alamat tersimpan`}</span>
+                    </span>
                   </span>
+                  <span className="text-xs font-semibold text-[#07845e]">{isAddressPanelOpen ? "Tutup" : "Atur"}</span>
                 </button>
 
                 {isAddressPanelOpen && (
-                  <div className="border-t border-[#1db788]/20 px-4 pb-4 pt-3 space-y-2.5 bg-white/30">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-neutral-600 font-medium">
-                        Atur tujuan per hari:
-                      </p>
-                      <Link
-                        href="/subscription/delivery-address"
-                        className="text-[0.68rem] font-bold text-[#0ea5a5] hover:underline"
-                      >
-                        + Tambah Alamat
-                      </Link>
-                    </div>
-                    {daysOfWeek.map(({ key, label }) => {
-                      const currentAddrId = addressSchedules[key]?.LUNCH;
-                      const currentLabel = getAddressLabel(currentAddrId, addresses);
-                      return (
-                        <div key={key} className="flex items-center gap-2">
-                          <span className="w-12 text-xs font-bold text-neutral-700 shrink-0">
-                            {label}
-                          </span>
-                          <select
-                            value={currentAddrId ?? ""}
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                void handleAddressScheduleChange(key, e.target.value);
-                              }
-                            }}
-                            disabled={isSavingSchedule}
-                            className="w-full rounded-lg border border-[#1db788]/30 bg-white px-2 py-1.5 text-xs text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#1db788]/40 disabled:opacity-50"
-                          >
-                            <option value="">-- Pilih alamat --</option>
-                            {addresses.map((addr) => (
-                              <option key={addr.id} value={addr.id}>
-                                {addr.label} ({addr.city})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })}
-                    {isSavingSchedule && (
-                      <p className="text-xs text-[#1db788] text-center font-bold animate-pulse pt-1">
-                        Menyimpan perubahan jadwal...
-                      </p>
-                    )}
+                  <div className="mt-4 space-y-2 border-t border-neutral-100 pt-4">
+                    {daysOfWeek.map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-2">
+                        <span className="w-14 shrink-0 text-xs font-medium text-neutral-600">{label}</span>
+                        <select
+                          value={addressSchedules[key]?.LUNCH ?? ""}
+                          onChange={(e) => {
+                            if (e.target.value) void handleAddressScheduleChange(key, e.target.value);
+                          }}
+                          disabled={isSavingSchedule}
+                          className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-2 text-xs text-neutral-800 outline-none focus:border-[#13b987] disabled:opacity-50"
+                        >
+                          <option value="">Pilih alamat</option>
+                          {addresses.map((addr) => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.label} ({addr.city})
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                    <Link href="/subscription/delivery-address" className="block pt-1 text-xs font-semibold text-[#07845e] hover:underline">
+                      Tambah alamat
+                    </Link>
+                    {isSavingSchedule ? <p className="text-xs text-neutral-500">Menyimpan...</p> : null}
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* Day list */}
-          <div className="mt-4 flex-1 space-y-2.5 pb-6">
-            {daysOfWeek.map(({ key, label }, idx) => {
-              const isActive = key === activeDay;
-              const daySelections = selectedByDay[key] || { lunch: [], dinner: [] };
-              const lunchTotal = (daySelections.lunch || []).reduce(
-                (acc, sel) => acc + sel.portions,
-                0
-              );
-              const dinnerTotal = (daySelections.dinner || []).reduce(
-                (acc, sel) => acc + sel.portions,
-                0
-              );
-              const dayTotal = lunchTotal + dinnerTotal;
-              const dayRequired = 2 * Math.max(1, servingSize);
-              const dayProgress = Math.min(1, dayTotal / dayRequired);
-              const dayDate = weeklyMenu[idx]?.date;
-              const dateStr = dayDate
-                ? dayDate.toLocaleDateString("id-ID", { day: "numeric", month: "short" })
-                : "";
-
-              // Address badge for this day
-              const dayAddrId = addressSchedules[key]?.LUNCH;
-              const dayAddrLabel = getAddressLabel(dayAddrId, addresses);
-
-              return (
-                <div key={key}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveDay(key)}
-                    className={`w-full rounded-2xl border-4 px-4 py-3 text-left transition outline outline-1 ${
-                      dayProgress >= 1
-                        ? "border-[#0ea5a5] bg-[#0ea5a5] text-white shadow-[0_8px_18px_rgba(14,165,165,0.18)]"
-                        : isActive
-                        ? "border-[#1db788] bg-[#1db788] text-white shadow-[0_8px_18px_rgba(29,183,136,0.28)]"
-                        : "border-[#1db788]/30 bg-white/10 text-neutral-700 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/12"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p
-                          className={`text-lg font-bold ${
-                            dayProgress >= 1 || isActive ? "text-white" : "text-neutral-900"
-                          }`}
-                        >
-                          {label}
-                        </p>
-                        <p
-                          className={`text-xs ${
-                            dayProgress >= 1 || isActive ? "text-white/85" : "text-neutral-600"
-                          }`}
-                        >
-                          {dateStr}
-                        </p>
-                        <p
-                          className={`text-sm ${
-                            dayProgress >= 1 || isActive ? "text-white/85" : "text-neutral-600"
-                          }`}
-                        >
-                          {dayTotal}/{dayRequired} porsi
-                        </p>
-                        {dayAddrLabel && (
-                          <span
-                            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[0.6rem] font-bold ${
-                              dayProgress >= 1 || isActive
-                                ? "bg-white/20 text-white"
-                                : "bg-[#1db788]/10 text-[#1db788]"
-                            }`}
-                          >
-                            {getAddressEmoji(dayAddrLabel)} {dayAddrLabel}
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                          dayProgress >= 1
-                            ? "border-[#0ea5a5] bg-white"
-                            : isActive
-                            ? "border-[#1db788] bg-white"
-                            : "border-[#1db788]/30 bg-transparent"
-                        }`}
-                      >
-                        {dayProgress >= 1 && (
-                          <svg
-                            className="h-3.5 w-3.5 text-[#0ea5a5]"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="3.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </span>
-                    </div>
-                  </button>
-
-                  {isActive && (
-                    <div className="mt-2 space-y-2 rounded-2xl border-2 border-[#1db788]/40 bg-white/10 p-3 backdrop-blur-md">
-                      {mealTypes.map(({ key: mealKey, label: mealLabel }) => {
-                        const mealTotal = (daySelections[mealKey] || []).reduce(
-                          (acc, sel) => acc + sel.portions,
-                          0
-                        );
-                        const mealProgress = Math.min(1, mealTotal / Math.max(1, servingSize));
-                        const mealClass =
-                          mealProgress >= 1
-                            ? "border-[#0ea5a5] bg-[#0ea5a5] text-white"
-                            : activeMealType === mealKey
-                            ? "border-[#1db788] bg-[#1db788] text-white"
-                            : "border-[#1db788]/30 bg-white/10 text-neutral-700 hover:border-[#1db788]/50";
-
-                        return (
-                          <button
-                            key={mealKey}
-                            type="button"
-                            onClick={() => setActiveMealType(mealKey)}
-                            className={`w-full rounded-xl border-2 px-3 py-2 text-sm font-semibold transition outline outline-1 outline-white/40 ${mealClass}`}
-                          >
-                            {mealLabel} {mealProgress > 0 ? `(${mealTotal}/${servingSize})` : ""}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bottom actions */}
-          <div className="mt-auto pt-4 border-t border-[#1db788]/20 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => setIsReceiptModalOpen(true)}
-              className="w-full rounded-2xl border-2 border-[#0ea5a5] bg-white px-4 py-2.5 text-sm font-bold text-[#0ea5a5] transition hover:bg-[#f0fbf7] outline outline-1 outline-white/40"
-            >
-              Lihat Ringkasan Pesanan
+          <div className="space-y-2">
+            {!canContinue ? (
+              <button type="button" onClick={handleAutoFill} className={`${secondaryButtonClass} w-full`}>
+                <Sparkles aria-hidden="true" className="h-4 w-4" />
+                Pilihkan sisa menu otomatis
+              </button>
+            ) : null}
+            <button type="button" onClick={() => setIsReceiptModalOpen(true)} className={`${secondaryButtonClass} w-full`}>
+              Lihat ringkasan
             </button>
-
-            <button
-              type="button"
-              disabled={!canContinue}
-              onClick={handleContinue}
-              className={`w-full rounded-2xl border-2 px-4 py-3 text-base font-semibold backdrop-blur-md transition outline outline-1 outline-white/40 ${
-                canContinue
-                  ? "border-[#1db788] bg-gradient-to-r from-[#1db788] to-[#16a679] text-white shadow-[0_12px_25px_rgba(29,183,136,0.35)] hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(29,183,136,0.4)]"
-                  : "border-white/20 cursor-not-allowed bg-white/10 text-neutral-500"
-              }`}
-            >
-              Lanjut Pembayaran →
+            <button type="button" disabled={!canContinue} onClick={handleContinue} className={`${primaryButtonClass} w-full`}>
+              Lanjut Pembayaran
             </button>
-
-            <Link
-              href="/subscription/delivery-address"
-              className="text-center text-sm text-neutral-600 hover:text-neutral-900 transition"
-            >
-              ← Kembali
+            <Link href="/subscription/delivery-address" className="block pt-1 text-center text-sm text-neutral-500 hover:text-neutral-800">
+              Kembali ke alamat
             </Link>
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
-        <div className="relative flex-1 bg-[#ecfdf3] backdrop-blur-md flex flex-col">
-          <header className="bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] px-6 py-5 text-white md:px-8 shrink-0">
-            <p className="text-sm text-white/85">Pilih menu untuk</p>
-            <h2 className="text-4xl font-black leading-none tracking-tight">
-              {menuUnavailableMessage
-                ? "Menu Minggu Ini"
-                : daysOfWeek.find(({ key }) => key === activeDay)?.label}
-            </h2>
-            <p className="mt-1 text-sm text-white/75">
-              {menuUnavailableMessage
-                ? weekRange.start && weekRange.end
-                  ? `${weekRange.start} - ${weekRange.end}`
-                  : ""
-                : activeMenuDay?.date.toLocaleDateString("id-ID", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
+        {/* ── Menu grid ───────────────────────────────────────── */}
+        <section className="min-w-0">
+          {menuUnavailableMessage ? (
+            <div className={`${cardClass} py-16 text-center`}>
+              <p className="text-lg font-semibold text-neutral-900">{menuUnavailableMessage}</p>
+              <p className="mt-2 text-sm text-neutral-500">Ahli gizi kami sedang menyiapkan menu. Coba lagi nanti.</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-neutral-900">{activeDayLabel}</h2>
+                  <p className="text-sm text-neutral-500">
+                    {activeMenuDay?.date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
+                  </p>
+                </div>
+                <div className="inline-flex rounded-xl bg-neutral-100 p-1" role="tablist" aria-label="Waktu makan">
+                  {mealTypes.map(({ key: mealKey, label: mealLabel }) => {
+                    const mealTotal = (activeDaySelections[mealKey] || []).reduce((acc, sel) => acc + sel.portions, 0);
+                    const active = activeMealType === mealKey;
+                    return (
+                      <button
+                        key={mealKey}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setActiveMealType(mealKey)}
+                        className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                          active ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
+                        }`}
+                      >
+                        {mealLabel}
+                        <span className={`ml-1.5 text-xs ${mealTotal >= servingSize ? "text-[#07845e]" : "text-neutral-400"}`}>
+                          {mealTotal}/{servingSize}
+                        </span>
+                      </button>
+                    );
                   })}
-            </p>
-
-            {!menuUnavailableMessage && (
-              <div className="mt-4 rounded-lg bg-white/10 px-3 py-2 border border-white/20">
-                <p className="text-xs text-white/80">
-                  <span className="font-semibold">Info:</span> Anda dapat memilih menu sebanyak{" "}
-                  <span className="font-bold">{servingSize} porsi</span> untuk setiap waktu makan
-                  (Siang &amp; Malam)
-                </p>
+                </div>
               </div>
-            )}
-          </header>
 
-          {/* Category filter tabs */}
-          {!menuUnavailableMessage && (
-            <div className="flex gap-2 overflow-x-auto px-5 pt-4 pb-2 shrink-0 no-scrollbar">
-              {(
-                [
-                  { key: "all", label: `Semua Menu (${activeMenuDay?.recipes.length ?? 0})` },
-                  { key: "tinggi-protein", label: "Tinggi Protein" },
-                  { key: "rendah-karbo", label: "Rendah Karbo" },
-                  { key: "sup-hangat", label: "Sup & Hangat" },
-                ] as Array<{ key: CategoryFilter; label: string }>
-              ).map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setCategoryFilter(key)}
-                  className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                    categoryFilter === key
-                      ? "bg-[#1db788] text-white shadow"
-                      : "bg-white/60 text-neutral-600 hover:bg-white/80"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+              <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+                {(
+                  [
+                    { key: "all", label: `Semua (${activeMenuDay?.recipes.length ?? 0})` },
+                    { key: "tinggi-protein", label: "Tinggi protein" },
+                    { key: "rendah-karbo", label: "Rendah karbo" },
+                    { key: "sup-hangat", label: "Sup" },
+                  ] as Array<{ key: CategoryFilter; label: string }>
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCategoryFilter(key)}
+                    aria-pressed={categoryFilter === key}
+                    className={`h-9 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition ${
+                      categoryFilter === key
+                        ? "border-neutral-900 bg-neutral-900 text-white"
+                        : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+                {filteredRecipes.length > 0 ? (
+                  filteredRecipes.map((recipe) => {
+                    const portions = currentMealSelections.find((sel) => sel.recipeId === recipe.id)?.portions ?? 0;
+                    const maxPortions = servingSize - (currentMealPortionsTotal - portions);
+                    return (
+                      <MenuCard
+                        key={recipe.id}
+                        recipe={recipe}
+                        portions={portions}
+                        maxPortions={maxPortions}
+                        onSelect={handleSelectRecipe}
+                        onOpenDetail={setDetailRecipe}
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="col-span-full py-12 text-center text-neutral-500">
+                    {categoryFilter === "all" ? "Belum ada menu untuk hari ini." : "Tidak ada menu yang cocok dengan filter ini."}
+                  </p>
+                )}
+              </div>
+            </>
           )}
-
-          <div className="flex-1 overflow-y-auto p-5">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 relative pb-20">
-              {menuUnavailableMessage ? (
-                <div className="col-span-full flex min-h-[320px] items-center justify-center rounded-[24px] border border-dashed border-[#1db788]/40 bg-white/40 px-6 py-10 text-center shadow-sm backdrop-blur-sm">
-                  <div className="max-w-lg">
-                    <p className="text-2xl font-black tracking-tight text-neutral-900">
-                      {menuUnavailableMessage}
-                    </p>
-                    <p className="mt-2 text-sm text-neutral-600">
-                      Coba lagi nanti atau kembali setelah ahli gizi menambahkan menu untuk minggu
-                      ini.
-                    </p>
-                  </div>
-                </div>
-              ) : filteredRecipes.length > 0 ? (
-                filteredRecipes.map((recipe) => {
-                  const recipeSelection = currentMealSelections.find(
-                    (sel) => sel.recipeId === recipe.id
-                  );
-                  const portions = recipeSelection?.portions ?? 0;
-                  const maxPortions = servingSize - (currentMealPortionsTotal - portions);
-
-                  return (
-                    <MenuCard
-                      key={recipe.id}
-                      recipe={recipe}
-                      portions={portions}
-                      maxPortions={maxPortions}
-                      onSelect={handleSelectRecipe}
-                      onOpenDetail={setDetailRecipe}
-                    />
-                  );
-                })
-              ) : (
-                <div className="col-span-full flex items-center justify-center p-8 text-neutral-600">
-                  {categoryFilter === "all"
-                    ? "Tidak ada menu tersedia untuk hari ini"
-                    : "Tidak ada menu yang cocok dengan filter ini"}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </div>
+    </CheckoutLayout>
   );
 }

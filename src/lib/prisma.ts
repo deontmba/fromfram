@@ -2,9 +2,6 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
-const FALLBACK_DATABASE_URL =
-  "postgresql://postgres.knsuarluopssgsxhbvwo:FromFram123!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true";
-
 function sanitizeConnectionString(raw?: string): string {
   if (!raw || typeof raw !== 'string') return '';
   const s = raw.trim().replace(/^['"]|['"]$/g, '');
@@ -29,7 +26,9 @@ function sanitizeConnectionString(raw?: string): string {
 
 // Validate process.env.DATABASE_URL and process.env.DIRECT_URL before using
 const rawUrl = process.env.DATABASE_URL || process.env.DIRECT_URL;
-const connectionString = sanitizeConnectionString(rawUrl) || FALLBACK_DATABASE_URL;
+const connectionString = sanitizeConnectionString(rawUrl);
+// No hardcoded fallback: a missing env var must fail loudly, not silently hit prod.
+if (!connectionString) throw new Error('DATABASE_URL is missing or invalid.');
 
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);

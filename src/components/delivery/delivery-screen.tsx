@@ -6,7 +6,7 @@ import type {
   DeliverySummaryItem,
   DeliveryTimelineStep,
   DeliveryTrackingViewModel,
-} from "./delivery-mock-data";
+} from "./delivery-types";
 
 const statusBadgeStyles: Record<DeliveryStatusTone, string> = {
   active: "border-[#bdebd9] bg-[#e8f8f0] text-[#0f8f6d]",
@@ -289,6 +289,7 @@ function DeliveryListSection({
   deliveries: DeliverySummaryItem[];
   emptyMessage: string;
 }) {
+  // One delivery row exists per portion, so collapse them into "meal: recipe xN" lines per day.
   const groupedDeliveries = deliveries.reduce((acc, current) => {
     const key = `${current.dayLabel}, ${current.dateLabel}`;
     if (!acc[key]) {
@@ -298,14 +299,14 @@ function DeliveryListSection({
         dateLabel: current.dateLabel,
         statusLabel: current.statusLabel,
         statusTone: current.statusTone,
-        menus: [],
+        meals: {},
       };
     }
-    if (current.menuName) {
-      acc[key].menus.push(current.menuName);
-    }
+    const meal = current.mealType === "DINNER" ? "Makan malam" : "Makan siang";
+    const line = `${meal}: ${current.menuName}`;
+    acc[key].meals[line] = (acc[key].meals[line] ?? 0) + 1;
     return acc;
-  }, {} as Record<string, { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] }>);
+  }, {} as Record<string, { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; meals: Record<string, number> }>);
 
   const groupedArray = Object.values(groupedDeliveries);
 
@@ -330,7 +331,7 @@ function DeliveryListSection({
 function GroupedDeliveryCard({
   group,
 }: {
-  group: { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] };
+  group: { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; meals: Record<string, number> };
 }) {
   return (
     <article className="flex min-h-[62px] items-start justify-between gap-4 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
@@ -339,11 +340,14 @@ function GroupedDeliveryCard({
           {group.dayLabel}, {group.dateLabel}
         </h3>
         <div className="mt-1 flex flex-col gap-1">
-          {group.menus.map((menu, idx) => (
-            <p key={idx} className="truncate text-xs font-medium text-neutral-500">
-              {menu}
-            </p>
-          ))}
+          {Object.entries(group.meals)
+            .sort(([a], [b]) => (a.startsWith("Makan siang") ? -1 : b.startsWith("Makan siang") ? 1 : 0))
+            .map(([line, count]) => (
+              <p key={line} className="truncate text-sm text-neutral-600">
+                {line}
+                {count > 1 ? <span className="ml-1 text-neutral-400">x{count} porsi</span> : null}
+              </p>
+            ))}
         </div>
       </div>
       <div className="mt-0.5 shrink-0">

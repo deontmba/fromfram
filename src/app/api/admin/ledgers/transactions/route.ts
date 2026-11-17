@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 // GET /api/admin/ledgers/transactions
 export async function GET(req: NextRequest) {

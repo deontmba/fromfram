@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CalendarDays, ChevronRight, CircleAlert, CircleCheck, Pencil, Plus, Sparkles, Target, Trash2 } from "lucide-react";
 import type {
   WeeklyMenuGroup,
   WeeklyMenuItem,
@@ -30,20 +31,6 @@ function formatWeekRangeLabel(start: string, end: string) {
 function formatMonthLabel(monthIndex: number) {
   return new Intl.DateTimeFormat("id-ID", { month: "long" }).format(
     new Date(2026, monthIndex, 1)
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true" style={{ display: "block" }}>
-      <path
-        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
@@ -165,9 +152,9 @@ export function WeeklyMenuTab({
       0
     );
     return [
-      { label: "Goal Groups", value: String(weeklyGoals.length), delta: "Active" },
-      { label: "Validated Slots", value: String(validatedSlots), delta: "On Track" },
-      { label: "Pending Review", value: String(pendingReview), delta: "Needs Action" },
+      { label: "Target kesehatan", value: String(weeklyGoals.length), delta: "" },
+      { label: "Menu dengan target", value: String(validatedSlots), delta: "" },
+      { label: "Menu tanpa target", value: String(pendingReview), delta: "" },
     ];
   }, [goalOverrides, visibleWeeks, weeklyGoals.length]);
 
@@ -317,44 +304,65 @@ export function WeeklyMenuTab({
 
   return (
     <>
-      {/* KPI cards */}
       <div className={styles.kpiGrid}>
         {kpis.map((kpi, i) => (
-          <article
-            key={kpi.label}
-            className={styles.kpiCard}
-            style={{ animationDelay: `${i * 80}ms` }}
-          >
+          <article key={kpi.label} className={styles.kpiCard}>
             <div className={styles.kpiRow}>
-              <span className={styles.deltaBadge}>{kpi.delta}</span>
+              <p className={styles.kpiLabel} style={{ margin: 0 }}>{kpi.label}</p>
+              <span className={styles.activityIcon}>{[<Target key="t" />, <CircleCheck key="c" />, <CircleAlert key="a" />][i]}</span>
             </div>
             <p className={styles.kpiValue}>{kpi.value}</p>
-            <p className={styles.kpiLabel}>{kpi.label}</p>
           </article>
         ))}
       </div>
 
-      {/* Info + filter bar */}
-      <div 
-        className={styles.notice} 
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}
-      >
-        <div>
-          <p className={styles.noticeTitle}>Menu Mingguan</p>
-          <p>
-            Setiap kartu mewakili satu minggu kalender. Badge{" "}
-            <strong>Minggu ini</strong> menandai minggu yang sedang berjalan.
-          </p>
-          {visibleWeeks.length > 0 && (
-            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0.5rem 0 0 0" }}>
-              {visibleWeeks.length} minggu ditemukan pada periode ini
-            </p>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
+      <div className={styles.toolbar}>
+        <select
+          className={styles.select}
+          aria-label="Tahun"
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+        >
+          <option value="all">Semua tahun</option>
+          {yearOptions.map((y) => (
+            <option key={y} value={String(y)}>
+              {y}
+            </option>
+          ))}
+        </select>
+        <select
+          className={styles.select}
+          aria-label="Bulan"
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
+        >
+          <option value="all">Semua bulan</option>
+          {monthOptions.map((m) => (
+            <option key={m} value={String(m)}>
+              {formatMonthLabel(m)}
+            </option>
+          ))}
+        </select>
+        {(yearFilter !== "all" || monthFilter !== "all") && (
           <button
             type="button"
             className={styles.tabButton}
+            onClick={() => {
+              setYearFilter("all");
+              setMonthFilter("all");
+            }}
+          >
+            Semua pekan
+          </button>
+        )}
+        <div style={{ display: "flex", gap: "0.5rem", marginLeft: "auto", flexWrap: "wrap" }}>
+          <button type="button" className={styles.tabButton} onClick={handleAutoGenerate} disabled={isGenerating}>
+            <Sparkles aria-hidden="true" />
+            {isGenerating ? "Menganalisis..." : "Buat Otomatis Pekan Depan"}
+          </button>
+          <button
+            type="button"
+            className={styles.actionCard}
             onClick={() => {
               setMenuForm({
                 recipeId: "",
@@ -362,471 +370,238 @@ export function WeeklyMenuTab({
               });
               setShowForm(true);
             }}
-            style={{
-              whiteSpace: "nowrap",
-              border: "1px solid #1d4ed8",
-              color: "#1d4ed8",
-              fontWeight: "bold",
-              background: "#eff6ff",
-            }}
           >
-            + Jadwalkan Menu
-          </button>
-          <button
-            type="button"
-            className={clsx(styles.tabButton, styles.tabButtonActive)}
-            onClick={handleAutoGenerate}
-            disabled={isGenerating}
-            style={{ whiteSpace: "nowrap" }}
-          >
-            {isGenerating ? "Menganalisis..." : "Auto-Generate Pekan Selanjutnya"}
+            <Plus aria-hidden="true" />
+            Jadwalkan Menu
           </button>
         </div>
       </div>
 
-      <div
-        className={styles.searchRow}
-        style={{ marginTop: "1rem", gridTemplateColumns: "1fr 1fr 1fr" }}
-      >
-        <select
-          className={styles.select}
-          value={yearFilter}
-          onChange={(e) => setYearFilter(e.target.value)}
-        >
-          <option value="all">Semua Tahun</option>
-          {yearOptions.map((y) => (
-            <option key={y} value={String(y)}>
-              {y}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className={styles.select}
-          value={monthFilter}
-          onChange={(e) => setMonthFilter(e.target.value)}
-        >
-          <option value="all">Semua Bulan</option>
-          {monthOptions.map((m) => (
-            <option key={m} value={String(m)}>
-              {formatMonthLabel(m)}
-            </option>
-          ))}
-        </select>
-
-        <button
-          type="button"
-          className={styles.tabButton}
-          onClick={() => {
-            setYearFilter("all");
-            setMonthFilter("all");
-          }}
-        >
-          Tampilkan Semua Pekan
-        </button>
-      </div>
-
-      {/* Add-menu form (global, shown above list) */}
       {showForm && (
-        <form
-          onSubmit={handleAddMenu}
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-            margin: "1rem 0",
-            padding: "1rem",
-            background: "#f8fafc",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <select
-            className={styles.select}
-            style={{ flex: "2 1 200px" }}
-            required
-            value={menuForm.recipeId}
-            onChange={(e) => setMenuForm({ ...menuForm, recipeId: e.target.value })}
-          >
-            <option value="">— Pilih Resep —</option>
-            {recipes.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            className={styles.input}
-            style={{ flex: "0 1 180px" }}
-            type="date"
-            required
-            value={menuForm.weekStartDate}
-            onChange={(e) => setMenuForm({ ...menuForm, weekStartDate: e.target.value })}
-          />
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={clsx(styles.tabButton, styles.tabButtonActive)}
-          >
-            {isSubmitting ? "Menambah…" : "Tambah"}
-          </button>
-
-          <button
-            type="button"
-            className={styles.tabButton}
-            onClick={() => setShowForm(false)}
-            disabled={isSubmitting}
-          >
-            Batal
-          </button>
+        <form onSubmit={handleAddMenu} className={styles.formCard}>
+          <h2 className={styles.formTitle}>Jadwalkan Menu</h2>
+          <div className={styles.fieldGrid} style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)" }}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Resep</span>
+              <select
+                className={styles.select}
+                required
+                value={menuForm.recipeId}
+                onChange={(e) => setMenuForm({ ...menuForm, recipeId: e.target.value })}
+              >
+                <option value="">Pilih resep</option>
+                {recipes.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Tanggal dalam pekan</span>
+              <input
+                className={styles.input}
+                type="date"
+                required
+                value={menuForm.weekStartDate}
+                onChange={(e) => setMenuForm({ ...menuForm, weekStartDate: e.target.value })}
+              />
+            </label>
+          </div>
+          <div className={styles.formActions}>
+            <button type="button" className={styles.tabButton} onClick={() => setShowForm(false)} disabled={isSubmitting}>
+              Batal
+            </button>
+            <button type="submit" className={styles.actionCard} disabled={isSubmitting}>
+              {isSubmitting ? "Menambah..." : "Tambah"}
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Weekly cards */}
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
-          Memuat data menu…
+        <div className={styles.emptyState}>Memuat data menu...</div>
+      ) : visibleWeeks.length === 0 ? (
+        <div className={styles.emptyCard}>
+          <CalendarDays aria-hidden="true" strokeWidth={1.5} />
+          <h2>Belum ada menu pada periode ini</h2>
+          <p>Ubah filter bulan atau tahun, atau jadwalkan resep untuk pekan ini.</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: "1rem", marginTop: "1rem" }}>
-          {visibleWeeks.length === 0 ? (
-            <div className={styles.notice} style={{ marginBottom: 0 }}>
-              <p className={styles.noticeTitle}>Belum ada menu pada periode ini.</p>
-              <p>Coba ubah filter bulan/tahun, atau tambahkan resep ke minggu ini.</p>
-            </div>
-          ) : (
-            visibleWeeks.map((week) => {
-              const isExpanded = expandedWeekStart === week.weekStartDate;
+        visibleWeeks.map((week) => {
+          const isExpanded = expandedWeekStart === week.weekStartDate;
 
-              return (
-                <section
-                  key={week.weekStartDate}
-                  style={{
-                    borderRadius: "18px",
-                    border: week.isActiveWeek
-                      ? "1px solid #1d4ed8"
-                      : "1px solid #e5e7eb",
-                    background: week.isActiveWeek
-                      ? "linear-gradient(180deg,#eff6ff 0%,#ffffff 100%)"
-                      : "#ffffff",
-                    boxShadow: week.isActiveWeek
-                      ? "0 14px 28px rgba(29,78,216,.12)"
-                      : "0 10px 22px rgba(15,23,42,.06)",
-                    padding: "1rem",
-                  }}
+          return (
+            <section
+              key={week.weekStartDate}
+              className={clsx(styles.weeklyMenuSection, week.isActiveWeek && styles.active)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className={styles.weeklyMenuHeader}
+                  aria-expanded={isExpanded}
+                  onClick={() => setExpandedWeekStart(isExpanded ? null : week.weekStartDate)}
                 >
-                  {/* Card header */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "0.5rem",
-                      width: "100%",
-                    }}
+                  <div className={styles.weeklyMenuHeaderContent}>
+                    <p className={styles.weeklyMenuHeaderTitle}>
+                      {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
+                    </p>
+                    <p className={styles.weeklyMenuHeaderSub}>{week.menus.length} menu</p>
+                  </div>
+                  <div className={styles.weeklyMenuHeaderRight}>
+                    {week.isActiveWeek && <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>}
+                    <span className={clsx(styles.expandToggle, isExpanded && styles.expandToggleOpen)}>
+                      <ChevronRight aria-hidden="true" />
+                    </span>
+                  </div>
+                </button>
+
+                {!week.isActiveWeek && (
+                  <button
+                    type="button"
+                    className={styles.iconDangerButton}
+                    onClick={() => handleDeleteWholeWeek(week.weekStartDate)}
+                    aria-label="Hapus seluruh menu pekan ini"
+                    title="Hapus seluruh menu pekan ini"
                   >
+                    <Trash2 aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+
+              {isExpanded && (
+                <div className={styles.weeklyMenuContent}>
+                  <div className={styles.weeklyMenuAddButton}>
                     <button
                       type="button"
-                      onClick={() =>
-                        setExpandedWeekStart(isExpanded ? null : week.weekStartDate)
-                      }
-                      style={{
-                        flex: 1,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: "1rem",
-                        border: "none",
-                        background: "transparent",
-                        padding: 0,
-                        cursor: "pointer",
-                        textAlign: "left",
+                      className={styles.tabButton}
+                      onClick={() => {
+                        setMenuForm({
+                          recipeId: "",
+                          weekStartDate: week.weekStartDate.slice(0, 10),
+                        });
+                        setShowForm(true);
                       }}
                     >
-                      <div>
-                        <p className={styles.noticeTitle} style={{ marginBottom: "0.2rem" }}>
-                          {formatWeekRangeLabel(week.weekStartDate, week.weekEndDate)}
-                        </p>
-                        <p style={{ margin: 0, color: "#64748b", fontSize: "0.92rem" }}>
-                          {week.menus.length} menu tersimpan untuk minggu ini.
-                        </p>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        {week.isActiveWeek && (
-                          <span className={clsx(styles.tag, styles.tagGreen)}>Minggu ini</span>
-                        )}
-                        <span
-                          aria-hidden="true"
-                          style={{ fontSize: "1.15rem", color: "#64748b" }}
-                        >
-                          {isExpanded ? "▾" : "▸"}
-                        </span>
-                      </div>
+                      <Plus aria-hidden="true" />
+                      Tambah resep ke pekan ini
                     </button>
-
-                    {!week.isActiveWeek && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteWholeWeek(week.weekStartDate);
-                        }}
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          color: "#ef4444",
-                          padding: "0.5rem",
-                          borderRadius: "8px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          transition: "all 0.2s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = "#fee2e2";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "transparent";
-                        }}
-                        title="Hapus seluruh menu pekan ini"
-                      >
-                        <TrashIcon />
-                      </button>
-                    )}
                   </div>
 
-                  {/* Expanded content */}
-                  {isExpanded && (
-                    <div style={{ marginTop: "1rem" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "flex-end",
-                          marginBottom: "0.75rem",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuForm({
-                              recipeId: "",
-                              weekStartDate: week.weekStartDate.slice(0, 10),
-                            });
-                            setShowForm(true);
-                          }}
-                          style={{
-                            border: "1px solid #1d4ed8",
-                            background: "#eef4ff",
-                            color: "#1d4ed8",
-                            fontWeight: 700,
-                            borderRadius: "999px",
-                            padding: "0.55rem 0.9rem",
-                            cursor: "pointer",
-                          }}
-                        >
-                          + Tambah resep ke minggu ini
-                        </button>
-                      </div>
+                  <div className={styles.tableShell}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Resep</th>
+                          <th>Kalori</th>
+                          <th>Protein</th>
+                          <th>Target kesehatan</th>
+                          <th aria-label="Aksi" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {week.menus.map((row) => {
+                          const previewGoals = buildGoalPreview(row, goalOverrides);
+                          const isEditingGoal = goalEditorMenuId === row.id;
 
-                      <div className={styles.tableShell}>
-                        <table className={styles.table}>
-                          <thead>
-                            <tr>
-                              <th>Resep</th>
-                              <th>Kalori</th>
-                              <th>Protein</th>
-                              <th>Suitable Goals</th>
-                              <th>Aksi</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {week.menus.map((row) => {
-                              const previewGoals = buildGoalPreview(row, goalOverrides);
-                              const isEditingGoal = goalEditorMenuId === row.id;
-
-                              return (
-                                <tr key={row.id}>
-                                  <td>{row.recipeName}</td>
-                                  <td>{row.calories} kcal</td>
-                                  <td>{row.protein} g</td>
-                                  <td>
-                                    <div
-                                      style={{
-                                        position: "relative",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "0.4rem",
-                                        flexWrap: "wrap",
-                                      }}
-                                    >
-                                      {previewGoals.length > 0 ? (
-                                        previewGoals.map((g) => (
-                                          <span
-                                            key={g}
-                                            className={clsx(styles.tag, styles.tagBlue)}
-                                          >
-                                            {g}
-                                          </span>
-                                        ))
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          className={styles.goalLinkButton}
-                                          onClick={() => setGoalEditorMenuId(row.id)}
-                                        >
-                                          + Hubungkan Target
-                                        </button>
-                                      )}
-
-                                      <button
-                                        type="button"
-                                        className={styles.goalEditButton}
-                                        onClick={() =>
-                                          setGoalEditorMenuId((curr) =>
-                                            curr === row.id ? null : row.id
-                                          )
-                                        }
-                                        aria-label="Edit target kesehatan"
-                                      >
-                                        ✎
-                                      </button>
-
-                                      {isEditingGoal && (
-                                        <div className={styles.goalPopover}>
-                                          <div className={styles.goalPopoverTitle}>
-                                            Hubungkan target kesehatan
-                                          </div>
-                                          <div className={styles.goalPopoverList}>
-                                            {weeklyGoals.length === 0 ? (
-                                              <p style={{ margin: 0, color: "#64748b" }}>
-                                                Belum ada goal master tersedia.
-                                              </p>
-                                            ) : (
-                                              weeklyGoals.map((goal) => {
-                                                const current = new Set(
-                                                  goalOverrides[row.id] ?? row.suitableGoals
-                                                );
-                                                const checked = current.has(goal.name);
-                                                return (
-                                                  <label
-                                                    key={goal.id}
-                                                    className={styles.goalPopoverItem}
-                                                  >
-                                                    <input
-                                                      type="checkbox"
-                                                      checked={checked}
-                                                      onChange={() => {
-                                                        setGoalOverrides((prev) => {
-                                                          const next = new Set(
-                                                            prev[row.id] ?? row.suitableGoals
-                                                          );
-                                                          if (next.has(goal.name))
-                                                            next.delete(goal.name);
-                                                          else next.add(goal.name);
-                                                          return {
-                                                            ...prev,
-                                                            [row.id]: Array.from(next),
-                                                          };
-                                                        });
-                                                      }}
-                                                    />
-                                                    <span>{goal.name}</span>
-                                                  </label>
-                                                );
-                                              })
-                                            )}
-                                          </div>
-                                          <div className={styles.goalPopoverActions}>
-                                            <button
-                                              type="button"
-                                              className={styles.tabButton}
-                                              onClick={() => setGoalEditorMenuId(null)}
-                                            >
-                                              Tutup
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className={clsx(
-                                                styles.tabButton,
-                                                styles.tabButtonActive
-                                              )}
-                                              onClick={() => setGoalEditorMenuId(null)}
-                                            >
-                                              Simpan tampilan
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td>
+                          return (
+                            <tr key={row.id}>
+                              <td className={styles.tableKey}>{row.recipeName}</td>
+                              <td className={styles.nowrap}>{row.calories} kcal</td>
+                              <td className={styles.nowrap}>{row.protein} g</td>
+                              <td>
+                                <div style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                                  {previewGoals.length > 0 ? (
+                                    previewGoals.map((g) => (
+                                      <span key={g} className={clsx(styles.tag, styles.tagBlue)}>
+                                        {g}
+                                      </span>
+                                    ))
+                                  ) : (
                                     <button
                                       type="button"
-                                      className={styles.iconDangerButton}
-                                      onClick={() => handleDeleteMenu(row.id)}
-                                      aria-label="Hapus menu mingguan"
+                                      className={styles.goalLinkButton}
+                                      onClick={() => setGoalEditorMenuId(row.id)}
                                     >
-                                      <svg
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        aria-hidden="true"
-                                        width="18"
-                                        height="18"
-                                      >
-                                        <path
-                                          d="M4 7h16"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                        />
-                                        <path
-                                          d="M10 11v6M14 11v6"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                        />
-                                        <path
-                                          d="M6 7l1 13h10l1-13"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                        <path
-                                          d="M9 7V4h6v3"
-                                          stroke="currentColor"
-                                          strokeWidth="1.8"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                      </svg>
+                                      + Hubungkan target
                                     </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              );
-            })
-          )}
-        </div>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    className={styles.goalEditButton}
+                                    onClick={() => setGoalEditorMenuId((curr) => (curr === row.id ? null : row.id))}
+                                    aria-label="Ubah target kesehatan"
+                                  >
+                                    <Pencil aria-hidden="true" />
+                                  </button>
+
+                                  {isEditingGoal && (
+                                    <div className={styles.goalPopover}>
+                                      <div className={styles.goalPopoverTitle}>Hubungkan target kesehatan</div>
+                                      <div className={styles.goalPopoverList}>
+                                        {weeklyGoals.length === 0 ? (
+                                          <p className={styles.fieldHint}>Belum ada target tersedia.</p>
+                                        ) : (
+                                          weeklyGoals.map((goal) => {
+                                            const current = new Set(goalOverrides[row.id] ?? row.suitableGoals);
+                                            const checked = current.has(goal.name);
+                                            return (
+                                              <label key={goal.id} className={styles.goalPopoverItem}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={() => {
+                                                    setGoalOverrides((prev) => {
+                                                      const next = new Set(prev[row.id] ?? row.suitableGoals);
+                                                      if (next.has(goal.name)) next.delete(goal.name);
+                                                      else next.add(goal.name);
+                                                      return { ...prev, [row.id]: Array.from(next) };
+                                                    });
+                                                  }}
+                                                />
+                                                <span>{goal.name}</span>
+                                              </label>
+                                            );
+                                          })
+                                        )}
+                                      </div>
+                                      <div className={styles.goalPopoverActions}>
+                                        <button type="button" className={styles.tabButton} onClick={() => setGoalEditorMenuId(null)}>
+                                          Tutup
+                                        </button>
+                                        <button type="button" className={styles.actionCard} onClick={() => setGoalEditorMenuId(null)}>
+                                          Simpan tampilan
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className={styles.alignRight}>
+                                <button
+                                  type="button"
+                                  className={styles.iconDangerButton}
+                                  onClick={() => handleDeleteMenu(row.id)}
+                                  aria-label={`Hapus ${row.recipeName} dari pekan ini`}
+                                >
+                                  <Trash2 aria-hidden="true" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })
       )}
+
       <ConfirmDialog
         isOpen={Boolean(customAlert)}
         title={customAlert?.title ?? ""}

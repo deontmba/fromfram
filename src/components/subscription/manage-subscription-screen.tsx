@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { X } from "lucide-react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import {
   createPreviewSubscriptionViewModel,
@@ -41,33 +42,7 @@ const PAUSE_OPTIONS = [
   },
 ];
 
-const PLAN_OPTIONS = [
-  {
-    key: "weekly" as const,
-    title: "Mingguan",
-    priceLabel: "Rp 350.000",
-    billingLabel: "/minggu",
-    helperText: "Fleksibel, bisa cancel kapan saja",
-  },
-  {
-    key: "monthly" as const,
-    title: "Bulanan",
-    priceLabel: "Rp 1.200.000",
-    billingLabel: "/bulan",
-    helperText: "Pilihan paling praktis",
-    badge: "Aktif",
-  },
-  {
-    key: "yearly" as const,
-    title: "Tahunan",
-    priceLabel: "Rp 12.000.000",
-    billingLabel: "/tahun",
-    helperText: "Hemat 29% untuk jangka panjang",
-    badge: "Hemat",
-  },
-];
 
-const SERVING_OPTIONS = [1, 2, 3, 4, 5, 6];
 const panelClassName =
   "rounded-[18px] border border-black/5 bg-white p-5 shadow-[0_8px_20px_rgba(0,0,0,0.05)]";
 
@@ -165,8 +140,6 @@ async function getSubscriptionViewModel(signal?: AbortSignal) {
 
 export function ManageSubscriptionScreen() {
   const [subscription, setSubscription] = useState<ManageSubscriptionViewModel | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<ManageSubscriptionViewModel["planKey"]>("monthly");
-  const [selectedServing, setSelectedServing] = useState<number>(2);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -183,17 +156,11 @@ export function ManageSubscriptionScreen() {
       try {
         const mappedSubscription = await getSubscriptionViewModel(abortController.signal);
         setSubscription(mappedSubscription);
-        setSelectedPlan(mappedSubscription.planKey);
-        setSelectedServing(mappedSubscription.servingCount);
         setFeedback(null);
-      } catch (error) {
-        // Tidak set subscription — biarkan null agar tampilkan empty state
+      } catch {
+        // No subscription yet: the empty-state card below explains what to do.
         setSubscription(null);
-        setFeedback({
-          tone: "info",
-          message: "Belum ada subscription untuk akun ini.",
-          note: getErrorMessage(error),
-        });
+        setFeedback(null);
       } finally {
         setIsLoading(false);
       }
@@ -206,29 +173,9 @@ export function ManageSubscriptionScreen() {
     };
   }, []);
 
-  const handlePlanChange = (planKey: typeof selectedPlan) => {
-    setSelectedPlan(planKey);
-    setFeedback({
-      tone: "info",
-      message: "Update plan lewat API belum tersedia saat ini.",
-      note: "Gunakan flow select-plan untuk setup subscription baru.",
-    });
-  };
-
-  const handleServingChange = (serving: number) => {
-    setSelectedServing(serving);
-    setFeedback({
-      tone: "info",
-      message: "Update serving lewat API belum tersedia saat ini.",
-      note: "Gunakan flow select-plan untuk setup subscription baru.",
-    });
-  };
-
   const refreshAfterAction = async () => {
     const mappedSubscription = await getSubscriptionViewModel();
     setSubscription(mappedSubscription);
-    setSelectedPlan(mappedSubscription.planKey);
-    setSelectedServing(mappedSubscription.servingCount);
   };
 
   const handleSkip = () => {
@@ -277,7 +224,7 @@ export function ManageSubscriptionScreen() {
       setFeedback({
         tone: "success",
         message: response.message ?? "Subscription berhasil dijeda.",
-        note: response.note ?? (response.resumeDate ? `Resume date: ${response.resumeDate}` : undefined),
+        note: response.note ?? (response.resumeDate ? `Aktif kembali: ${response.resumeDate}` : undefined),
       });
     } catch (error) {
       setFeedback({
@@ -339,7 +286,6 @@ export function ManageSubscriptionScreen() {
     }
   };
 
-  const disableUpdate = true;
   const disableActions = !subscription || subscription.isPreview || pendingAction !== null;
 
   return (
@@ -353,16 +299,10 @@ export function ManageSubscriptionScreen() {
         <section className="relative mx-auto w-full max-w-[940px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link
-              href="/"
+              href="/dashboard"
               className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50"
             >
               Kembali
-            </Link>
-            <Link
-              href="/subscription/select-plan"
-              className="inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
-            >
-              Select plan
             </Link>
           </div>
 
@@ -371,15 +311,15 @@ export function ManageSubscriptionScreen() {
             <SummarySection subscription={subscription} />
           ) : !isLoading && !subscription ? (
             <div className="mt-6 rounded-[18px] bg-neutral-100 px-6 py-8 text-center border border-dashed border-neutral-300">
-              <p className="text-[1.1rem] font-bold text-neutral-500">Belum ada subscription aktif</p>
-              <p className="mt-2 text-sm text-neutral-400">
-                Buat subscription dari halaman Select Plan untuk mulai menerima meal kit.
+              <p className="text-[1.1rem] font-bold text-neutral-700">Kamu belum berlangganan</p>
+              <p className="mt-2 text-sm text-neutral-500">
+                Pilih paket dan jumlah porsi untuk mulai menerima meal kit.
               </p>
               <Link
                 href="/subscription/select-plan"
                 className="mt-5 inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-6 text-sm font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
               >
-                Mulai Berlangganan →
+                Pilih Paket
               </Link>
             </div>
           ) : isLoading ? (
@@ -398,87 +338,6 @@ export function ManageSubscriptionScreen() {
           ) : null}
 
           <div className="mt-5 space-y-5">
-            <div className={panelClassName}>
-              <p className="text-sm font-semibold text-[#11af82]">Subscription</p>
-              <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
-                Change plan
-              </h2>
-              <p className="mt-2 text-[1rem] text-neutral-500">
-                Endpoint update plan belum tersedia saat ini pada API existing.
-              </p>
-
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                {PLAN_OPTIONS.map((plan) => {
-                  const isActive = selectedPlan === plan.key;
-
-                  return (
-                    <button
-                      key={plan.key}
-                      type="button"
-                      disabled={disableUpdate}
-                      onClick={() => handlePlanChange(plan.key)}
-                      className={`rounded-2xl border px-4 py-5 text-left transition ${
-                        isActive
-                          ? "border-[#1abb89] bg-[#e8f8f0] shadow-[0_8px_16px_rgba(18,168,123,0.12)]"
-                          : "border-neutral-200 bg-[#fafafa] hover:bg-white"
-                      } ${disableUpdate ? "cursor-not-allowed opacity-60" : ""}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[1.08rem] font-semibold text-neutral-900">
-                            {plan.title}
-                          </p>
-                          <p className="mt-2 text-[1.35rem] font-bold text-neutral-900">
-                            {plan.priceLabel}
-                          </p>
-                          <p className="mt-1 text-sm text-neutral-500">{plan.billingLabel}</p>
-                        </div>
-                        {plan.badge ? (
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#109f78]">
-                            {plan.badge}
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-4 text-sm text-neutral-600">{plan.helperText}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className={panelClassName}>
-              <p className="text-sm font-semibold text-[#11af82]">Subscription</p>
-              <h2 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
-                Serving size
-              </h2>
-              <p className="mt-2 text-[1rem] text-neutral-500">
-                Endpoint update serving belum tersedia saat ini pada API existing.
-              </p>
-
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                {SERVING_OPTIONS.map((serving) => {
-                  const isActive = selectedServing === serving;
-
-                  return (
-                    <button
-                      key={serving}
-                      type="button"
-                      disabled={disableUpdate}
-                      onClick={() => handleServingChange(serving)}
-                      className={`rounded-2xl border px-4 py-5 text-center transition ${
-                        isActive
-                          ? "border-[#1abb89] bg-[#e8f8f0] shadow-[0_8px_16px_rgba(18,168,123,0.12)]"
-                          : "border-neutral-200 bg-[#fafafa] hover:bg-white"
-                      } ${disableUpdate ? "cursor-not-allowed opacity-60" : ""}`}
-                    >
-                      <p className="text-[1.55rem] font-bold text-neutral-900">{serving}</p>
-                      <p className="mt-1 text-sm text-neutral-500">orang</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {subscription ? (
               <ActionsSection
                 subscription={subscription}
@@ -496,8 +355,8 @@ export function ManageSubscriptionScreen() {
 
       {isPauseDialogOpen ? (
         <ActionDialog
-          title="Pause subscription"
-          description="Pilih durasi jeda. Endpoint backend hanya mengizinkan maksimum 4 minggu."
+          title="Jeda langganan"
+          description="Pilih berapa lama langganan dijeda. Maksimal 4 minggu."
           onClose={() => setIsPauseDialogOpen(false)}
         >
           <div className="space-y-3">
@@ -554,7 +413,7 @@ export function ManageSubscriptionScreen() {
 
       {isCancelDialogOpen ? (
         <ActionDialog
-          title="Cancel subscription"
+          title="Berhenti berlangganan"
           description="Langganan akan dihentikan di akhir siklus berjalan. Pengiriman aktif tetap diproses."
           variant="destructive"
           onClose={() => setIsCancelDialogOpen(false)}
@@ -679,7 +538,7 @@ function SummarySection({
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl bg-white/18 px-4 py-4 backdrop-blur">
-          <p className="text-sm font-semibold text-white/80">Serving</p>
+          <p className="text-sm font-semibold text-white/80">Porsi</p>
           <p className="mt-2 text-[1.15rem] font-semibold text-white">
             {subscription.servingLabel}
           </p>
@@ -691,7 +550,7 @@ function SummarySection({
           </p>
         </div>
         <div className="rounded-2xl bg-white/18 px-4 py-4 backdrop-blur">
-          <p className="text-sm font-semibold text-white/80">Next billing</p>
+          <p className="text-sm font-semibold text-white/80">Tagihan berikutnya</p>
           <p className="mt-2 text-[1.15rem] font-semibold text-white">
             {subscription.nextBillingLabel}
           </p>
@@ -816,12 +675,12 @@ function ActionsSection({
           }`}
         >
           <div>
-            <p className="text-[1rem] font-semibold text-[#be123c]">Cancel subscription</p>
+            <p className="text-[1rem] font-semibold text-[#be123c]">Berhenti berlangganan</p>
             <p className="mt-1 text-sm text-[#9f1239]">
               Berhenti berlangganan di akhir siklus berjalan.
             </p>
           </div>
-          <span className="text-sm font-semibold text-[#be123c]">Cancel</span>
+          <span className="text-sm font-semibold text-[#be123c]">Berhenti</span>
         </button>
       </div>
     </div>
@@ -848,7 +707,7 @@ function ActionDialog({
         <div className={`absolute top-0 left-0 right-0 h-1.5 ${variant === "destructive" ? "bg-[#e11d48]" : "bg-[#1abb89]"}`} />
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-neutral-400">Subscription</p>
+            <p className="text-xs font-semibold text-neutral-400">Langganan</p>
             <h3 className="mt-2 text-[1.45rem] font-bold tracking-[-0.02em] text-neutral-900">
               {title}
             </h3>
@@ -857,9 +716,10 @@ function ActionDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-2xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-700"
+            aria-label="Tutup"
+            className="rounded-2xl border border-neutral-200 bg-white px-2 py-1.5 text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-700"
           >
-            ✕
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
 

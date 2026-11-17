@@ -253,7 +253,23 @@ export async function deleteNutritionistRecipe(userId: string, recipeId: string)
   const authError = await verifyNutritionist(userId);
   if (authError) return authError;
 
-  await prisma.recipe.delete({ where: { id: recipeId } });
+  // FKs are ON DELETE RESTRICT: block recipes still in use, clear its ingredient rows first.
+  const [menuCount, selectionCount] = await Promise.all([
+    prisma.weeklyMenu.count({ where: { recipeId } }),
+    prisma.mealSelection.count({ where: { recipeId } }),
+  ]);
+  if (menuCount > 0 || selectionCount > 0) {
+    return {
+      error: `Resep tidak dapat dihapus karena dipakai di ${menuCount} menu mingguan dan ${selectionCount} pilihan menu pelanggan.`,
+      status: 409,
+    };
+  }
+
+  const deleted = await prisma.$transaction([
+    prisma.recipeIngredient.deleteMany({ where: { recipeId } }),
+    prisma.recipe.deleteMany({ where: { id: recipeId } }),
+  ]);
+  if (deleted[1].count === 0) return { error: 'Recipe not found.', status: 404 };
 
   return { data: { success: true, message: 'Recipe deleted.' }, status: 200 };
 }

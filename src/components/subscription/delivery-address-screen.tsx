@@ -1,21 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import {
-  getEmptyAddressDraft,
-  profileMockData,
-  type Address,
-  type AddressDraft,
-} from "@/components/profile/mock-data";
+import { getEmptyAddressDraft, type Address, type AddressDraft } from "@/components/profile/mock-data";
 import { indonesiaRegions } from "@/lib/indonesia-regions";
-import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import {
+  CheckoutLayout,
+  cardClass,
+  fieldClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/components/subscription/checkout-layout";
 
 type ManagedAddress = Address & {
-  recipientName: string;
-  phoneNumber: string;
+  recipientName: string | null;
+  phoneNumber: string | null;
 };
 
 type ManagedAddressDraft = AddressDraft & {
@@ -31,193 +31,133 @@ type AddressResponse = {
   message?: string;
 };
 
-type StatusMessage =
-  | {
-      tone: "error" | "success";
-      text: string;
-    }
-  | null;
+type FieldErrors = Partial<Record<"recipientName" | "phoneNumber" | "street" | "province" | "city" | "postalCode", string>>;
 
 const NEXT_STEP_PATH = "/subscription/weekly-menu";
-
 const addressLabels = ["Rumah", "Kantor", "Lainnya"];
 
-const inputClassName =
-  "mt-2 h-14 w-full rounded-2xl border-2 border-[#1db788]/40 bg-white/20 px-4 text-[1.02rem] text-neutral-900 outline outline-1 outline-white/40 transition backdrop-blur-md focus:border-[#1db788] focus:bg-white/30 placeholder:text-neutral-600";
+// shortcut: service area is hard-coded to Jabodetabek + Bandung provinces; move to config/DB when the area grows.
+const SERVICE_PROVINCES = ["DKI JAKARTA", "JAWA BARAT", "BANTEN"];
+const provinces = indonesiaRegions.filter((p) => SERVICE_PROVINCES.includes(p.name));
 
-const textareaClassName =
-  "mt-2 min-h-28 w-full rounded-2xl border-2 border-[#1db788]/40 bg-white/20 px-4 py-3 text-[1.02rem] text-neutral-900 outline outline-1 outline-white/40 transition backdrop-blur-md focus:border-[#1db788] focus:bg-white/30 placeholder:text-neutral-600";
-
-function getDefaultRecipientName() {
-  return profileMockData.fullName;
+function getAddressesFromResponse(data: AddressResponse | null): ManagedAddress[] {
+  if (Array.isArray(data?.addresses)) return data.addresses;
+  if (Array.isArray(data?.data)) return data.data;
+  if (data?.address) return [data.address];
+  if (data?.data) return [data.data];
+  return [];
 }
 
-function getDefaultPhoneNumber() {
-  return profileMockData.phoneNumber;
-}
-
-function getAddressDraft(address?: ManagedAddress): ManagedAddressDraft {
-  if (address) {
-    return {
-      label: address.label,
-      recipientName: address.recipientName ?? getDefaultRecipientName(),
-      phoneNumber: address.phoneNumber ?? getDefaultPhoneNumber(),
-      street: address.street,
-      city: address.city,
-      province: address.province,
-      postalCode: address.postalCode,
-      notes: address.notes ?? "",
-      isDefault: true,
-    };
-  }
-
+function draftFromAddress(address: ManagedAddress): ManagedAddressDraft {
   return {
-    ...getEmptyAddressDraft(),
-    label: "Rumah",
-    recipientName: getDefaultRecipientName(),
-    phoneNumber: getDefaultPhoneNumber(),
+    label: address.label,
+    recipientName: address.recipientName ?? "",
+    phoneNumber: address.phoneNumber ?? "",
+    street: address.street,
+    city: address.city,
+    province: address.province,
+    postalCode: address.postalCode,
+    notes: address.notes ?? "",
     isDefault: true,
   };
 }
 
-function getAddressesFromResponse(data: AddressResponse | null) {
-  if (Array.isArray(data?.addresses)) {
-    return data.addresses;
-  }
-
-  if (Array.isArray(data?.data)) {
-    return data.data;
-  }
-
-  if (data?.address) {
-    return [data.address];
-  }
-
-  if (data?.data) {
-    return [data.data];
-  }
-
-  return [];
+function validate(draft: ManagedAddressDraft): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!draft.recipientName.trim()) errors.recipientName = "Nama penerima wajib diisi.";
+  const phone = draft.phoneNumber.replace(/[\s-]/g, "");
+  if (!phone) errors.phoneNumber = "Nomor HP wajib diisi, kurir akan menghubungi nomor ini.";
+  else if (!/^(\+62|62|0)8\d{7,12}$/.test(phone)) errors.phoneNumber = "Format nomor HP tidak valid, contoh 081234567890.";
+  if (!draft.street.trim()) errors.street = "Alamat lengkap wajib diisi.";
+  if (!draft.province) errors.province = "Pilih provinsi.";
+  if (!draft.city) errors.city = "Pilih kota atau kabupaten.";
+  if (!/^\d{5}$/.test(draft.postalCode.trim())) errors.postalCode = "Kode pos terdiri dari 5 angka.";
+  return errors;
 }
 
-function getSavedAddressFromResponse(data: AddressResponse | null, fallbackAddress: ManagedAddress) {
-  if (data?.address) {
-    return data.address;
-  }
-
-  if (data?.data && !Array.isArray(data.data)) {
-    return data.data;
-  }
-
-  return fallbackAddress;
-}
-
-function LocationPinIcon() {
+function Field({ label, error, children, className = "" }: { label: string; error?: string; children: React.ReactNode; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-8 w-8">
-      <path
-        d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 12.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <label className={`block space-y-1.5 ${className}`}>
+      <span className="block text-sm font-medium text-neutral-700">{label}</span>
+      {children}
+      {error ? <span className="block text-sm text-red-600">{error}</span> : null}
+    </label>
   );
 }
 
 export function DeliveryAddressScreen() {
   const router = useRouter();
-  const [addressDraft, setAddressDraft] = useState<ManagedAddressDraft>(getAddressDraft());
+  const [draft, setDraft] = useState<ManagedAddressDraft>({
+    ...getEmptyAddressDraft(),
+    label: "Rumah",
+    recipientName: "",
+    phoneNumber: "",
+    isDefault: true,
+  });
   const [defaultAddressId, setDefaultAddressId] = useState<string | null>(null);
-  const [message, setMessage] = useState<StatusMessage>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const provinces = indonesiaRegions;
-  const selectedProvinceData = provinces.find((p) => p.name === addressDraft.province);
-  const cities = selectedProvinceData ? selectedProvinceData.cities : [];
+  const cities = provinces.find((p) => p.name === draft.province)?.cities ?? [];
+  const set = <K extends keyof ManagedAddressDraft>(key: K, value: ManagedAddressDraft[K]) =>
+    setDraft((current) => ({ ...current, [key]: value }));
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadAddress() {
+    async function load() {
       try {
-        const response = await fetch("/api/profile/address", { cache: "no-store" });
-        const data = (await response.json().catch(() => null)) as AddressResponse | null;
-        const addresses = getAddressesFromResponse(data);
-        const defaultAddress = addresses.find((address) => address.isDefault);
+        const [addressRes, meRes] = await Promise.all([
+          fetch("/api/profile/address", { cache: "no-store" }),
+          fetch("/api/auth/me", { cache: "no-store" }),
+        ]);
+        const addressData = (await addressRes.json().catch(() => null)) as AddressResponse | null;
+        const meData = (await meRes.json().catch(() => null)) as { user?: { name?: string; phoneNumber?: string | null } } | null;
+        if (!isMounted) return;
 
-        if (!isMounted || !response.ok || !defaultAddress) {
-          return;
+        const defaultAddress = addressRes.ok ? getAddressesFromResponse(addressData).find((a) => a.isDefault) : undefined;
+        if (defaultAddress) {
+          setDraft(draftFromAddress(defaultAddress));
+          setDefaultAddressId(defaultAddress.id);
         }
-
-        setAddressDraft(getAddressDraft(defaultAddress));
-        setDefaultAddressId(defaultAddress.id);
+        // Pre-fill the recipient from the account when the saved address has none.
+        setDraft((current) => ({
+          ...current,
+          recipientName: current.recipientName || meData?.user?.name || "",
+          phoneNumber: current.phoneNumber || meData?.user?.phoneNumber || "",
+        }));
       } catch {
-        // Manual input tetap tersedia jika alamat belum bisa dimuat.
+        // The form still works with manual input.
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     }
 
-    void loadAddress();
-
+    void load();
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setMessage(null);
+    setSubmitError(null);
+    const found = validate(draft);
+    setErrors(found);
+    if (Object.keys(found).length > 0) return;
 
-    const payload = {
-      recipientName: addressDraft.recipientName.trim() || getDefaultRecipientName(),
-      phoneNumber: addressDraft.phoneNumber.trim() || getDefaultPhoneNumber(),
-      label: addressDraft.label.trim(),
-      street: addressDraft.street.trim(),
-      city: addressDraft.city.trim(),
-      province: addressDraft.province.trim(),
-      postalCode: addressDraft.postalCode.trim(),
-      notes: addressDraft.notes.trim(),
-      isDefault: true,
-    };
-
-    if (!payload.label || !payload.street || !payload.city || !payload.province || !payload.postalCode) {
-      setMessage({
-        tone: "error",
-        text: "Label, alamat lengkap, kota, provinsi, dan kode pos wajib diisi.",
-      });
-      return;
-    }
-
-    setIsConfirmOpen(true);
-  };
-
-  const handleConfirmSave = async () => {
-    setIsConfirmOpen(false);
     setIsSaving(true);
-
     const payload = {
-      recipientName: addressDraft.recipientName.trim() || getDefaultRecipientName(),
-      phoneNumber: addressDraft.phoneNumber.trim() || getDefaultPhoneNumber(),
-      label: addressDraft.label.trim(),
-      street: addressDraft.street.trim(),
-      city: addressDraft.city.trim(),
-      province: addressDraft.province.trim(),
-      postalCode: addressDraft.postalCode.trim(),
-      notes: addressDraft.notes.trim(),
+      recipientName: draft.recipientName.trim(),
+      phoneNumber: draft.phoneNumber.replace(/[\s-]/g, ""),
+      label: draft.label,
+      street: draft.street.trim(),
+      city: draft.city,
+      province: draft.province,
+      postalCode: draft.postalCode.trim(),
+      notes: draft.notes.trim(),
       isDefault: true,
     };
 
@@ -231,224 +171,156 @@ export function DeliveryAddressScreen() {
         body: JSON.stringify(payload),
       });
       const data = (await response.json().catch(() => null)) as AddressResponse | null;
-
       if (!response.ok) {
-        setMessage({
-          tone: "error",
-          text: data?.error ?? data?.message ?? "Gagal menyimpan alamat.",
-        });
+        setSubmitError(data?.error ?? data?.message ?? "Gagal menyimpan alamat.");
         return;
       }
-
-      const fallbackAddress: ManagedAddress = {
-        id: defaultAddressId ?? "",
-        ...payload,
-      };
-      const savedAddress = getSavedAddressFromResponse(data, fallbackAddress);
-
-      setDefaultAddressId(savedAddress.id || defaultAddressId);
-      setMessage({
-        tone: "success",
-        text: "Alamat pengiriman berhasil disimpan.",
-      });
       router.push(NEXT_STEP_PATH);
     } catch {
-      setMessage({
-        tone: "error",
-        text: "Gagal menyimpan alamat. Coba lagi beberapa saat lagi.",
-      });
+      setSubmitError("Gagal menyimpan alamat. Coba lagi beberapa saat lagi.");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const invalid = (key: keyof FieldErrors) => (errors[key] ? "border-red-400 focus:border-red-500 focus:ring-red-200" : "");
+
   return (
-    <main className="relative min-h-screen overflow-hidden px-5 py-8 sm:py-10">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
-      <div className="absolute -top-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-[#1db788]/40 to-[#0ea5a5]/10 blur-3xl" />
-      <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-gradient-to-tr from-[#1db788]/25 to-transparent blur-3xl" />
-      <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
-      <div className="absolute top-0 left-1/2 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-white/40 to-[#1db788]/5 blur-3xl" />
-      
-      <section className="mx-auto w-full max-w-[860px] rounded-[28px] border-2 border-[#1db788]/50 bg-white/10 px-5 py-7 backdrop-blur-md sm:px-8 sm:py-9">
-        <header className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
-            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
-            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
-          </div>
-          <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-white/20 text-[#1db788] backdrop-blur-md shadow-[0_10px_20px_rgba(29,183,136,0.14)]">
-            <LocationPinIcon />
-          </div>
-          <h1 className="bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] bg-clip-text text-[2rem] font-bold leading-tight text-transparent sm:text-[2.35rem]">
-            Alamat Pengiriman
-          </h1>
-          <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
-            Isi alamat untuk pengiriman meal kit Anda
-          </p>
-        </header>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <fieldset>
-            <legend className="mb-3 text-[1rem] font-semibold text-neutral-900">Label Alamat</legend>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {addressLabels.map((label) => {
-                const active = addressDraft.label === label;
-
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      setAddressDraft((currentDraft) => ({
-                        ...currentDraft,
-                        label,
-                      }))
-                    }
-                    className={`rounded-2xl border-2 px-6 py-3.5 text-[1rem] font-semibold backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
-                      active
-                        ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 text-neutral-900 shadow-[0_8px_16px_rgba(29,183,136,0.16)]"
-                        : "border-[#1db788]/30 bg-white/20 text-neutral-700 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <span className="block text-[1rem] font-semibold text-neutral-900">Alamat Lengkap</span>
+    <CheckoutLayout
+      step="Alamat"
+      title="Ke mana kami antar?"
+      subtitle="Saat ini kami mengantar ke wilayah Jakarta, Jawa Barat, dan Banten."
+    >
+      <form noValidate onSubmit={handleSubmit} className="space-y-5">
+        <section className={cardClass}>
+          <h2 className="text-base font-semibold text-neutral-900">Penerima</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Nama penerima" error={errors.recipientName}>
               <input
-                className={inputClassName}
-                value={addressDraft.street}
-                onChange={(event) =>
-                  setAddressDraft((currentDraft) => ({
-                    ...currentDraft,
-                    street: event.target.value,
-                  }))
-                }
+                className={`${fieldClass} ${invalid("recipientName")}`}
+                autoComplete="name"
+                value={draft.recipientName}
+                onChange={(e) => set("recipientName", e.target.value)}
               />
-            </label>
+            </Field>
+            <Field label="Nomor HP" error={errors.phoneNumber}>
+              <input
+                className={`${fieldClass} ${invalid("phoneNumber")}`}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="081234567890"
+                value={draft.phoneNumber}
+                onChange={(e) => set("phoneNumber", e.target.value)}
+              />
+            </Field>
+          </div>
+        </section>
 
-            <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-900">Provinsi</span>
+        <section className={cardClass}>
+          <h2 className="text-base font-semibold text-neutral-900">Alamat</h2>
+
+          <div className="mt-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Label alamat">
+            {addressLabels.map((label) => {
+              const active = draft.label === label;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => set("label", label)}
+                  className={`h-9 rounded-full border px-4 text-sm font-medium transition ${
+                    active
+                      ? "border-[#13b987] bg-[#effaf5] text-[#07845e]"
+                      : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="Alamat lengkap" error={errors.street} className="sm:col-span-2">
+              <input
+                className={`${fieldClass} ${invalid("street")}`}
+                autoComplete="street-address"
+                placeholder="Nama jalan, nomor rumah, RT/RW"
+                value={draft.street}
+                onChange={(e) => set("street", e.target.value)}
+              />
+            </Field>
+
+            <Field label="Provinsi" error={errors.province}>
               <select
-                className={inputClassName}
-                value={addressDraft.province}
-                onChange={(event) =>
-                  setAddressDraft((currentDraft) => ({
-                    ...currentDraft,
-                    province: event.target.value,
-                    city: "", // reset kota jika provinsi berubah
-                  }))
-                }
+                className={`${fieldClass} ${invalid("province")}`}
+                value={draft.province}
+                onChange={(e) => setDraft((current) => ({ ...current, province: e.target.value, city: "" }))}
               >
-                <option value="">Pilih Provinsi</option>
+                <option value="">Pilih provinsi</option>
                 {provinces.map((prov) => (
                   <option key={prov.id} value={prov.name}>
                     {prov.name}
                   </option>
                 ))}
               </select>
-            </label>
+            </Field>
 
-            <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-900">Kota/Kabupaten</span>
+            <Field label="Kota / kabupaten" error={errors.city}>
               <select
-                className={inputClassName}
-                value={addressDraft.city}
-                onChange={(event) =>
-                  setAddressDraft((currentDraft) => ({
-                    ...currentDraft,
-                    city: event.target.value,
-                  }))
-                }
-                disabled={!addressDraft.province || cities.length === 0}
+                className={`${fieldClass} ${invalid("city")}`}
+                value={draft.city}
+                disabled={!draft.province}
+                onChange={(e) => set("city", e.target.value)}
               >
-                <option value="">Pilih Kota/Kabupaten</option>
+                <option value="">{draft.province ? "Pilih kota atau kabupaten" : "Pilih provinsi dulu"}</option>
                 {cities.map((city) => (
                   <option key={city.id} value={city.name}>
                     {city.name}
                   </option>
                 ))}
               </select>
-            </label>
+            </Field>
 
-            <label className="block">
-              <span className="block text-[1rem] font-semibold text-neutral-900">Kode Pos</span>
+            <Field label="Kode pos" error={errors.postalCode}>
               <input
-                className={inputClassName}
-                value={addressDraft.postalCode}
-                onChange={(event) =>
-                  setAddressDraft((currentDraft) => ({
-                    ...currentDraft,
-                    postalCode: event.target.value,
-                  }))
-                }
+                className={`${fieldClass} ${invalid("postalCode")}`}
+                inputMode="numeric"
+                autoComplete="postal-code"
+                maxLength={5}
+                value={draft.postalCode}
+                onChange={(e) => set("postalCode", e.target.value.replace(/\D/g, ""))}
               />
-            </label>
+            </Field>
 
-            <label className="block sm:col-span-2">
-              <span className="block text-[1rem] font-semibold text-neutral-900">Catatan (Opsional)</span>
+            <Field label="Catatan untuk kurir (opsional)" className="sm:col-span-2">
               <textarea
-                className={textareaClassName}
-                value={addressDraft.notes}
-                onChange={(event) =>
-                  setAddressDraft((currentDraft) => ({
-                    ...currentDraft,
-                    notes: event.target.value,
-                  }))
-                }
+                className={`${fieldClass} h-auto min-h-24 py-2.5`}
+                placeholder="Contoh: pagar hijau, titip satpam"
+                value={draft.notes}
+                onChange={(e) => set("notes", e.target.value)}
               />
-            </label>
+            </Field>
           </div>
+        </section>
 
-          <div className="min-h-6">
-            {message ? (
-              <p
-                className={`text-sm font-medium ${
-                  message.tone === "error" ? "text-red-400" : "text-[#4ade80]"
-                }`}
-              >
-                {message.text}
-              </p>
-            ) : isLoading ? (
-              <p className="text-sm font-medium text-neutral-500">Memuat alamat tersimpan...</p>
-            ) : null}
-          </div>
+        {submitError ? (
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {submitError}
+          </p>
+        ) : null}
 
-          <footer className="flex flex-col-reverse gap-6 sm:flex-row sm:items-center sm:justify-between pt-2">
-            <Link
-              href="/subscription/select-plan"
-              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-[#1db788]/30 bg-white/20 px-7 text-[1rem] font-semibold text-neutral-900 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_10px_20px_rgba(29,183,136,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40"
-            >
-              Kembali
-            </Link>
-
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex h-12 items-center justify-center rounded-2xl border-2 border-[#1db788] bg-gradient-to-r from-[#1db788] to-[#16a679] px-9 text-[1rem] font-semibold text-white shadow-[0_12px_25px_rgba(29,183,136,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(29,183,136,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60 outline outline-1 outline-white/50"
-            >
-              {isSaving ? "Menyimpan..." : "Lanjutkan"}
-            </button>
-          </footer>
-        </form>
-      </section>
-      <ConfirmDialog
-        isOpen={isConfirmOpen}
-        title="Konfirmasi Alamat Pengiriman"
-        message={`Alamat pengiriman Anda akan disimpan di ${addressDraft.label} (${addressDraft.street}, ${addressDraft.city}). Apakah Anda ingin melanjutkan ke pemilihan menu mingguan?`}
-        confirmLabel="Ya, Lanjutkan"
-        cancelLabel="Batal"
-        isConfirming={isSaving}
-        onCancel={() => setIsConfirmOpen(false)}
-        onConfirm={handleConfirmSave}
-      />
-    </main>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          <Link href="/subscription/select-plan" className={secondaryButtonClass}>
+            Kembali
+          </Link>
+          <button type="submit" disabled={isSaving || isLoading} className={primaryButtonClass}>
+            {isSaving ? "Menyimpan..." : "Lanjut pilih menu"}
+          </button>
+        </div>
+      </form>
+    </CheckoutLayout>
   );
 }

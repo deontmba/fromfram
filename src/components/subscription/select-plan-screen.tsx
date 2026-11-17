@@ -4,12 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { Check } from "lucide-react";
 import {
   ensureMySubscription,
   type ApiPlanType,
 } from "@/components/subscription/subscription-service";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import { CheckoutLayout, primaryButtonClass, secondaryButtonClass } from "@/components/subscription/checkout-layout";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,14 +75,14 @@ const durationPlans: DurationPlan[] = [
     basePrice: 1200000,
     unit: "/bulan",
     popular: true,
-    benefits: ["28 hari meal kit", "Gratis ongkir", "Priority support", "Hemat vs mingguan"],
+    benefits: ["28 hari meal kit", "Gratis ongkir", "Layanan prioritas", "Lebih hemat dari mingguan"],
   },
   {
     id: "yearly",
     name: "Tahunan",
     basePrice: 12000000,
     unit: "/tahun",
-    benefits: ["365 hari meal kit", "Gratis ongkir", "Priority support", "Hemat terbesar", "1 minggu gratis"],
+    benefits: ["365 hari meal kit", "Gratis ongkir", "Layanan prioritas", "Hemat terbesar", "1 minggu gratis"],
   },
 ];
 
@@ -106,22 +107,14 @@ function getSavingsLabel(plan: DurationPlan, servings: number): string {
   if (plan.id === "monthly") {
     const weeklyMonthEquiv = calculatePrice(350000, servings) * 4;
     const savePct = Math.round(((weeklyMonthEquiv - price) / weeklyMonthEquiv) * 100);
-    return savePct > 0 ? `Hemat ${savePct}% dari plan mingguan` : "Hemat dari plan mingguan";
+    return savePct > 0 ? `Hemat ${savePct}% dibanding paket mingguan` : "Hemat dibanding paket mingguan";
   }
   if (plan.id === "yearly") {
     const weeklyYearEquiv = calculatePrice(350000, servings) * 52;
     const savePct = Math.round(((weeklyYearEquiv - price) / weeklyYearEquiv) * 100);
-    return savePct > 0 ? `Hemat ${savePct}% dari plan mingguan` : "Hemat dari plan mingguan";
+    return savePct > 0 ? `Hemat ${savePct}% dibanding paket mingguan` : "Hemat dibanding paket mingguan";
   }
   return "";
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-4 w-4">
-      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function mapGoalsToMealCategory(goals: string[]): MealPlan["id"] {
@@ -145,21 +138,6 @@ function mapDietaryToMealCategory(dietary: string[]): MealPlan["id"] {
   }
   return "basic";
 }
-
-const cardContainerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -197,7 +175,7 @@ export function SelectPlanScreen() {
           if (!cancelled) {
             setSelectedMeal(mapped);
             setPersonalizedLabel(
-              `Berdasarkan tujuan "${goals[0]}", kami merekomendasikan plan ini untuk Anda`,
+              `Berdasarkan tujuan "${goals[0]}", kami sarankan menu ini`,
             );
           }
         } else if (dietary.length > 0) {
@@ -205,7 +183,7 @@ export function SelectPlanScreen() {
           if (mapped && !cancelled) {
             setSelectedMeal(mapped);
             setPersonalizedLabel(
-              `Berdasarkan preferensi diet Anda, kami merekomendasikan plan ini`,
+              `Berdasarkan preferensi diet Anda, kami sarankan menu ini`,
             );
           }
         }
@@ -280,247 +258,163 @@ export function SelectPlanScreen() {
     }
   };
 
+  const selectedMealName = mealPlans.find((item) => item.id === selectedMeal)?.name;
+  const optionClass = (active: boolean) =>
+    `rounded-2xl border bg-white text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13b987]/40 ${
+      active ? "border-[#13b987] ring-1 ring-[#13b987] bg-[#f6fcf9]" : "border-neutral-200 hover:border-neutral-300"
+    }`;
+
   return (
-    <main className="relative min-h-screen overflow-hidden px-5 py-8 sm:py-10">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#d4f8f5] via-[#f0f7f5] to-[#e8f9f7]" />
-      <div className="absolute -top-40 -right-40 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-[#1db788]/40 to-[#0ea5a5]/10 blur-3xl" />
-      <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-gradient-to-tr from-[#1db788]/25 to-transparent blur-3xl" />
-      <div className="absolute top-1/2 right-1/4 -z-10 h-72 w-72 rounded-full bg-gradient-to-bl from-[#0ea5a5]/30 to-transparent blur-3xl" />
-      <div className="absolute top-0 left-1/2 -z-10 h-96 w-96 rounded-full bg-gradient-to-br from-white/40 to-[#1db788]/5 blur-3xl" />
-
-      <section className="mx-auto w-full max-w-[1020px] px-5 py-7 sm:px-8 sm:py-9">
-        <header className="mb-8 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 bg-gradient-to-r from-[#1db788] to-[#16a679] bg-clip-text text-transparent">
-            <Image src="/icons/leaf-logo.svg" alt="FromFram logo" width={30} height={30} />
-            <span className="text-[1.95rem] font-extrabold leading-none tracking-[-0.02em]">FromFram</span>
-          </div>
-          <h1 className="bg-gradient-to-r from-[#1db788] via-[#0ea5a5] to-[#1db788] bg-clip-text text-[2rem] font-bold leading-tight text-transparent sm:text-[2.35rem]">
-            Atur Langganan Anda
-          </h1>
-          <p className="mt-3 text-[0.98rem] text-neutral-600 sm:text-[1rem]">
-            Sesuaikan kategori meal plan, jumlah porsi, dan durasi berlangganan
-          </p>
-        </header>
-
-        <div className="space-y-12">
-          {/* STEP 1: Meal Category */}
-          <section aria-labelledby="meal-plan-title">
-            <h2 id="meal-plan-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
-              1. Pilih Kategori Meal Plan
-            </h2>
-
-            {/* Personalized recommendation banner */}
-            {!isLoadingProfile && personalizedLabel ? (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                className="mb-5 overflow-hidden rounded-2xl border border-[#1db788]/20 bg-gradient-to-r from-[#eafff5] to-[#d4f8f5] px-5 py-3.5"
-              >
-                <p className="flex items-center gap-2.5 text-[0.92rem] font-medium text-[#0f996f]">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#1db788] text-white">
-                    <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5">
-                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" />
-                    </svg>
+    <CheckoutLayout
+      step="Paket"
+      width="lg"
+      title="Pilih paket langgananmu"
+      subtitle="Atur jenis menu, jumlah porsi, dan durasi. Bisa berhenti kapan saja."
+    >
+      <div className="space-y-10 pb-28">
+        <section aria-labelledby="meal-plan-title">
+          <h2 id="meal-plan-title" className="text-base font-semibold text-neutral-900">
+            Jenis menu
+          </h2>
+          {!isLoadingProfile && personalizedLabel ? (
+            <p className="mt-1 text-sm text-[#07845e]">{personalizedLabel}</p>
+          ) : null}
+          <div className="mt-4 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-labelledby="meal-plan-title">
+            {mealPlans.map((plan) => {
+              const active = plan.id === selectedMeal;
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setSelectedMeal(plan.id)}
+                  className={`${optionClass(active)} flex items-center gap-4 p-4`}
+                >
+                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${active ? "bg-[#13b987]" : "bg-neutral-100"}`}>
+                    <Image
+                      src={plan.iconSrc}
+                      alt=""
+                      width={22}
+                      height={22}
+                      className={active ? "brightness-0 invert" : "opacity-60 brightness-0"}
+                    />
                   </span>
-                  {personalizedLabel}
-                </p>
-              </motion.div>
-            ) : null}
+                  <span>
+                    <span className="block font-semibold text-neutral-900">{plan.name}</span>
+                    <span className="block text-sm text-neutral-500">{plan.desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-            <fieldset>
-              <legend className="sr-only">Kategori meal plan</legend>
-              <motion.div
-                variants={cardContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid gap-6 md:grid-cols-3"
-              >
-                {mealPlans.map((plan) => {
-                  const active = plan.id === selectedMeal;
-                  return (
-                    <motion.button
-                      key={plan.id}
-                      variants={cardVariants}
-                      whileHover={{ y: active ? 0 : -6, transition: { duration: 0.25 } }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      onClick={() => setSelectedMeal(plan.id)}
-                      aria-pressed={active}
-                      className={`group rounded-3xl border-2 px-7 py-6 text-center backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
-                        active
-                          ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
-                          : "border-[#1db788]/30 bg-white/20 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
-                      }`}
-                    >
-                      <div
-                        className={`mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full backdrop-blur-sm transition-all ${
-                          active
-                            ? "bg-gradient-to-br from-[#1db788] to-[#0ea5a5] shadow-lg"
-                            : "bg-white/30 group-hover:bg-white/50 group-hover:shadow-md"
-                        }`}
-                      >
-                        <Image
-                          src={plan.iconSrc}
-                          alt={plan.iconAlt}
-                          width={24}
-                          height={24}
-                          className={`${active ? "brightness-0 invert" : "brightness-0 saturate-0 opacity-60"}`}
-                        />
-                      </div>
-                      <p className="text-[1.18rem] font-semibold leading-tight text-neutral-900">{plan.name}</p>
-                      <p className="mt-1.5 text-[0.96rem] text-neutral-500">{plan.desc}</p>
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            </fieldset>
-          </section>
+        <section aria-labelledby="serving-title">
+          <h2 id="serving-title" className="text-base font-semibold text-neutral-900">
+            Jumlah porsi per waktu makan
+          </h2>
+          <div className="mt-4 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="serving-title">
+            {[1, 2, 3, 4, 5, 6].map((serving) => {
+              const active = serving === selectedServing;
+              return (
+                <button
+                  key={serving}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setSelectedServing(serving)}
+                  className={`h-11 min-w-[4.5rem] rounded-xl border px-4 text-[0.95rem] font-semibold transition ${
+                    active
+                      ? "border-[#13b987] bg-[#13b987] text-white"
+                      : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
+                  }`}
+                >
+                  {serving} orang
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-          {/* STEP 2: Porsi — dipindah sebelum durasi agar harga langsung reflect saat memilih plan */}
-          <section aria-labelledby="serving-title">
-            <h2 id="serving-title" className="mb-4 text-[1.35rem] font-semibold text-neutral-900">
-              2. Pilih Jumlah Porsi
-            </h2>
-            <div className="grid gap-4 grid-cols-3 sm:grid-cols-6">
-              {[1, 2, 3, 4, 5, 6].map((serving) => {
-                const active = serving === selectedServing;
-                return (
-                  <button
-                    key={serving}
-                    type="button"
-                    onClick={() => setSelectedServing(serving)}
-                    aria-pressed={active}
-                    className={`rounded-3xl border-2 px-4 py-5 text-center backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
-                      active
-                        ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_15px_30px_rgba(29,183,136,0.25)]"
-                        : "border-[#1db788]/30 bg-white/20 hover:-translate-y-1 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_12px_25px_rgba(29,183,136,0.12)]"
-                    }`}
-                  >
-                    <p className="text-[1.4rem] font-bold text-neutral-900">{serving}</p>
-                    <p className="mt-0.5 text-[0.78rem] text-neutral-500">orang</p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* STEP 3: Duration — harga sudah reflect porsi terpilih */}
-          <section aria-labelledby="duration-title">
-            <h2 id="duration-title" className="mb-1 text-[1.35rem] font-semibold text-neutral-900">
-              3. Pilih Durasi Langganan
-            </h2>
-            <p className="mb-4 text-[0.9rem] text-neutral-500">
-              Harga dihitung untuk{" "}
-              <span className="font-semibold text-[#1db788]">{selectedServing} orang</span>
-            </p>
-            <fieldset>
-              <legend className="sr-only">Durasi langganan</legend>
-              <motion.div
-                variants={cardContainerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid gap-6 lg:grid-cols-3"
-              >
-                {durationPlans.map((plan) => {
-                  const active = plan.id === selectedDuration;
-                  const price = calculatePrice(plan.basePrice, selectedServing);
-                  const savingsLabel = getSavingsLabel(plan, selectedServing);
-                  return (
-                    <motion.button
-                      key={plan.id}
-                      variants={cardVariants}
-                      whileHover={{ y: active ? 0 : -6, transition: { duration: 0.25 } }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      onClick={() => setSelectedDuration(plan.id)}
-                      aria-pressed={active}
-                      className={`relative rounded-3xl border-2 px-6 pb-7 pt-6 text-left backdrop-blur-md transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40 ${
-                        active
-                          ? "border-[#1db788] bg-gradient-to-br from-[#1db788]/20 to-[#0ea5a5]/10 ring-2 ring-[#1db788] shadow-[0_18px_35px_rgba(29,183,136,0.28)]"
-                          : "border-[#1db788]/30 bg-white/20 hover:border-[#1db788]/50 hover:bg-white/30 hover:shadow-[0_15px_30px_rgba(29,183,136,0.15)]"
-                      }`}
-                    >
-                      {plan.popular ? (
-                        <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-[#f35f61] to-[#e84c4c] px-4 py-1.5 text-[0.72rem] font-bold text-white shadow-lg backdrop-blur-sm">
-                          ⭐ Terpopuler
-                        </span>
-                      ) : null}
-                      <article>
-                        <h3 className="text-center text-[1.1rem] font-semibold text-neutral-900">{plan.name}</h3>
-                        <p className="mt-2 text-center">
-                          <span className="block bg-gradient-to-r from-[#1db788] to-[#0ea5a5] bg-clip-text text-[1.75rem] font-bold leading-none text-transparent">
-                            {formatRupiah(price)}
-                          </span>
-                          <span className="mt-1 block text-[0.9rem] font-medium text-neutral-500">{plan.unit}</span>
-                        </p>
-                        <p className="mt-3 text-center text-[0.9rem] text-neutral-500">{savingsLabel}</p>
-                      </article>
-
-                      <ul className="mt-4 space-y-2.5 text-[0.96rem] text-neutral-700">
-                        {plan.benefits.map((benefit) => (
-                          <li key={benefit} className="flex items-center gap-2">
-                            <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-[#1db788]/30 to-[#0ea5a5]/20 text-[#1db788] backdrop-blur-sm">
-                              <CheckIcon />
-                            </span>
-                            {benefit}
-                          </li>
-                        ))}
-                      </ul>
-                    </motion.button>
-                  );
-                })}
-              </motion.div>
-            </fieldset>
-          </section>
-        </div>
-
-        <footer className="mt-12 flex items-center justify-between gap-6">
-          <Link
-            href="/subscription"
-            className="rounded-2xl border-2 border-[#1db788]/30 bg-white/20 px-7 py-3 text-[1rem] font-semibold text-neutral-700 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/30 hover:shadow-[0_10px_20px_rgba(0,0,0,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] outline outline-1 outline-white/40"
-          >
-            ← Kembali
-          </Link>
-
-          <p className="flex-1 text-center text-sm text-neutral-600">
-            {mealPlans.find((item) => item.id === selectedMeal)?.name} · {selectedDurationLabel} · {selectedServing} orang ·{" "}
-            <span className="font-semibold text-[#1db788]">{formatRupiah(currentPrice)}</span>
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              void handleContinue();
-            }}
-            disabled={isSubmitting}
-            className="rounded-2xl border-2 border-[#1db788] bg-gradient-to-r from-[#1db788] to-[#16a679] px-9 py-3 text-[1rem] font-semibold text-white shadow-[0_12px_25px_rgba(29,183,136,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_32px_rgba(29,183,136,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7dd5b8] disabled:cursor-not-allowed disabled:opacity-60 outline outline-1 outline-white/50"
-          >
-            {isSubmitting ? "Menyambungkan..." : "Lanjutkan →"}
-          </button>
-        </footer>
+        <section aria-labelledby="duration-title">
+          <h2 id="duration-title" className="text-base font-semibold text-neutral-900">
+            Durasi
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">Harga untuk {selectedServing} orang.</p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-3" role="radiogroup" aria-labelledby="duration-title">
+            {durationPlans.map((plan) => {
+              const active = plan.id === selectedDuration;
+              const price = calculatePrice(plan.basePrice, selectedServing);
+              return (
+                <button
+                  key={plan.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setSelectedDuration(plan.id)}
+                  className={`${optionClass(active)} flex flex-col p-5`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-neutral-900">{plan.name}</span>
+                    {plan.popular ? (
+                      <span className="rounded-full bg-[#13b987] px-2.5 py-0.5 text-xs font-semibold text-white">Terpopuler</span>
+                    ) : null}
+                  </span>
+                  <span className="mt-3 text-2xl font-bold tracking-tight text-neutral-900">{formatRupiah(price)}</span>
+                  <span className="text-sm text-neutral-500">{plan.unit}</span>
+                  <span className="mt-3 text-sm font-medium text-[#07845e]">{getSavingsLabel(plan, selectedServing)}</span>
+                  <ul className="mt-4 space-y-2 border-t border-neutral-100 pt-4 text-sm text-neutral-600">
+                    {plan.benefits.map((benefit) => (
+                      <li key={benefit} className="flex items-center gap-2">
+                        <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-[#13b987]" strokeWidth={2.5} />
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {errorMessage ? (
-          <motion.p
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 text-center text-sm font-medium text-red-600"
-          >
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
-          </motion.p>
+          </p>
         ) : null}
-      </section>
+      </div>
+
+      {/* Sticky summary bar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-5 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm text-neutral-500">
+              {selectedMealName} · {selectedDurationLabel} · {selectedServing} orang
+            </p>
+            <p className="text-lg font-bold text-neutral-900">{formatRupiah(currentPrice)}</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Link href="/dashboard" className={`${secondaryButtonClass} hidden sm:inline-flex`}>
+              Batal
+            </Link>
+            <button type="button" onClick={handleContinue} disabled={isSubmitting} className={primaryButtonClass}>
+              {isSubmitting ? "Menyimpan..." : "Lanjut"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <ConfirmDialog
         isOpen={isConfirmOpen}
-        title="Konfirmasi Pilihan Langganan"
-        message={`Anda memilih meal plan ${selectedMeal.toUpperCase()} untuk ${selectedServing} porsi dengan durasi ${selectedDurationLabel}. Total biaya adalah ${formatRupiah(currentPrice)}. Apakah Anda ingin melanjutkan ke pengaturan alamat pengiriman?`}
-        confirmLabel="Ya, Lanjutkan"
-        cancelLabel="Batal"
+        title="Lanjut dengan paket ini?"
+        message={`${selectedMealName}, ${selectedServing} orang, ${selectedDurationLabel}. Total ${formatRupiah(currentPrice)}. Berikutnya kamu mengisi alamat pengiriman.`}
+        confirmLabel="Ya, lanjut"
+        cancelLabel="Ubah"
         isConfirming={isSubmitting}
         onCancel={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmSave}
       />
-    </main>
+    </CheckoutLayout>
   );
 }

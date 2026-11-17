@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 // PATCH /api/admin/ingredients/[id] - Edit bahan baku dari Dashboard Admin
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,10 +37,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.isAllergen = Boolean(isAllergen);
     }
     if (stockKg !== undefined) {
-      data.stockKg = Math.max(0, Number(stockKg) || 0);
+      data.stockKg = Math.max(0, Number.isFinite(Number(stockKg)) ? Number(stockKg) : 0);
     }
     if (pricePerKg !== undefined) {
-      data.pricePerKg = Math.max(0, Number(pricePerKg) || 0);
+      data.pricePerKg = Math.max(0, Number.isFinite(Number(pricePerKg)) ? Number(pricePerKg) : 0);
     }
 
     const ingredient = await prisma.ingredient.update({
@@ -56,9 +49,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     // Otomatis catat di IngredientLedger jika ada perubahan dari Admin di Dashboard Bahan Baku
-    const deltaKg = stockKg !== undefined ? (Number(stockKg) - existing.stockKg) : 0;
+    const deltaKg = stockKg !== undefined ? ((data.stockKg as number) - existing.stockKg) : 0;
     const isStockChanged = Math.abs(deltaKg) > 0.0001;
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = crypto.randomUUID().slice(0, 8).toUpperCase(); // unique code column: 4 random digits collided
     const code = `#BB-2026-${String(randomSuffix).padStart(4, '0')}`;
     const refCode = deltaKg >= 0 ? `TIK/IN/${randomSuffix}` : `TIK/OUT/${randomSuffix}`;
     const status = deltaKg >= 0 ? 'COMPLETED' : 'SIAP_PAKAI';
