@@ -51,6 +51,20 @@ def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_
     
     try:
         for f in response.forecasts:
+            # Ensure farmer exists (in case farmer_id was dynamically mapped from ingredient or default)
+            ensure_farmer = text("""
+                INSERT INTO "Farmer" ("id", "name", "region", "commodityType", "isActive", "createdAt")
+                VALUES (:id, :name, :region, 'Bahan Baku Mitra', true, NOW())
+                ON CONFLICT ("id") DO UPDATE SET
+                    "name" = EXCLUDED."name",
+                    "region" = EXCLUDED."region"
+            """)
+            db.execute(ensure_farmer, {
+                "id": f.farmer_id,
+                "name": f.farmer_name,
+                "region": f.farmer_region
+            })
+
             # 1. Upsert DemandForecastLog
             check_log = text("""
                 SELECT "id" FROM "DemandForecastLog" 
