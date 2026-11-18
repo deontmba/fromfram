@@ -25,11 +25,25 @@ export function IngredientRow({ item, onConfirm, onOpenFulfill }: any) {
     setIsSubmitting(false);
   };
 
+  const supplierName = item.ingredient?.supplierName && item.ingredient.supplierName !== '-'
+    ? item.ingredient.supplierName
+    : item.farmer?.name && !item.farmer.name.startsWith('Jawa') && !item.farmer.name.startsWith('Wilayah')
+    ? item.farmer.name
+    : 'Mitra Petani';
+
+  const originLocation = item.ingredient?.origin && item.ingredient.origin !== '-'
+    ? item.ingredient.origin
+    : item.farmer?.region || '-';
+
   return (
     <tr>
       <td>
-        <span className={styles.tableKey}>{item.ingredient.name}</span>
+        <span className={styles.tableKey}>{item.ingredient?.name || 'Bahan Baku'}</span>
         <span className={styles.cellSub}>Stok gudang {currentStock.toFixed(1)} kg</span>
+      </td>
+      <td>
+        <span style={{ fontWeight: 600, color: '#334155', display: 'block', fontSize: '0.84rem' }}>{supplierName}</span>
+        <span className={styles.cellSub}>📍 {originLocation}</span>
       </td>
       <td className={`${styles.alignRight} ${styles.nowrap}`}>{grossDemand.toFixed(1)} kg</td>
       <td className={`${styles.alignRight} ${styles.nowrap} ${styles.tableKey}`}>{Number(item.forecastedQtyKg).toFixed(1)} kg</td>

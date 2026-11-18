@@ -23,7 +23,7 @@ export function SummaryCards({ data }: { data: any[] }) {
     { label: 'Jenis bahan', value: String(totalRows), icon: <Layers /> },
     { label: 'Total berat', value: `${totalWeight.toFixed(1)} kg`, icon: <Weight /> },
     { label: 'Nilai pembelian', value: formatCurrency(totalValue), icon: <Wallet /> },
-    { label: 'Petani', value: String(farmerCount), icon: <Users /> },
+    { label: 'Sentra Wilayah', value: String(farmerCount), icon: <Users /> },
   ];
 
   return (

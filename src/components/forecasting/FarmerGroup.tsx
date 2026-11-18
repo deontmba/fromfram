@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { IngredientRow } from './IngredientRow';
 import styles from '../operations/role-portal-screen.module.css';
 
 export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, expandOverride }: any) {
-  const { farmer, purchaseOrders } = farmerData;
+  const { farmer, purchaseOrders, regionName } = farmerData;
   const isAllFulfilled = purchaseOrders.every((po: any) => po.status === 'FULFILLED');
   const isAllConfirmed = purchaseOrders.every((po: any) => po.status === 'CONFIRMED' || po.status === 'FULFILLED');
   const hasDraft = purchaseOrders.some((po: any) => po.status === 'DRAFT');
@@ -26,9 +26,11 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
   const statusTag = isAllFulfilled ? styles.tagGreen : isAllConfirmed ? styles.tagBlue : styles.tagAmber;
   const statusLabel = isAllFulfilled ? 'Semua panen diterima' : isAllConfirmed ? 'Terkonfirmasi' : 'Belum dikonfirmasi';
 
+  const titleText = regionName || farmer.name;
+
   return (
     <section className={styles.groupCard}>
-      {/* ── Header: selalu terlihat, klik untuk toggle ── */}
+      {/* ── Header: Wilayah / Provinsi ── */}
       <button
         type="button"
         className={styles.groupHead}
@@ -37,11 +39,13 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
         style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
       >
         <span className={styles.groupTitle}>
-          {farmer.name}
-          <span>{farmer.region}</span>
-          <span className={`${styles.tag} ${styles.tagGray}`}>{farmer.commodityType}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <MapPin size={16} style={{ color: '#0284c7' }} />
+            {titleText}
+          </span>
+          <span className={`${styles.tag} ${styles.tagGray}`}>Sentra Pengadaan</span>
           <span style={{ fontWeight: 400, fontSize: '0.82rem', color: 'var(--muted)' }}>
-            {purchaseOrders.length} bahan
+            {purchaseOrders.length} bahan baku
           </span>
         </span>
 
@@ -63,17 +67,19 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
           <div style={{ overflowX: 'auto' }}>
             <table className={styles.table}>
               <colgroup>
-                <col style={{ minWidth: '140px' }} />
-                <col style={{ width: '110px' }} />
-                <col style={{ width: '110px' }} />
-                <col style={{ width: '90px' }} />
-                <col style={{ width: '110px' }} />
-                <col style={{ width: '110px' }} />
-                <col style={{ width: '200px', minWidth: '200px' }} />
+                <col style={{ minWidth: '150px' }} />
+                <col style={{ width: '150px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '85px' }} />
+                <col style={{ width: '105px' }} />
+                <col style={{ width: '105px' }} />
+                <col style={{ width: '190px', minWidth: '190px' }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th>Bahan</th>
+                  <th>Bahan Baku</th>
+                  <th>Mitra / Supplier</th>
                   <th className={styles.alignRight}>Kebutuhan</th>
                   <th className={styles.alignRight}>Perlu dibeli</th>
                   <th>Keyakinan</th>
@@ -97,7 +103,7 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
           </div>
 
           <div className={styles.groupFoot}>
-            Subtotal <strong>{formatCurrency(subtotal)}</strong>
+            Subtotal Pengadaan {titleText}: <strong>{formatCurrency(subtotal)}</strong>
           </div>
         </>
       )}

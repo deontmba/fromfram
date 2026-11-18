@@ -76,8 +76,15 @@ export async function generateForecast(userId: string, weekStartDate: string) {
   }
 }
 
+// Helper untuk ekstraksi nama provinsi/wilayah dari string origin atau region
+function extractProvince(regionStr?: string | null): string {
+  if (!regionStr || regionStr === '-') return 'Wilayah Lainnya';
+  const parts = regionStr.split(',').map((p) => p.trim());
+  return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+}
+
 // ---------------------------------------------------------------------------
-// Get Weekly Forecast — ambil dari DB, grouped per farmer
+// Get Weekly Forecast — ambil dari DB, grouped per Provinsi / Wilayah
 // ---------------------------------------------------------------------------
 
 export async function getWeeklyForecast(userId: string, weekStartDate: string) {
@@ -95,20 +102,30 @@ export async function getWeeklyForecast(userId: string, weekStartDate: string) {
       farmer: true,
       ingredient: true,
     },
-    orderBy: {
-      farmer: { name: 'asc' },
-    },
+    orderBy: [
+      { farmer: { region: 'asc' } },
+      { ingredient: { name: 'asc' } },
+    ],
   });
 
-  // Group by farmerId
+  // Group by Provinsi / Wilayah
   const grouped = orders.reduce((acc: Record<string, any>, curr: any) => {
-    if (!acc[curr.farmerId]) {
-      acc[curr.farmerId] = {
-        farmer: curr.farmer,
+    const rawOrigin = curr.ingredient?.origin || curr.farmer?.region || 'Lainnya';
+    const province = extractProvince(rawOrigin);
+
+    if (!acc[province]) {
+      acc[province] = {
+        regionName: province,
+        farmer: {
+          id: province,
+          name: province,
+          region: `Sentra Pengadaan ${province}`,
+          commodityType: 'Logistik Terpadu',
+        },
         purchaseOrders: [],
       };
     }
-    acc[curr.farmerId].purchaseOrders.push(curr);
+    acc[province].purchaseOrders.push(curr);
     return acc;
   }, {});
 
