@@ -108,10 +108,18 @@ export async function getWeeklyForecast(userId: string, weekStartDate: string) {
     ],
   });
 
-  // Group by Provinsi / Wilayah
+  // Group by Provinsi / Wilayah, pastikan setiap ingredient unik (tidak ada duplikasi baris PO)
+  const seenInProvince = new Set<string>();
+
   const grouped = orders.reduce((acc: Record<string, any>, curr: any) => {
     const rawOrigin = curr.ingredient?.origin || curr.farmer?.region || 'Lainnya';
     const province = extractProvince(rawOrigin);
+    const dedupKey = `${province}_${curr.ingredientId}`;
+
+    if (seenInProvince.has(dedupKey)) {
+      return acc; // Lewati jika sudah ada baris untuk ingredient yang sama di provinsi ini
+    }
+    seenInProvince.add(dedupKey);
 
     if (!acc[province]) {
       acc[province] = {

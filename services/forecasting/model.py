@@ -59,9 +59,21 @@ def generate_forecast(db, week_start_date: datetime):
         if best is None or float(m["pricePerKg"]) < best[1]:
             chosen_farmer[m["ingredientId"]] = (m["farmerId"], float(m["pricePerKg"]))
 
+    # Filter out duplicate supply items for the same ingredient:
+    # Only keep the chosen (cheapest / prioritized) farmer for each ingredient,
+    # so every ingredient appears exactly ONCE in the purchase orders.
+    filtered_supplies = []
+    seen_ingredients = set()
+    for supply in supplies:
+        ing_id = supply._mapping["ingredientId"]
+        farmer_id = supply._mapping["farmerId"]
+        if chosen_farmer.get(ing_id, (None,))[0] == farmer_id and ing_id not in seen_ingredients:
+            filtered_supplies.append(supply)
+            seen_ingredients.add(ing_id)
+
     forecasts = []
 
-    for supply in supplies:
+    for supply in filtered_supplies:
         ing_id = supply._mapping["ingredientId"]
         
         # Historical demand: combines DemandForecastLog and real-time IngredientLedger USER_PURCHASE
