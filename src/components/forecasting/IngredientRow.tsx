@@ -50,7 +50,7 @@ export function IngredientRow({ item, onConfirm, onOpenFulfill }: any) {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
             <input
               className={`${styles.input} ${styles.qtyInput}`}
               type="number"
@@ -61,7 +61,7 @@ export function IngredientRow({ item, onConfirm, onOpenFulfill }: any) {
               onChange={(e) => setQty(e.target.value)}
               disabled={isSubmitting}
             />
-            <button type="button" className={styles.actionCard} onClick={handleConfirm} disabled={isSubmitting}>
+            <button type="button" className={styles.tabButton} onClick={handleConfirm} disabled={isSubmitting}>
               {isSubmitting ? 'Menyimpan...' : 'Konfirmasi'}
             </button>
           </div>

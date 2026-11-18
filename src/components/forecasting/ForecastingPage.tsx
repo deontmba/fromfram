@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { BrainCircuit, LoaderCircle } from 'lucide-react';
+import { BrainCircuit, ChevronsDownUp, ChevronsUpDown, LoaderCircle } from 'lucide-react';
 import { ForecastHeader } from './ForecastHeader';
 import { SummaryCards } from './SummaryCards';
 import { FarmerGroup } from './FarmerGroup';
@@ -125,6 +125,7 @@ export function ForecastingPage() {
   };
 
   const hasData = data && data.length > 0;
+  const [expandAll, setExpandAll] = useState<boolean | null>(null); // null = pakai default per-group
 
   return (
     <div>
@@ -147,10 +148,34 @@ export function ForecastingPage() {
       ) : hasData ? (
         <>
           <SummaryCards data={data} />
+
+          {/* ── Toolbar expand/collapse ── */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <button
+              type="button"
+              className={styles.tabButton}
+              onClick={() => setExpandAll(true)}
+              title="Buka semua mitra"
+            >
+              <ChevronsUpDown size={14} aria-hidden="true" />
+              Buka Semua
+            </button>
+            <button
+              type="button"
+              className={styles.tabButton}
+              onClick={() => setExpandAll(false)}
+              title="Tutup semua mitra"
+            >
+              <ChevronsDownUp size={14} aria-hidden="true" />
+              Tutup Semua
+            </button>
+          </div>
+
           {data.map((group: any, idx: number) => (
             <FarmerGroup
               key={group.farmer?.id || idx}
               farmerData={group}
+              expandOverride={expandAll}
               onConfirm={handleConfirm}
               onCancel={handleCancel}
               onOpenFulfill={setFulfillItem}
