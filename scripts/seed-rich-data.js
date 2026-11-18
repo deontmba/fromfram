@@ -483,55 +483,46 @@ async function main() {
       select: { id: true, name: true, pricePerKg: true },
     });
 
-    // Buat ledger historis 12 minggu, tiap minggu untuk subset bahan baku
-    // yang dipakai di resep (supaya konsisten dengan WeeklyMenu)
     const usedIngredientIds = new Set();
-
-    // Kumpulkan ingredient yang ada di resep
     const recipeIngs = await prisma.recipeIngredient.findMany({
       select: { ingredientId: true, quantityInKg: true },
     });
     recipeIngs.forEach((ri) => usedIngredientIds.add(ri.ingredientId));
 
-    // Ambil ingredient yang dipakai di resep
     const activeIngredients = allIngredients.filter((i) => usedIngredientIds.has(i.id));
     console.log(`   → ${activeIngredients.length} bahan aktif (ada di resep)`);
 
-    let ledgerCount = 0;
+    const ledgerBatch = [];
     for (let w = -12; w <= -1; w++) {
       const weekDate = addWeeks(THIS_WEEK, w);
-      // Buat entri ledger per user per bahan (subset bahan untuk variasi)
       const shuffledIng = [...activeIngredients].sort(() => Math.random() - 0.5);
       const ingForWeek = shuffledIng.slice(0, Math.min(15, shuffledIng.length));
 
       for (const user of users) {
         for (const ing of ingForWeek) {
-          const qtyUsed = rand(0.1, 0.8, 2); // antara 0.1 kg - 0.8 kg per user per bahan per minggu
-          const dateInWeek = addDays(weekDate, Math.floor(Math.random() * 5)); // hari acak di minggu itu
+          const qtyUsed = rand(0.1, 0.8, 2);
+          const dateInWeek = addDays(weekDate, Math.floor(Math.random() * 5));
 
-          try {
-            await prisma.ingredientLedger.create({
-              data: {
-                ingredientId: ing.id,
-                userId:       user.id,
-                sourceType:   "USER_PURCHASE",
-                qtyChangeKg:  -qtyUsed,          // negatif = keluar/pakai
-                qtyUsedKg:    qtyUsed,
-                notes:        `Pemakaian menu mingguan oleh ${user.name}`,
-                createdAt:    dateInWeek,
-              },
-            });
-            ledgerCount++;
-          } catch (e) {
-            // Log error tapi lanjutkan
-            if (!e.message.includes("unique")) {
-              console.error(`   ⚠️  Ledger error: ${e.message}`);
-            }
-          }
+          ledgerBatch.push({
+            ingredientId: ing.id,
+            userId:       user.id,
+            sourceType:   "USER_PURCHASE",
+            qtyChangeKg:  -qtyUsed,
+            qtyUsedKg:    qtyUsed,
+            notes:        `Pemakaian menu mingguan oleh ${user.name}`,
+            createdAt:    dateInWeek,
+          });
         }
       }
     }
-    console.log(`   → ${ledgerCount} entri IngredientLedger historis ditambahkan\n`);
+
+    if (ledgerBatch.length > 0) {
+      await prisma.ingredientLedger.createMany({
+        data: ledgerBatch,
+        skipDuplicates: true,
+      });
+      console.log(`   → ${ledgerBatch.length} entri IngredientLedger historis berhasil dimasukkan seketika\n`);
+    }
   }
 
   // ── 6. Tambah DemandForecastLog historis (data latih Ridge Regression) ───
@@ -541,7 +532,6 @@ async function main() {
     select: { id: true, name: true },
   });
 
-  // Mapping estimasi konsumsi per bahan baku per 10 user aktif
   const consumptionBase = {
     "Dada Ayam":    0.175, "Daging Sapi":  0.200, "Salmon":       0.150,
     "Udang Segar":  0.120, "Ikan Nila":    0.100, "Ikan Lele":    0.100,
@@ -562,38 +552,34 @@ async function main() {
   const activeUserCount = await prisma.subscription.count({ where: { status: "ACTIVE" } });
   const baseUsers = Math.max(activeUserCount, 3);
 
-  let forecastLogCount = 0;
+  const forecastLogBatch = [];
   for (const ing of allIngredients) {
     const baseKgPerUser = consumptionBase[ing.name] ?? 0.05;
 
     for (let w = -12; w <= -1; w++) {
       const weekDate = addWeeks(THIS_WEEK, w);
-      const usersW = baseUsers + Math.floor(Math.random() * 3 - 1); // variasi ±1
+      const usersW = baseUsers + Math.floor(Math.random() * 3 - 1);
       const predicted = parseFloat((baseKgPerUser * usersW * rand(0.9, 1.1, 2)).toFixed(2));
       const actual = parseFloat((predicted * rand(0.85, 1.15, 2)).toFixed(2));
 
-      try {
-        await prisma.demandForecastLog.create({
-          data: {
-            ingredientId:     ing.id,
-            weekStartDate:    weekDate,
-            activeUserCount:  usersW,
-            predictedQtyKg:   predicted,
-            actualQtyUsedKg:  actual,
-            confidenceScore:  rand(0.72, 0.96, 2),
-          },
-        });
-        forecastLogCount++;
-      } catch (e) {
-        if (e.code === "P2002") {
-          // sudah ada (unique constraint weekStartDate+ingredientId), skip
-        } else {
-          console.error(`   ⚠️  ForecastLog error (${ing.name} w${w}): ${e.message}`);
-        }
-      }
+      forecastLogBatch.push({
+        ingredientId:     ing.id,
+        weekStartDate:    weekDate,
+        activeUserCount:  usersW,
+        predictedQtyKg:   predicted,
+        actualQtyUsedKg:  actual,
+        confidenceScore:  rand(0.72, 0.96, 2),
+      });
     }
   }
-  console.log(`   → ${forecastLogCount} DemandForecastLog historis ditambahkan\n`);
+
+  if (forecastLogBatch.length > 0) {
+    await prisma.demandForecastLog.createMany({
+      data: forecastLogBatch,
+      skipDuplicates: true,
+    });
+    console.log(`   → ${forecastLogBatch.length} DemandForecastLog historis berhasil dimasukkan seketika\n`);
+  }
 
   // ── Summary ──────────────────────────────────────────────────────────────
   const totalIngredients = await prisma.ingredient.count();
