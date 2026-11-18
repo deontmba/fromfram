@@ -1549,7 +1549,7 @@
 }
 
 .groupCard .table {
-  min-width: 680px;
+  min-width: 820px;
 }
 
 .emptyCard {
@@ -1609,7 +1609,7 @@
 }
 
 .qtyInput {
-  width: 5.5rem;
+  width: 4rem;
 }
 
 .formSection {

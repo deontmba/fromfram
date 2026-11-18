@@ -5,18 +5,27 @@ from sqlalchemy import text
 from datetime import datetime
 
 def generate_forecast(db, week_start_date: datetime):
-    # 1. Active farmers and supplies
+    # 1. Ingredients and suppliers:
+    # Prioritizes explicit FarmerSupplyItem, but falls back directly to Ingredient
+    # so ALL ingredients in warehouse are included in forecasting in real-time.
     supplies_query = text("""
         SELECT 
-            fs."ingredientId", i."name" as ingredient_name,
+            i."id" as "ingredientId",
+            i."name" as ingredient_name,
             COALESCE(i."stockKg", 0) as current_stock_kg,
-            fs."farmerId", f."name" as farmer_name, f."region" as farmer_region,
-            fs."minOrderKg",
-            CASE WHEN fs."pricePerKg" > 0 THEN fs."pricePerKg" ELSE i."pricePerKg" END as "pricePerKg"
-        FROM "FarmerSupplyItem" fs
-        JOIN "Farmer" f ON fs."farmerId" = f."id"
-        JOIN "Ingredient" i ON fs."ingredientId" = i."id"
-        WHERE f."isActive" = true
+            COALESCE(fs."farmerId", i."id") as "farmerId",
+            COALESCE(f."name", NULLIF(i."supplierName", '-'), 'Mitra Mandiri') as farmer_name,
+            COALESCE(f."region", NULLIF(i."origin", '-'), 'Jawa Barat') as farmer_region,
+            COALESCE(fs."minOrderKg", 5.0) as "minOrderKg",
+            CASE 
+                WHEN fs."pricePerKg" IS NOT NULL AND fs."pricePerKg" > 0 THEN fs."pricePerKg"
+                WHEN i."pricePerKg" > 0 THEN i."pricePerKg"
+                ELSE 15000.0
+            END as "pricePerKg"
+        FROM "Ingredient" i
+        LEFT JOIN "FarmerSupplyItem" fs ON fs."ingredientId" = i."id"
+        LEFT JOIN "Farmer" f ON fs."farmerId" = f."id" AND f."isActive" = true
+        ORDER BY i."name" ASC
     """)
     supplies = db.execute(supplies_query).fetchall()
 
@@ -50,11 +59,24 @@ def generate_forecast(db, week_start_date: datetime):
         if best is None or float(m["pricePerKg"]) < best[1]:
             chosen_farmer[m["ingredientId"]] = (m["farmerId"], float(m["pricePerKg"]))
 
-    forecasts = []
-
+    # Filter out duplicate supply items for the same ingredient:
+    # Only keep the chosen (cheapest / prioritized) farmer for each ingredient,
+    # so every ingredient appears exactly ONCE in the purchase orders.
+    filtered_supplies = []
+    seen_ingredients = set()
     for supply in supplies:
         ing_id = supply._mapping["ingredientId"]
+        farmer_id = supply._mapping["farmerId"]
+        if chosen_farmer.get(ing_id, (None,))[0] == farmer_id and ing_id not in seen_ingredients:
+            filtered_supplies.append(supply)
+            seen_ingredients.add(ing_id)
+
+    forecasts = []
+
+    for supply in filtered_supplies:
+        ing_id = supply._mapping["ingredientId"]
         
+        # Historical demand: combines DemandForecastLog and real-time IngredientLedger USER_PURCHASE
         hist_query = text("""
             SELECT 
                 dfl."weekStartDate", 
@@ -64,9 +86,20 @@ def generate_forecast(db, week_start_date: datetime):
             FROM "DemandForecastLog" dfl
             WHERE dfl."ingredientId" = :ingredient_id
               AND dfl."actualQtyUsedKg" IS NOT NULL
-            ORDER BY dfl."weekStartDate" ASC
+            UNION ALL
+            SELECT 
+                date_trunc('week', il."createdAt") as "weekStartDate",
+                COUNT(DISTINCT il."userId") as "activeUserCount",
+                SUM(COALESCE(il."qtyUsedKg", ABS(COALESCE(il."qtyChangeKg", 0)))) as "actualQtyUsedKg",
+                SUM(COALESCE(il."qtyUsedKg", ABS(COALESCE(il."qtyChangeKg", 0)))) as "predictedQtyKg"
+            FROM "IngredientLedger" il
+            WHERE il."ingredientId" = :ingredient_id
+              AND il."sourceType" = 'USER_PURCHASE'
+              AND il."createdAt" < :week_start_date
+            GROUP BY date_trunc('week', il."createdAt")
+            ORDER BY "weekStartDate" ASC
         """)
-        hist_rows = db.execute(hist_query, {"ingredient_id": ing_id}).fetchall()
+        hist_rows = db.execute(hist_query, {"ingredient_id": ing_id, "week_start_date": week_start_date}).fetchall()
         hist_df = pd.DataFrame([dict(row._mapping) for row in hist_rows]) if hist_rows else pd.DataFrame(columns=["weekStartDate", "activeUserCount", "actualQtyUsedKg", "predictedQtyKg"])
 
         baseline = baseline_map.get(ing_id, 0.0)
