@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { addDays, atJakartaTime, jakartaDayOfWeek } from '@/lib/week';
 
 const dateFormatter = new Intl.DateTimeFormat('id-ID', {
   day: 'numeric',
@@ -23,51 +24,45 @@ function getPeriodLabel(weekStartDate: Date, weekEndDate: Date) {
   return `Periode ${formatDateLabel(weekStartDate)}–${formatDateLabel(weekEndDate)}`;
 }
 
-function getEtaInfo(status: string) {
-  if (status === 'PREPARING') {
-    return {
-      etaTitle: 'Pesanan sedang disiapkan di warehouse',
-      etaWindow: 'Estimasi dikirim pukul 06:00–08:00',
-    };
-  }
-  if (status === 'SHIPPED') {
-    return {
-      etaTitle: 'Kurir sedang menuju lokasi',
-      etaWindow: 'Estimasi tiba 10:00–12:00',
-    };
-  }
-  return {
-    etaTitle: 'Pesanan telah diterima',
-    etaWindow: 'Pengiriman selesai',
-  };
+/** Delivery slots in Jakarta time (see lockCurrentWeeklyBox). */
+function slotTime(mealType: string) {
+  return mealType === 'DINNER' ? '17.30' : '11.30';
 }
 
-function buildTimeline(status: string, shippedAt: Date | null, deliveredAt: Date | null) {
+function getEtaInfo(status: string, mealType: string) {
+  const slot = slotTime(mealType);
+  if (status === 'PREPARING') {
+    return { etaTitle: 'Pesanan sedang disiapkan', etaWindow: `Tiba sekitar pukul ${slot} WIB` };
+  }
+  if (status === 'SHIPPED') {
+    return { etaTitle: 'Kurir sedang menuju lokasi', etaWindow: `Tiba sekitar pukul ${slot} WIB` };
+  }
+  return { etaTitle: 'Pesanan telah diterima', etaWindow: 'Pengiriman selesai' };
+}
+
+function buildTimeline(status: string, mealType: string, shippedAt: Date | null, deliveredAt: Date | null) {
   const formatTime = (date: Date | null) =>
     date
-      ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit' }).format(date)
+      ? new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).format(date)
       : null;
 
   return [
     {
       id: 'prepared',
-      label: 'Pesanan Disiapkan',
-      timeLabel: '06:00',
+      label: 'Pesanan disiapkan',
+      timeLabel: status === 'PREPARING' ? 'Sedang berlangsung' : 'Selesai',
       state: status === 'PREPARING' ? 'current' : 'completed',
     },
     {
       id: 'courier',
-      label: 'Pesanan Dibawa Kurir',
-      timeLabel:
-        formatTime(shippedAt) ??
-        (status === 'SHIPPED' ? 'Sedang berlangsung' : 'Estimasi 08:00'),
-      state:
-        status === 'PREPARING' ? 'upcoming' : status === 'SHIPPED' ? 'current' : 'completed',
+      label: 'Dibawa kurir',
+      timeLabel: formatTime(shippedAt) ?? (status === 'SHIPPED' ? 'Sedang berlangsung' : 'Menunggu'),
+      state: status === 'PREPARING' ? 'upcoming' : status === 'SHIPPED' ? 'current' : 'completed',
     },
     {
       id: 'received',
-      label: 'Pesanan Diterima',
-      timeLabel: formatTime(deliveredAt) ?? 'Estimasi 10:00–12:00',
+      label: 'Pesanan diterima',
+      timeLabel: formatTime(deliveredAt) ?? `Sekitar ${slotTime(mealType)} WIB`,
       state: status === 'DELIVERED' ? 'completed' : 'upcoming',
     },
   ];
@@ -81,10 +76,6 @@ function buildAddressLabel(
   return `Menuju: ${parts.join(' - ')}`;
 }
 
-function getDayOfWeekEnum(date: Date) {
-  const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
-  return days[date.getDay()];
-}
 
 const deliverySelect = {
   id: true,
@@ -120,10 +111,9 @@ const deliverySelect = {
 } as const;
 
 const INFO_BULLETS = [
-  'Pengiriman dilakukan setiap hari pukul 06:00 - 12:00',
-  'Meal kit sudah dikemas dalam cooler box untuk menjaga kesegaran',
-  'Jika tidak ada di rumah, kurir akan menghubungi via telepon',
-  'Status akan update otomatis real-time',
+  'Makan siang diantar sekitar pukul 11.30 WIB, makan malam sekitar pukul 17.30 WIB',
+  'Jika penerima tidak ada di tempat, kurir akan menghubungi nomor HP di alamat',
+  'Status berubah saat pesanan disiapkan, dibawa kurir, dan diterima',
 ];
 
 type DeliveryRecord = {
@@ -153,7 +143,7 @@ type DeliveryRecord = {
 
 function mapDeliveryToItem(delivery: DeliveryRecord) {
   const dayDate = new Date(delivery.deliveryDate);
-  const todayDayKey = getDayOfWeekEnum(dayDate);
+  const todayDayKey = jakartaDayOfWeek(dayDate);
   const menuName =
     delivery.weeklyBox?.mealSelections?.find(
       (s) => s.dayOfWeek === todayDayKey && s.mealType === delivery.mealType
@@ -161,8 +151,8 @@ function mapDeliveryToItem(delivery: DeliveryRecord) {
     delivery.weeklyBox?.mealSelections?.find((s) => s.dayOfWeek === todayDayKey)?.recipe?.name ??
     'Menu belum tersedia';
 
-  const eta = getEtaInfo(delivery.status);
-  const timeline = buildTimeline(delivery.status, delivery.shippedAt, delivery.deliveredAt);
+  const eta = getEtaInfo(delivery.status, delivery.mealType);
+  const timeline = buildTimeline(delivery.status, delivery.mealType, delivery.shippedAt, delivery.deliveredAt);
   const addressLabel = buildAddressLabel(delivery.address);
 
   return {
@@ -170,6 +160,7 @@ function mapDeliveryToItem(delivery: DeliveryRecord) {
     dayLabel: formatDayLabel(dayDate),
     dateLabel: formatDateLabel(dayDate),
     menuName,
+    mealType: delivery.mealType,
     addressLabel,
     status: delivery.status,
     statusLabel:
@@ -222,8 +213,8 @@ export async function getDeliveries(userId: string) {
     };
   }
 
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Deliveries use the Jakarta day; week boxes above still use the server clock (see src/lib/week.ts).
+  const dayStart = atJakartaTime(new Date(), 0);
 
   const deliveries = await prisma.delivery.findMany({
     where: {
@@ -232,8 +223,8 @@ export async function getDeliveries(userId: string) {
         { weeklyBoxId: activeBox.id },
         {
           deliveryDate: {
-            gte: today,
-            lt: tomorrow,
+            gte: dayStart,
+            lt: addDays(dayStart, 1),
           },
         },
       ],
@@ -258,23 +249,10 @@ export async function getDeliveries(userId: string) {
     };
   }
 
-  const todayDelivery = deliveries.find((d) => {
-    const date = new Date(d.deliveryDate);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime() === today.getTime();
-  });
-
-  const upcomingDeliveries = deliveries.filter((d) => {
-    const date = new Date(d.deliveryDate);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime() > today.getTime();
-  });
-
-  const recentDeliveries = deliveries.filter((d) => {
-    const date = new Date(d.deliveryDate);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime() < today.getTime();
-  });
+  const dayOf = (d: { deliveryDate: Date }) => atJakartaTime(new Date(d.deliveryDate), 0).getTime();
+  const todayDelivery = deliveries.find((d) => dayOf(d) === dayStart.getTime());
+  const upcomingDeliveries = deliveries.filter((d) => dayOf(d) > dayStart.getTime());
+  const recentDeliveries = deliveries.filter((d) => dayOf(d) < dayStart.getTime());
 
   const firstDelivery = deliveries[0];
   const periodLabel = firstDelivery?.weeklyBox
@@ -300,14 +278,11 @@ export async function getDeliveries(userId: string) {
 }
 
 export async function getTodayDelivery(userId: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayStart = atJakartaTime(new Date(), 0);
 
   const delivery = await prisma.delivery.findFirst({
-    where: { userId, deliveryDate: { gte: today, lt: tomorrow } },
+    where: { userId, deliveryDate: { gte: dayStart, lt: addDays(dayStart, 1) } },
+    orderBy: { deliveryDate: 'asc' },
     select: deliverySelect,
   });
 
@@ -317,22 +292,6 @@ export async function getTodayDelivery(userId: string) {
 
   return {
     data: { status: 'success', data: { todayDelivery: mapDeliveryToItem(delivery) } },
-    status: 200,
-  };
-}
-
-export async function getDeliveryById(userId: string, deliveryId: string) {
-  const delivery = await prisma.delivery.findFirst({
-    where: { id: deliveryId, userId },
-    select: deliverySelect,
-  });
-
-  if (!delivery) {
-    return { error: 'Data pengiriman tidak ditemukan.', status: 404 };
-  }
-
-  return {
-    data: { status: 'success', data: mapDeliveryToItem(delivery) },
     status: 200,
   };
 }

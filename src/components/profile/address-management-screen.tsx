@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
+import { CustomerPage } from "@/components/ui/customer-page";
+import { Shield } from "lucide-react";
 import {
   createAddressId,
   type Address,
@@ -65,13 +67,13 @@ const readonlyClassName =
 
 /** Opsi label alamat yang umum digunakan */
 const ADDRESS_LABEL_OPTIONS = [
-  { value: "Rumah",      emoji: "🏠" },
-  { value: "Kantor",     emoji: "💼" },
-  { value: "Kos",        emoji: "🛏️" },
-  { value: "Apartemen",  emoji: "🏢" },
-  { value: "Toko",       emoji: "🏪" },
-  { value: "Gudang",     emoji: "📦" },
-  { value: "Lainnya",    emoji: "📍" },
+  { value: "Rumah" },
+  { value: "Kantor" },
+  { value: "Kos" },
+  { value: "Apartemen" },
+  { value: "Toko" },
+  { value: "Gudang" },
+  { value: "Lainnya" },
 ];
 
 /**
@@ -476,38 +478,23 @@ export function AddressManagementScreen() {
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#eceded] px-4 py-10 sm:px-6">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#d6f2e5_0%,#f0f0f0_52%,#d5d5d5_100%)]"
-      />
-
-      <section className="relative mx-auto w-full max-w-[860px] rounded-[18px] border border-black/5 bg-[#f7f7f7] px-5 py-6 shadow-[0_18px_35px_rgba(0,0,0,0.18)] sm:px-8 sm:py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
-            href="/profile"
-            className="inline-flex h-11 items-center rounded-2xl border border-neutral-300 bg-white px-4 text-[1rem] font-semibold text-neutral-700 transition hover:bg-neutral-50"
-          >
-            Kembali
-          </Link>
-          <button
-            type="button"
-            onClick={openAddForm}
-            className="inline-flex h-11 items-center rounded-2xl bg-[#1abb89] px-5 text-[1rem] font-semibold text-white shadow-[0_8px_16px_rgba(18,168,123,0.28)] transition hover:bg-[#15a97b]"
-          >
-            Tambah alamat
-          </button>
-        </div>
-
-        <div className="mt-6 rounded-[18px] border border-black/5 bg-white px-6 py-6 shadow-[0_12px_24px_rgba(0,0,0,0.06)]">
-          <p className="text-sm font-semibold text-[#11af82]">Alamat</p>
-          <h1 className="mt-2 text-[1.6rem] font-bold tracking-[-0.02em] text-neutral-900">
-            Kelola alamat
-          </h1>
-          <p className="mt-2 text-[1rem] text-neutral-500">
-            Atur alamat pengiriman utama dan simpan perubahan langsung dari halaman ini.
-          </p>
-
+    <>
+    <CustomerPage
+      title="Alamat"
+      subtitle="Atur alamat pengiriman utama dan alamat lain."
+      backHref="/profile"
+      backLabel="Profil"
+      actions={
+        <button
+          type="button"
+          onClick={openAddForm}
+          className="inline-flex h-11 items-center rounded-xl bg-[#13b987] px-5 text-[0.95rem] font-semibold text-white transition hover:bg-[#0f996f]"
+        >
+          Tambah alamat
+        </button>
+      }
+    >
+        <div>
           <div className="mt-6 space-y-4">
           {addresses.map((address) => (
             <article
@@ -650,7 +637,7 @@ export function AddressManagementScreen() {
                 {addressDraft.latitude && addressDraft.longitude ? (
                   <div className="mt-2 flex items-center justify-between rounded-xl bg-[#f0fdf9] px-3 py-2">
                     <p className="text-xs text-[#11af82]">
-                      📍 {addressDraft.latitude.toFixed(5)}, {addressDraft.longitude.toFixed(5)}
+                      {addressDraft.latitude.toFixed(5)}, {addressDraft.longitude.toFixed(5)}
                     </p>
                     <button
                       type="button"
@@ -667,7 +654,7 @@ export function AddressManagementScreen() {
                       }
                       className="text-xs font-semibold text-red-400 hover:text-red-600"
                     >
-                      ✕ Reset peta
+                      Reset peta
                     </button>
                   </div>
                 ) : null}
@@ -676,7 +663,7 @@ export function AddressManagementScreen() {
               {/* Hint locked fields */}
               {addressDraft.latitude && addressDraft.longitude ? (
                 <p className="mt-4 flex items-center gap-1.5 rounded-xl bg-[#f0fdf9] px-3 py-2 text-xs text-[#11af82]">
-                  <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <Shield aria-hidden="true" className="h-3.5 w-3.5 flex-shrink-0" />
                   Alamat terkunci dari peta — pindahkan pin untuk mengubah, atau klik &ldquo;Reset peta&rdquo; untuk isi manual.
                 </p>
               ) : null}
@@ -698,7 +685,7 @@ export function AddressManagementScreen() {
                     <option value="">Pilih label…</option>
                     {ADDRESS_LABEL_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
-                        {opt.emoji} {opt.value}
+                        {opt.value}
                       </option>
                     ))}
                   </select>
@@ -709,7 +696,7 @@ export function AddressManagementScreen() {
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Kode Pos
                     {addressDraft.latitude ? (
-                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">dari peta</span>
                     ) : null}
                   </span>
                   <input
@@ -731,7 +718,7 @@ export function AddressManagementScreen() {
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Alamat Lengkap
                     {addressDraft.latitude ? (
-                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">dari peta</span>
                     ) : null}
                   </span>
                   <input
@@ -753,7 +740,7 @@ export function AddressManagementScreen() {
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Provinsi
                     {addressDraft.latitude ? (
-                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">dari peta</span>
                     ) : null}
                   </span>
                   <select
@@ -782,7 +769,7 @@ export function AddressManagementScreen() {
                   <span className="block text-[1rem] font-semibold text-neutral-800">
                     Kota/Kabupaten
                     {addressDraft.latitude ? (
-                      <span className="ml-2 text-xs font-normal text-[#11af82]">📍 dari peta</span>
+                      <span className="ml-2 text-xs font-normal text-[#11af82]">dari peta</span>
                     ) : null}
                   </span>
                   <select
@@ -852,7 +839,7 @@ export function AddressManagementScreen() {
           ) : null}
           </div>
         </div>
-      </section>
+    </CustomerPage>
 
       <ConfirmDialog
         isOpen={Boolean(addressSaveConfirmation)}
@@ -888,6 +875,6 @@ export function AddressManagementScreen() {
           }
         }}
       />
-    </main>
+    </>
   );
 }

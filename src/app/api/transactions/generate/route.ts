@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { randomUUID } from 'crypto';
+import { PlanType } from '@prisma/client';
+
+// Must match PLAN_CONFIG in src/components/subscription/payment/payment-screen.tsx
+const PLAN_PRICES: Record<PlanType, number> = {
+  MINGGUAN: 350000,
+  BULANAN: 1200000,
+  TAHUNAN: 12000000,
+};
 
 function getSnapBaseUrl() {
   return process.env.MIDTRANS_IS_PRODUCTION === 'true'
@@ -38,18 +46,6 @@ export async function POST(req: NextRequest) {
   if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const requestedAmount = Number(body?.amount);
-
-    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
-      return NextResponse.json(
-        { error: 'amount harus berupa number lebih besar dari 0.' },
-        { status: 400 }
-      );
-    }
-
-    const amount = requestedAmount;
-
     const [currentSubscription, latestTransaction] = await Promise.all([
       prisma.subscription.findFirst({
         where: { userId: session.userId },
@@ -71,6 +67,12 @@ export async function POST(req: NextRequest) {
         },
       }),
     ]);
+
+    if (!currentSubscription) {
+      return NextResponse.json({ error: 'Subscription tidak ditemukan.' }, { status: 404 });
+    }
+    // Price comes from the server, never from the request body.
+    const amount = PLAN_PRICES[currentSubscription.planType];
 
     const canReuseLatestTransaction =
       currentSubscription &&

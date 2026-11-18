@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyRequestRole } from '@/lib/auth';
 
-async function verifyNutritionist(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'NUTRITIONIST') return { error: 'UNAUTHENTICATED' as const };
-  return { userId: session.userId };
-}
+const verifyNutritionist = (req: NextRequest) => verifyRequestRole(req, 'NUTRITIONIST');
 
 export async function GET(req: NextRequest) {
   const auth = await verifyNutritionist(req);
-  if ('error' in auth) return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  if ('error' in auth) return auth.error === 'FORBIDDEN'
+    ? NextResponse.json({ error: 'Forbidden.' }, { status: 403 })
+    : NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 
   try {
     const ingredients = await prisma.ingredient.findMany({
@@ -28,7 +24,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = await verifyNutritionist(req);
-  if ('error' in auth) return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
+  if ('error' in auth) return auth.error === 'FORBIDDEN'
+    ? NextResponse.json({ error: 'Forbidden.' }, { status: 403 })
+    : NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
 
   try {
     const body = await req.json();

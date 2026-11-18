@@ -438,27 +438,34 @@ export const manageAddress = {
         return NextResponse.json({ message: 'Alamat tidak ditemukan' }, { status: 404 });
       }
 
-      const wasDefault = existing.isDefault;
+      await prisma.$transaction(async (tx) => {
+        await tx.address.delete({ where: { id: addressId } });
 
-      await prisma.address.delete({ where: { id: addressId } });
-
-      if (wasDefault) {
-        const nextAddress = await prisma.address.findFirst({
-          where: { userId },
-          orderBy: { label: 'asc' },
-          select: { id: true },
-        });
-
-        if (nextAddress) {
-          await prisma.address.update({
-            where: { id: nextAddress.id },
-            data: { isDefault: true },
+        if (existing.isDefault) {
+          const nextAddress = await tx.address.findFirst({
+            where: { userId },
+            orderBy: { label: 'asc' },
+            select: { id: true },
           });
+
+          if (nextAddress) {
+            await tx.address.update({
+              where: { id: nextAddress.id },
+              data: { isDefault: true },
+            });
+          }
         }
-      }
+      });
 
       return NextResponse.json({ status: 'success', message: 'Alamat berhasil dihapus' });
     } catch (error) {
+      // Delivery.addressId has no onDelete: an address used by a past delivery cannot be removed.
+      if ((error as { code?: string })?.code === 'P2003') {
+        return NextResponse.json(
+          { message: 'Alamat sudah dipakai untuk pengiriman dan tidak bisa dihapus.' },
+          { status: 409 }
+        );
+      }
       console.error('[ADDRESS DELETE ERROR]', error);
       return NextResponse.json({ message: 'Gagal menghapus alamat' }, { status: 500 });
     }

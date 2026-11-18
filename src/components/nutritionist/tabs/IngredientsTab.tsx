@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { IngredientOption, IngredientFormData } from "../hooks/useNutritionistData";
 import { ConfirmDialog } from "@/components/profile/confirm-dialog";
 import styles from "../../operations/role-portal-screen.module.css";
@@ -27,25 +28,9 @@ type Props = {
 };
 
 function StockBadge({ stockKg }: { stockKg: number }) {
-  if (stockKg <= 0) {
-    return (
-      <span style={{ background: "#fee2e2", color: "#dc2626", borderRadius: "20px", padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700 }}>
-        Habis
-      </span>
-    );
-  }
-  if (stockKg < 5) {
-    return (
-      <span style={{ background: "#fef3c7", color: "#d97706", borderRadius: "20px", padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700 }}>
-        ⚠ Hampir Habis ({stockKg.toFixed(1)} kg)
-      </span>
-    );
-  }
-  return (
-    <span style={{ background: "#dcfce7", color: "#16a34a", borderRadius: "20px", padding: "2px 10px", fontSize: "0.72rem", fontWeight: 700 }}>
-      {stockKg.toFixed(1)} kg
-    </span>
-  );
+  if (stockKg <= 0) return <span className={clsx(styles.tag, styles.tagRed)}>Habis</span>;
+  if (stockKg < 5) return <span className={clsx(styles.tag, styles.tagAmber)}>{stockKg.toFixed(1)} kg · Menipis</span>;
+  return <span className={clsx(styles.tag, styles.tagGreen)}>{stockKg.toFixed(1)} kg</span>;
 }
 
 const formatCurrency = (val: number) =>
@@ -156,232 +141,166 @@ export function IngredientsTab({ ingredients, isLoading, onSave, onDelete }: Pro
 
   return (
     <>
-      {/* Header */}
-      <div
-        className={styles.notice}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-      >
-        <div>
-          <p className={styles.noticeTitle}>Manajemen Bahan Baku</p>
-          <p>
-            Kelola stok dan harga bahan baku.{" "}
-            {emptyStockCount > 0 && (
-              <strong style={{ color: "#dc2626" }}>{emptyStockCount} bahan habis!</strong>
-            )}
-            {lowStockCount > 0 && emptyStockCount === 0 && (
-              <strong style={{ color: "#d97706" }}>{lowStockCount} bahan hampir habis.</strong>
-            )}
-          </p>
-        </div>
-        {!showForm && (
-          <button
-            type="button"
-            className={clsx(styles.tabButton, styles.tabButtonActive)}
-            onClick={openAddForm}
-          >
-            + Tambah Bahan Baku
-          </button>
-        )}
-      </div>
-
-      {/* Stock Summary Banner */}
-      {!showForm && (emptyStockCount > 0 || lowStockCount > 0) && (
-        <div style={{
-          background: emptyStockCount > 0 ? "#fee2e2" : "#fef3c7",
-          border: `1px solid ${emptyStockCount > 0 ? "#fca5a5" : "#fcd34d"}`,
-          borderRadius: "8px",
-          padding: "0.75rem 1rem",
-          marginBottom: "0.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          fontSize: "0.85rem",
-          color: emptyStockCount > 0 ? "#991b1b" : "#92400e",
-          fontWeight: 600,
-        }}>
-          {emptyStockCount > 0
-            ? `⚠️ ${emptyStockCount} bahan baku sudah HABIS. Segera tambah stok atau minta admin melakukan restock.`
-            : `⚠️ ${lowStockCount} bahan baku hampir habis (stok < 5 kg). Pertimbangkan restock segera.`}
-        </div>
+      {!showForm && (
+        <>
+          <div className={styles.toolbar} style={{ justifyContent: "flex-end" }}>
+            <button type="button" className={styles.actionCard} onClick={openAddForm}>
+              <Plus aria-hidden="true" />
+              Tambah Bahan Baku
+            </button>
+          </div>
+          {(emptyStockCount > 0 || lowStockCount > 0) && (
+            <div className={clsx(styles.notice, emptyStockCount === 0 && styles.noticeWarn)}>
+              {emptyStockCount > 0 && <span>{emptyStockCount} bahan habis, minta admin melakukan restock. </span>}
+              {lowStockCount > 0 && <span>{lowStockCount} bahan di bawah 5 kg.</span>}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Form */}
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.75rem",
-            margin: "1rem 0",
-            padding: "1.25rem",
-            background: "#f8fafc",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <p className={styles.noticeTitle} style={{ margin: 0 }}>
-            {form.id ? "Edit Bahan Baku" : "Tambah Bahan Baku Baru"}
-          </p>
+        <form onSubmit={handleSubmit} className={styles.formCard}>
+          <h2 className={styles.formTitle}>{form.id ? "Ubah Bahan Baku" : "Bahan Baku Baru"}</h2>
 
-          {/* Row 1: nama & alergen */}
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-            <input
-              className={styles.input}
-              style={{ flex: "2 1 200px" }}
-              placeholder="Nama Bahan Baku *"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-            <input
-              className={styles.input}
-              style={{ flex: "1 1 150px" }}
-              placeholder="Asal/Origin (mis. Jawa Barat)"
-              value={form.origin}
-              onChange={(e) => setForm({ ...form, origin: e.target.value })}
-            />
-            <input
-              className={styles.input}
-              style={{ flex: "1 1 150px" }}
-              placeholder="Supplier/Petani"
-              value={form.supplierName}
-              onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
-            />
-          </div>
-
-          {/* Row 2: stok, harga, alergen */}
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#64748b" }}>Stok Awal (kg) *</label>
+          <div style={{ display: "grid", gap: "0.85rem" }}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Nama bahan baku <span className={styles.required}>*</span>
+              </span>
               <input
                 className={styles.input}
-                type="number"
-                step="0.1"
-                min="0"
-                placeholder="0"
                 required
-                value={form.stockKg}
-                onChange={(e) => setForm({ ...form, stockKg: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
-            </div>
-            <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#64748b" }}>Harga per Kg (Rp) *</label>
-              <input
-                className={styles.input}
-                type="number"
-                step="100"
-                min="0"
-                placeholder="0"
-                required
-                value={form.pricePerKg}
-                onChange={(e) => setForm({ ...form, pricePerKg: e.target.value })}
-              />
-            </div>
-            <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: "0.5rem", paddingTop: "1.4rem" }}>
-              <input
-                type="checkbox"
-                id="isAllergen"
-                checked={form.isAllergen}
-                onChange={(e) => setForm({ ...form, isAllergen: e.target.checked })}
-                style={{ width: "16px", height: "16px", cursor: "pointer" }}
-              />
-              <label htmlFor="isAllergen" style={{ fontWeight: 600, fontSize: "0.85rem", color: "#b45309", cursor: "pointer" }}>
-                ⚠️ Mengandung Alergen
+            </label>
+
+            <div className={styles.fieldGrid}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Asal daerah</span>
+                <input
+                  className={styles.input}
+                  placeholder="Contoh: Jawa Barat"
+                  value={form.origin}
+                  onChange={(e) => setForm({ ...form, origin: e.target.value })}
+                />
+              </label>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Supplier / petani</span>
+                <input
+                  className={styles.input}
+                  value={form.supplierName}
+                  onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
+                />
               </label>
             </div>
+
+            <div className={styles.fieldGrid}>
+              {!form.id && (
+                <label className={styles.field}>
+                  <span className={styles.fieldLabel}>
+                    Stok awal (kg) <span className={styles.required}>*</span>
+                  </span>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="0"
+                    required
+                    value={form.stockKg}
+                    onChange={(e) => setForm({ ...form, stockKg: e.target.value })}
+                  />
+                </label>
+              )}
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Harga per kg (Rp) <span className={styles.required}>*</span>
+                </span>
+                <input
+                  className={styles.input}
+                  type="number"
+                  step="100"
+                  min="0"
+                  placeholder="0"
+                  required
+                  value={form.pricePerKg}
+                  onChange={(e) => setForm({ ...form, pricePerKg: e.target.value })}
+                />
+                <p className={styles.fieldHint}>Dipakai sebagai harga acuan di prediksi AI admin.</p>
+              </label>
+            </div>
+
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                checked={form.isAllergen}
+                onChange={(e) => setForm({ ...form, isAllergen: e.target.checked })}
+              />
+              Mengandung alergen
+            </label>
           </div>
 
-          <p style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>
-            💡 <strong>Harga per kg</strong> yang diinput akan digunakan sebagai referensi harga di dashboard prediksi AI Admin.
-          </p>
-
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className={clsx(styles.tabButton, styles.tabButtonActive)}
-            >
-              {isSubmitting ? "Menyimpan…" : form.id ? "Simpan Perubahan" : "Simpan Bahan Baku"}
-            </button>
-            <button
-              type="button"
-              className={styles.tabButton}
-              onClick={cancelForm}
-              disabled={isSubmitting}
-            >
+          <div className={styles.formActions}>
+            <button type="button" className={styles.tabButton} onClick={cancelForm} disabled={isSubmitting}>
               Batal
+            </button>
+            <button type="submit" className={styles.actionCard} disabled={isSubmitting}>
+              {isSubmitting ? "Menyimpan..." : form.id ? "Simpan Perubahan" : "Simpan Bahan Baku"}
             </button>
           </div>
         </form>
       )}
 
-      {/* Table */}
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
-          Memuat data bahan baku…
-        </div>
+        <div className={styles.emptyState}>Memuat data bahan baku...</div>
       ) : (
         <div className={styles.tableShell}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Nama Bahan</th>
-                <th>Asal / Supplier</th>
+                <th>Bahan baku</th>
+                <th>Supplier / asal</th>
                 <th>Stok</th>
-                <th>Harga/kg</th>
-                <th>Alergen</th>
-                <th>Aksi</th>
+                <th>Harga / kg</th>
+                <th aria-label="Aksi" />
               </tr>
             </thead>
             <tbody>
               {ingredients.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
-                    Belum ada bahan baku. Klik <strong>+ Tambah Bahan Baku</strong> untuk mulai.
-                  </td>
+                  <td colSpan={5} className={styles.emptyState}>Belum ada bahan baku.</td>
                 </tr>
               ) : (
                 ingredients.map((row) => (
-                  <tr
-                    key={row.id}
-                    style={{ background: row.stockKg <= 0 ? "#fff5f5" : row.stockKg < 5 ? "#fffbeb" : "white" }}
-                  >
-                    <td style={{ fontWeight: 600 }}>{row.name}</td>
-                    <td style={{ color: "#64748b", fontSize: "0.85rem" }}>
-                      <div>{row.origin || "-"}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{row.supplierName || "-"}</div>
-                    </td>
+                  <tr key={row.id}>
                     <td>
-                      <StockBadge stockKg={row.stockKg} />
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {row.pricePerKg > 0 ? formatCurrency(row.pricePerKg) + "/kg" : <span style={{ color: "#94a3b8" }}>Belum ada</span>}
-                    </td>
-                    <td>
-                      {row.isAllergen ? (
-                        <span style={{ background: "#fef3c7", color: "#92400e", borderRadius: "4px", padding: "2px 8px", fontSize: "0.75rem", fontWeight: 600 }}>
-                          ⚠️ Ya
-                        </span>
-                      ) : (
-                        <span style={{ color: "#94a3b8", fontSize: "0.8rem" }}>Tidak</span>
+                      <span className={styles.tableKey}>{row.name}</span>
+                      {row.isAllergen && (
+                        <span className={clsx(styles.tag, styles.tagAmber)} style={{ marginLeft: "0.4rem" }}>Alergen</span>
                       )}
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                        <button
-                          type="button"
-                          onClick={() => openEditForm(row)}
-                          style={{ color: "#2563eb", background: "none", border: "none", cursor: "pointer", fontWeight: 700, padding: "0.2rem 0" }}
-                        >
-                          Edit
+                      {row.supplierName || "-"}
+                      <span className={styles.cellSub}>{row.origin || "-"}</span>
+                    </td>
+                    <td><StockBadge stockKg={row.stockKg} /></td>
+                    <td className={styles.nowrap}>
+                      {row.pricePerKg > 0 ? formatCurrency(row.pricePerKg) : "-"}
+                    </td>
+                    <td>
+                      <div className={styles.rowActions}>
+                        <button type="button" className={styles.tabButton} onClick={() => openEditForm(row)}>
+                          <Pencil aria-hidden="true" />
+                          Ubah
                         </button>
                         <button
                           type="button"
+                          className={clsx(styles.tabButton, styles.dangerButton)}
+                          aria-label={`Hapus ${row.name}`}
                           onClick={() => handleDelete(row.id, row.name)}
-                          style={{ color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 700, padding: "0.2rem 0" }}
                         >
-                          Hapus
+                          <Trash2 aria-hidden="true" />
                         </button>
                       </div>
                     </td>

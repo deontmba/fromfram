@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 export type BulkImportRow = {
   name: string;
@@ -49,12 +42,12 @@ export async function POST(req: NextRequest) {
       }
 
       const stockKg = Number(row.stockKg);
-      if (isNaN(stockKg) || stockKg < 0) {
+      if (!Number.isFinite(stockKg) || stockKg < 0) {
         results.push({ name: rawName, status: 'invalid', message: 'Sisa stok tidak valid (harus angka >= 0).' });
         continue;
       }
 
-      const pricePerKg = row.pricePerKg !== undefined && !isNaN(Number(row.pricePerKg))
+      const pricePerKg = row.pricePerKg !== undefined && Number.isFinite(Number(row.pricePerKg))
         ? Math.max(0, Number(row.pricePerKg))
         : 0;
 
@@ -88,10 +81,29 @@ export async function POST(req: NextRequest) {
             updateData.isAllergen = Boolean(row.isAllergen);
           }
 
-          await prisma.ingredient.update({
-            where: { id: existing.id },
-            data: updateData,
-          });
+          // Stock is replaced, so record the change in the ledger in the same transaction.
+          const suffix = crypto.randomUUID().slice(0, 8).toUpperCase();
+          const deltaKg = stockKg - existing.stockKg;
+          await prisma.$transaction([
+            prisma.ingredient.update({
+              where: { id: existing.id },
+              data: updateData,
+            }),
+            prisma.ingredientLedger.create({
+              data: {
+                ingredientId: existing.id,
+                sourceType: 'ADMIN_EDIT',
+                status: deltaKg >= 0 ? 'COMPLETED' : 'SIAP_PAKAI',
+                code: `#BB-2026-${suffix}`,
+                referenceCode: `TIK/IMPORT/${suffix}`,
+                adminUserId: auth.userId,
+                qtyChangeKg: deltaKg,
+                stockBeforeKg: existing.stockKg,
+                stockAfterKg: stockKg,
+                notes: `Impor stok massal (${existing.stockKg} -> ${stockKg} Kg)`,
+              },
+            }),
+          ]);
 
           results.push({
             name: existing.name,

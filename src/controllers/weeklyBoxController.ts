@@ -1,4 +1,6 @@
 import prisma from '@/lib/prisma';
+import { addDays, atJakartaTime } from '@/lib/week';
+import { refreshSubscriptionStatus } from '@/controllers/subscriptionController';
 
 export async function getAllWeeklyBoxes(userId: string) {
   const boxes = await prisma.weeklyBox.findMany({
@@ -97,6 +99,16 @@ export async function getCurrentWeeklyBox(userId: string) {
 }
 
 export async function lockCurrentWeeklyBox(userId: string) {
+  // Deliveries are only created for paid subscriptions.
+  await refreshSubscriptionStatus(userId);
+  const subscription = await prisma.subscription.findUnique({
+    where: { userId },
+    select: { status: true },
+  });
+  if (subscription?.status !== 'ACTIVE') {
+    return { error: 'Subscription belum aktif. Selesaikan pembayaran terlebih dahulu.', status: 402 };
+  }
+
   const [pendingBoxResult, latestBoxResult] = await Promise.all([
     prisma.weeklyBox.findFirst({
       where: { userId, status: 'PENDING_SELECTION' },
@@ -145,6 +157,13 @@ export async function lockCurrentWeeklyBox(userId: string) {
     };
   }
 
+  // Per-day/meal addresses from multi-address scheduling; default address otherwise.
+  const schedules = await prisma.addressSchedule.findMany({
+    where: { userId },
+    select: { dayOfWeek: true, mealType: true, addressId: true },
+  });
+  const scheduledAddress = new Map(schedules.map((s) => [`${s.dayOfWeek}:${s.mealType}`, s.addressId]));
+
   const dayOffsets: Record<string, number> = {
     SENIN: 0,
     SELASA: 1,
@@ -156,25 +175,25 @@ export async function lockCurrentWeeklyBox(userId: string) {
   };
 
   const updatedBox = await prisma.$transaction(async (tx) => {
-    // 1. Kunci weekly box
-    const updated = await tx.weeklyBox.update({
-      where: { id: box.id },
+    // 1. Kunci weekly box — conditional, so a second concurrent lock creates no duplicate deliveries
+    const claimed = await tx.weeklyBox.updateMany({
+      where: { id: box.id, status: 'PENDING_SELECTION' },
       data: { status: 'LOCKED' },
     });
+    if (claimed.count === 0) return null;
 
     // 2. Buat delivery untuk masing-masing meal selection
     if (box.mealSelections.length > 0) {
       const deliveryData = box.mealSelections.map((sel) => {
         const offset = dayOffsets[sel.dayOfWeek] ?? 0;
-        const deliveryDate = new Date(box.weekStartDate);
-        deliveryDate.setDate(deliveryDate.getDate() + offset);
         const isLunch = sel.mealType === 'LUNCH';
-        deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
+        // 11:30 / 17:30 Jakarta time
+        const deliveryDate = atJakartaTime(addDays(box.weekStartDate, offset), isLunch ? 11 : 17, 30);
 
         return {
           userId,
           weeklyBoxId: box.id,
-          addressId: address.id,
+          addressId: scheduledAddress.get(`${sel.dayOfWeek}:${sel.mealType}`) ?? address.id,
           deliveryDate,
           mealType: sel.mealType,
           status: 'PREPARING' as const,
@@ -186,8 +205,12 @@ export async function lockCurrentWeeklyBox(userId: string) {
       });
     }
 
-    return updated;
+    return tx.weeklyBox.findUnique({ where: { id: box.id } });
   });
+
+  if (!updatedBox) {
+    return { data: { message: 'Weekly box already finalized.', data: box }, status: 200 };
+  }
 
   return { data: { message: 'Weekly box berhasil dikunci.', data: updatedBox }, status: 200 };
 }
@@ -212,10 +235,18 @@ export async function skipWeeklyBox(userId: string, boxId: string) {
     };
   }
 
-  const updatedBox = await prisma.weeklyBox.update({
-    where: { id: boxId },
+  if (box.selectionDeadline < new Date()) {
+    return { error: 'Batas waktu skip sudah lewat.', status: 400 };
+  }
+
+  // Conditional claim: a lock running at the same time must not be overwritten.
+  const { count } = await prisma.weeklyBox.updateMany({
+    where: { id: boxId, status: 'PENDING_SELECTION' },
     data: { status: 'SKIPPED' },
   });
+  if (count === 0) {
+    return { error: 'Weekly box sudah dikunci atau di-skip.', status: 409 };
+  }
 
-  return { data: { message: 'Weekly box berhasil di-skip.', data: updatedBox }, status: 200 };
+  return { data: { message: 'Weekly box berhasil di-skip.', data: { ...box, status: 'SKIPPED' } }, status: 200 };
 }

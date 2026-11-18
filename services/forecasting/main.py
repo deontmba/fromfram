@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
+import hmac
+import os
 import uuid
 
 import schemas
@@ -12,19 +13,20 @@ import traceback
 
 app = FastAPI(title="FromFarm AI Demand Forecasting")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+def require_internal_key(x_internal_key: str = Header(default="")):
+    # Only the Next.js server may call this service; it sends FORECAST_INTERNAL_KEY.
+    expected = os.getenv("FORECAST_INTERNAL_KEY", "")
+    # Compare bytes: compare_digest raises TypeError on non-ASCII str input.
+    if not expected or not hmac.compare_digest(x_internal_key.encode(), expected.encode()):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-@app.post("/forecast", response_model=schemas.ForecastResponse)
+@app.post("/forecast", response_model=schemas.ForecastResponse, dependencies=[Depends(require_internal_key)])
 def get_forecast(request: schemas.ForecastRequest, db: Session = Depends(get_db)):
     try:
         week_start_date = request.week_start_date
@@ -42,7 +44,7 @@ def get_forecast(request: schemas.ForecastRequest, db: Session = Depends(get_db)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/forecast/save")
+@app.post("/forecast/save", dependencies=[Depends(require_internal_key)])
 def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_db)):
     week_start_date = response.week_start_date
     active_user_count = response.active_user_count
@@ -142,7 +144,7 @@ def save_forecast(response: schemas.ForecastResponse, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.patch("/forecast/actual")
+@app.patch("/forecast/actual", dependencies=[Depends(require_internal_key)])
 def update_actual(request: schemas.ActualUpdateRequest, db: Session = Depends(get_db)):
     try:
         query = text("""

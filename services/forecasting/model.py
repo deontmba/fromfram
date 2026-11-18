@@ -41,6 +41,15 @@ def generate_forecast(db, week_start_date: datetime):
     """)
     active_user_count = db.execute(active_users_query).scalar() or 0
 
+    # Several farmers can sell the same ingredient: give the deficit only to the
+    # cheapest one, otherwise each farmer gets a full order and we buy N times too much.
+    chosen_farmer = {}
+    for supply in supplies:
+        m = supply._mapping
+        best = chosen_farmer.get(m["ingredientId"])
+        if best is None or float(m["pricePerKg"]) < best[1]:
+            chosen_farmer[m["ingredientId"]] = (m["farmerId"], float(m["pricePerKg"]))
+
     forecasts = []
 
     for supply in supplies:
@@ -136,7 +145,7 @@ def generate_forecast(db, week_start_date: datetime):
         net_deficit = (gross_demand + safety_stock) - current_stock
         
         min_order = float(supply._mapping["minOrderKg"])
-        if net_deficit <= 0:
+        if net_deficit <= 0 or chosen_farmer[ing_id][0] != supply._mapping["farmerId"]:
             final_prediction = 0.0
         else:
             final_prediction = max(min_order, net_deficit)

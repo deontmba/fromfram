@@ -34,7 +34,7 @@ test.describe('Customer UI Flows (Black Box Testing)', () => {
     test('should validate register form inputs and show alert errors', async ({ page }) => {
       await page.goto('/register');
       await page.fill('input[placeholder="nama@email.com"]', 'invalid-email');
-      await page.fill('input[placeholder="Min. 8 karakter"]', 'short');
+      await page.fill('input[placeholder="Minimal 8 karakter"]', 'short');
       await page.click('button:has-text("Daftar")');
       
       // Memastikan ada pesan error visual
@@ -45,9 +45,9 @@ test.describe('Customer UI Flows (Black Box Testing)', () => {
     test('should register a new customer account and redirect to login page with success notification', async ({ page }) => {
       const email = `budi.new_${Date.now()}@fromfram.test`;
       await page.goto('/register');
-      await page.fill('input[placeholder="Masukkan nama"]', 'Budi Santoso');
+      await page.fill('input[placeholder="Nama kamu"]', 'Budi Santoso');
       await page.fill('input[placeholder="nama@email.com"]', email);
-      await page.fill('input[placeholder="Min. 8 karakter"]', 'Password123!');
+      await page.fill('input[placeholder="Minimal 8 karakter"]', 'Password123!');
       await page.fill('input[placeholder="Ulangi password"]', 'Password123!');
       await page.click('button:has-text("Daftar")');
 
@@ -76,7 +76,7 @@ test.describe('Customer UI Flows (Black Box Testing)', () => {
       await page.click('button:has-text("Masuk")');
 
 
-      const alert = page.locator('.bg-red-100, .text-red-600, .alert-danger');
+      const alert = page.locator('[role="alert"]');
       await expect(alert.first()).toBeVisible();
     });
 

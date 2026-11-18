@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionUserId } from '@/lib/session';
 import prisma from '@/lib/prisma';
+import { verifyAdminRequest as verifyAdmin } from '@/lib/auth';
 
-async function verifyAdmin(req: NextRequest) {
-  const session = await getSessionUserId(req);
-  if ('error' in session) return { error: session.error };
-  const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
-  if (!user || user.role !== 'ADMIN') return { error: 'FORBIDDEN' as const };
-  return { userId: session.userId };
-}
 
 // GET /api/admin/ledgers/ingredients
 export async function GET(req: NextRequest) {
@@ -73,10 +66,7 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    // KPI calculation
-    const totalCapacityKg = 15000;
-    const currentStockKg = totalStockResult._sum.stockKg || 14850;
-    const capacityPercent = Math.min(100, Math.round((currentStockKg / totalCapacityKg) * 100));
+    const currentStockKg = totalStockResult._sum.stockKg ?? 0;
 
     // Low stock count (safety stock < 20kg)
     const lowStockCount = await prisma.ingredient.count({
@@ -92,11 +82,8 @@ export async function GET(req: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
       kpis: {
-        capacityPercent,
         currentStockKg,
-        inboundVerifiedKg: 2400,
-        outboundProductionKg: 1150,
-        lowStockCount: Math.max(1, lowStockCount),
+        lowStockCount,
       },
     });
   } catch (error) {

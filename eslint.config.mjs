@@ -16,6 +16,11 @@ const eslintConfig = defineConfig([
       "prefer-const": "off"
     }
   },
+  {
+    // jest.mock factories are hoisted above imports, so they must use require().
+    files: ["tests/**"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",

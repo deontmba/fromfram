@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
+import { BrandMark } from "@/components/ui/brand-mark";
 
-const GOAL_OPTIONS = ["Weight Loss", "Muscle Gain", "Healthy Lifestyle", "Family Nutrition", "Athlete"];
-const DIETARY_OPTIONS = ["Halal", "Vegetarian", "No Seafood", "High Protein", "Low Sugar"];
+const GOAL_OPTIONS = ["Turun Berat Badan", "Tambah Massa Otot", "Hidup Sehat", "Nutrisi Keluarga", "Atlet"];
+const DIETARY_OPTIONS = ["Halal", "Vegetarian", "Tanpa Seafood", "Tinggi Protein", "Rendah Gula"];
 const ALLERGY_OPTIONS = ["Kacang", "Susu", "Seafood", "Gluten", "Telur", "Tidak Ada"];
-const COOKING_OPTIONS = ["Quick Cooking", "Beginner Friendly", "Family Portion", "Spicy", "Non Spicy"];
+const COOKING_OPTIONS = ["Masak Cepat", "Ramah Pemula", "Porsi Keluarga", "Pedas", "Tidak Pedas"];
 
 export function OnboardingFlow() {
   const router = useRouter();
@@ -104,202 +106,125 @@ export function OnboardingFlow() {
     return false;
   };
 
+  const choiceSteps: Record<number, { title: string; hint: string; options: string[]; value: string[]; set: (v: string[]) => void; single?: boolean }> = {
+    1: { title: "Apa tujuan utama kamu?", hint: "Pilih satu. Kami pakai untuk merekomendasikan paket.", options: GOAL_OPTIONS, value: goals, set: setGoals, single: true },
+    2: { title: "Ada preferensi makan?", hint: "Boleh pilih lebih dari satu.", options: DIETARY_OPTIONS, value: dietaryPrefs, set: setDietaryPrefs },
+    3: { title: "Punya alergi makanan?", hint: "Boleh pilih lebih dari satu, atau pilih Tidak Ada.", options: ALLERGY_OPTIONS, value: allergies, set: setAllergies },
+    5: { title: "Gaya masak yang kamu suka?", hint: "Boleh pilih lebih dari satu.", options: COOKING_OPTIONS, value: cookingPrefs, set: setCookingPrefs },
+  };
+
   const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-neutral-800">Apa tujuan utama kamu?</h2>
-              <p className="mt-2 text-neutral-500">Pilih satu yang paling sesuai untuk membantu kami menyusun menu terbaik.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {GOAL_OPTIONS.map((goal) => (
+    const choice = choiceSteps[step];
+    if (choice) {
+      return (
+        <motion.div key={`step${step}`} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
+          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-neutral-900">{choice.title}</h1>
+          <p className="mt-2 text-[0.95rem] text-neutral-500">{choice.hint}</p>
+          <div className="mt-8 grid gap-3 sm:grid-cols-2" role={choice.single ? "radiogroup" : "group"}>
+            {choice.options.map((option) => {
+              const selected = choice.value.includes(option);
+              return (
                 <button
-                  key={goal}
-                  onClick={() => toggleSelection(goal, goals, setGoals, true)}
-                  className={`flex h-14 cursor-pointer items-center justify-between rounded-2xl border-2 px-5 text-left font-semibold transition ${
-                    goals.includes(goal) ? "border-[#13b987] bg-[#eafff5] text-[#13b987]" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
+                  key={option}
+                  type="button"
+                  role={choice.single ? "radio" : "checkbox"}
+                  aria-checked={selected}
+                  onClick={() => toggleSelection(option, choice.value, choice.set, choice.single)}
+                  className={`flex h-12 items-center justify-between rounded-xl border px-4 text-left text-[0.95rem] font-medium transition ${
+                    selected
+                      ? "border-[#13b987] bg-[#effaf5] text-[#07845e]"
+                      : "border-neutral-300 bg-white text-neutral-700 hover:border-neutral-400"
                   }`}
                 >
-                  {goal}
-                  {goals.includes(goal) && <CheckIcon />}
+                  {option}
+                  {selected ? <Check aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} /> : null}
                 </button>
-              ))}
-            </div>
-          </motion.div>
-        );
-      case 2:
-        return (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-neutral-800">Ada preferensi diet tertentu?</h2>
-              <p className="mt-2 text-neutral-500">Pilih sebanyak yang kamu mau.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {DIETARY_OPTIONS.map((diet) => (
-                <button
-                  key={diet}
-                  onClick={() => toggleSelection(diet, dietaryPrefs, setDietaryPrefs)}
-                  className={`flex h-14 cursor-pointer items-center justify-between rounded-2xl border-2 px-5 text-left font-semibold transition ${
-                    dietaryPrefs.includes(diet) ? "border-[#13b987] bg-[#eafff5] text-[#13b987]" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
-                  }`}
-                >
-                  {diet}
-                  {dietaryPrefs.includes(diet) && <CheckIcon />}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        );
-      case 3:
-        return (
-          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-neutral-800">Apakah kamu punya alergi?</h2>
-              <p className="mt-2 text-neutral-500">Kami akan menghindari bahan-bahan ini pada menu kamu.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {ALLERGY_OPTIONS.map((allergy) => (
-                <button
-                  key={allergy}
-                  onClick={() => toggleSelection(allergy, allergies, setAllergies)}
-                  className={`flex h-14 cursor-pointer items-center justify-between rounded-2xl border-2 px-5 text-left font-semibold transition ${
-                    allergies.includes(allergy) ? "border-[#13b987] bg-[#eafff5] text-[#13b987]" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
-                  }`}
-                >
-                  {allergy}
-                  {allergies.includes(allergy) && <CheckIcon />}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        );
-      case 4:
-        return (
-          <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-neutral-800">Ceritakan sedikit tentang dirimu</h2>
-              <p className="mt-2 text-neutral-500">Opsional, tapi sangat membantu kami untuk rekomendasi porsi & kalori yang tepat.</p>
-            </div>
-            <div className="space-y-4">
-              <label className="block space-y-2">
-                <span className="text-sm font-bold text-neutral-700">Berat Badan (kg)</span>
-                <input
-                  type="number"
-                  placeholder="Misal: 65"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  className="h-14 w-full rounded-2xl border-2 border-neutral-200 bg-white px-4 text-lg outline-none transition focus:border-[#13b987]"
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-bold text-neutral-700">Tinggi Badan (cm)</span>
-                <input
-                  type="number"
-                  placeholder="Misal: 170"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  className="h-14 w-full rounded-2xl border-2 border-neutral-200 bg-white px-4 text-lg outline-none transition focus:border-[#13b987]"
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-bold text-neutral-700">Umur (tahun)</span>
-                <input
-                  type="number"
-                  placeholder="Misal: 25"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  className="h-14 w-full rounded-2xl border-2 border-neutral-200 bg-white px-4 text-lg outline-none transition focus:border-[#13b987]"
-                />
-              </label>
-            </div>
-          </motion.div>
-        );
-      case 5:
-        return (
-          <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-neutral-800">Gaya memasak seperti apa yang kamu suka?</h2>
-              <p className="mt-2 text-neutral-500">Pilih sebanyak yang kamu mau.</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {COOKING_OPTIONS.map((cooking) => (
-                <button
-                  key={cooking}
-                  onClick={() => toggleSelection(cooking, cookingPrefs, setCookingPrefs)}
-                  className={`flex h-14 cursor-pointer items-center justify-between rounded-2xl border-2 px-5 text-left font-semibold transition ${
-                    cookingPrefs.includes(cooking) ? "border-[#13b987] bg-[#eafff5] text-[#13b987]" : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
-                  }`}
-                >
-                  {cooking}
-                  {cookingPrefs.includes(cooking) && <CheckIcon />}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        );
-      default:
-        return null;
+              );
+            })}
+          </div>
+        </motion.div>
+      );
     }
+
+    // Step 4: body stats (optional)
+    const fields: Array<[string, string, string, (v: string) => void, string]> = [
+      ["Berat badan", "kg", weight, setWeight, "65"],
+      ["Tinggi badan", "cm", height, setHeight, "170"],
+      ["Umur", "tahun", age, setAge, "25"],
+    ];
+    return (
+      <motion.div key="step4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}>
+        <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-neutral-900">Sedikit tentang kamu</h1>
+        <p className="mt-2 text-[0.95rem] text-neutral-500">Opsional. Membantu kami menyarankan porsi dan kalori yang pas.</p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          {fields.map(([label, unit, value, setValue, placeholder]) => (
+            <label key={label} className="block space-y-1.5">
+              <span className="block text-sm font-medium text-neutral-700">{label}</span>
+              <span className="flex h-11 items-center rounded-xl border border-neutral-300 bg-white px-3.5 focus-within:border-[#13b987] focus-within:ring-2 focus-within:ring-[#13b987]/20">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="w-full bg-transparent text-[0.95rem] text-neutral-900 outline-none placeholder:text-neutral-400"
+                />
+                <span className="ml-2 text-sm text-neutral-400">{unit}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </motion.div>
+    );
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-50 items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-xl rounded-[2rem] bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-10 border border-neutral-100">
-        {/* Progress Bar */}
-        <div className="mb-10 space-y-3">
-          <div className="flex justify-between text-sm font-bold text-neutral-400">
-            <span>Langkah {step} dari {totalSteps}</span>
-            <span className="text-[#13b987]">{Math.round((step / totalSteps) * 100)}%</span>
-          </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-neutral-100">
-            <motion.div 
-              className="h-full bg-[#13b987] rounded-full" 
-              initial={{ width: 0 }} 
-              animate={{ width: `${(step / totalSteps) * 100}%` }} 
-              transition={{ duration: 0.5 }}
-            />
-          </div>
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="flex items-center justify-between px-5 py-5 sm:px-10">
+        <BrandMark />
+        <span className="text-sm text-neutral-500">
+          Langkah {step} dari {totalSteps}
+        </span>
+      </header>
+      <div className="h-1 w-full bg-neutral-100">
+        <motion.div
+          className="h-full bg-[#13b987]"
+          initial={false}
+          animate={{ width: `${(step / totalSteps) * 100}%` }}
+          transition={{ duration: 0.4 }}
+        />
+      </div>
+
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 py-10 sm:py-16">
+        <div className="flex-1">
+          <AnimatePresence mode="wait">{renderStepContent()}</AnimatePresence>
         </div>
 
-        {/* Content */}
-        <div className="min-h-[360px]">
-          <AnimatePresence mode="wait">
-            {renderStepContent()}
-          </AnimatePresence>
-        </div>
+        {error ? (
+          <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
 
-        {error && (
-          <p className="mt-4 text-center text-sm font-bold text-red-500">{error}</p>
-        )}
-
-        {/* Footer Navigation */}
-        <div className="mt-10 flex items-center justify-between border-t border-neutral-100 pt-6">
+        <div className="mt-10 flex items-center justify-between">
           <button
+            type="button"
             onClick={handleBack}
-            className={`font-bold cursor-pointer transition ${step === 1 ? "invisible" : "text-neutral-400 hover:text-neutral-700"}`}
+            className={`h-11 rounded-xl px-4 text-[0.95rem] font-medium text-neutral-600 transition hover:bg-neutral-100 ${step === 1 ? "invisible" : ""}`}
           >
             Kembali
           </button>
-          
           <button
+            type="button"
             onClick={handleNext}
             disabled={isNextDisabled() || loading}
-            className="flex h-12 cursor-pointer items-center justify-center rounded-2xl bg-[#13b987] px-8 font-bold text-white shadow-[0_8px_16px_rgba(19,185,135,0.35)] transition hover:bg-[#0f996f] disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#13b987] px-8 text-[0.95rem] font-semibold text-white transition hover:bg-[#0f996f] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
-            {loading ? "Menyimpan..." : step === totalSteps ? "Selesai" : "Lanjut"}
+            {loading ? "Menyimpan..." : step === totalSteps ? "Selesai" : step === 4 && !weight && !height && !age ? "Lewati" : "Lanjut"}
           </button>
         </div>
       </div>
     </div>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6 text-[#13b987]">
-      <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

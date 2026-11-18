@@ -1,13 +1,53 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
+import { addDays, atJakartaTime, jakartaDayOfWeek } from '@/lib/week';
+
+const weeklyBoxSelect = {
+  id: true,
+  weekStartDate: true,
+  weekEndDate: true,
+  selectionDeadline: true,
+  isAutoSelected: true,
+  status: true,
+  mealSelections: {
+    select: {
+      id: true,
+      dayOfWeek: true,
+      mealType: true,
+      serving: true,
+      recipe: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          calories: true,
+          protein: true,
+          imageUrl: true,
+          ingredients: {
+            select: {
+              quantity: true,
+              unit: true,
+              ingredient: {
+                select: { name: true }
+              }
+            }
+          }
+        },
+      },
+    },
+    orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
+  },
+} satisfies Prisma.WeeklyBoxSelect;
 
 export const getDashboard = async (userId: string) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Deliveries use the Jakarta day; week boxes still use the server clock (see src/lib/week.ts).
+    const deliveryDayStart = atJakartaTime(new Date(), 0);
+    const deliveryDayEnd = addDays(deliveryDayStart, 1);
 
     // Ambil semua data secara paralel untuk efisiensi
     const [
@@ -70,42 +110,7 @@ export const getDashboard = async (userId: string) => {
           weekStartDate: { lte: today },
           weekEndDate: { gte: today },
         },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              mealType: true,
-              serving: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
-                  ingredients: {
-                    select: {
-                      quantity: true,
-                      unit: true,
-                      ingredient: {
-                        select: { name: true }
-                      }
-                    }
-                  }
-                },
-              },
-            },
-            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
-          },
-        },
+        select: weeklyBoxSelect,
       }),
 
       // 3b. WeeklyBox terdekat ke depan kalau minggu berjalan belum ada
@@ -115,40 +120,7 @@ export const getDashboard = async (userId: string) => {
           weekStartDate: { gt: today },
         },
         orderBy: { weekStartDate: 'asc' },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              mealType: true,
-              serving: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
-                  ingredients: {
-                    select: {
-                      quantity: true,
-                      unit: true,
-                      ingredient: { select: { name: true } }
-                    }
-                  }
-                },
-              },
-            },
-            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
-          },
-        },
+        select: weeklyBoxSelect,
       }),
 
       // 3d. WeeklyBox minggu setelah minggu depan (skip 1)
@@ -159,40 +131,7 @@ export const getDashboard = async (userId: string) => {
         },
         orderBy: { weekStartDate: 'asc' },
         skip: 1,
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              mealType: true,
-              serving: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
-                  ingredients: {
-                    select: {
-                      quantity: true,
-                      unit: true,
-                      ingredient: { select: { name: true } }
-                    }
-                  }
-                },
-              },
-            },
-            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
-          },
-        },
+        select: weeklyBoxSelect,
       }),
 
       // 3e. Menu katalog minggu depan dan berikutnya (untuk space kosong kanan)
@@ -226,49 +165,17 @@ export const getDashboard = async (userId: string) => {
       prisma.weeklyBox.findFirst({
         where: { userId },
         orderBy: { weekStartDate: 'desc' },
-        select: {
-          id: true,
-          weekStartDate: true,
-          weekEndDate: true,
-          selectionDeadline: true,
-          isAutoSelected: true,
-          status: true,
-          mealSelections: {
-            select: {
-              id: true,
-              dayOfWeek: true,
-              mealType: true,
-              serving: true,
-              recipe: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true,
-                  calories: true,
-                  protein: true,
-                  imageUrl: true,
-                  ingredients: {
-                    select: {
-                      quantity: true,
-                      unit: true,
-                      ingredient: { select: { name: true } }
-                    }
-                  }
-                },
-              },
-            },
-            orderBy: [{ dayOfWeek: 'asc' }, { mealType: 'asc' }],
-          },
-        },
+        select: weeklyBoxSelect,
       }),
 
       // 4. Delivery hari ini
       prisma.delivery.findFirst({
+        orderBy: { deliveryDate: 'asc' },
         where: {
           userId,
           deliveryDate: {
-            gte: today,
-            lt: tomorrow,
+            gte: deliveryDayStart,
+            lt: deliveryDayEnd,
           },
         },
         select: {
@@ -291,7 +198,7 @@ export const getDashboard = async (userId: string) => {
               mealSelections: {
                 where: {
                   // Ambil meal selection untuk hari ini berdasarkan nama hari
-                  dayOfWeek: getDayOfWeekEnum(new Date()),
+                  dayOfWeek: jakartaDayOfWeek(new Date()),
                 },
                 select: {
                   recipe: {
@@ -393,8 +300,3 @@ export const getDashboard = async (userId: string) => {
     );
   }
 };
-
-function getDayOfWeekEnum(date: Date) {
-  const days = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'] as const;
-  return days[date.getDay()];
-}

@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { verifyRole } from '@/lib/auth';
 
 const getForecastServiceUrl = () => {
   if (process.env.FORECAST_SERVICE_URL) {
@@ -11,21 +12,17 @@ const getForecastServiceUrl = () => {
 };
 
 const FORECAST_SERVICE_URL = getForecastServiceUrl();
+// Shared secret so only this app can call the Python service.
+const FORECAST_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Internal-Key': process.env.FORECAST_INTERNAL_KEY ?? '',
+};
 
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
 
-async function verifyAdmin(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  if (!user || user.role !== 'ADMIN') {
-    return { error: 'Forbidden. Admin access required.', status: 403 };
-  }
-  return null;
-}
+const verifyAdmin = (userId: string) => verifyRole(userId, 'ADMIN');
 
 // ---------------------------------------------------------------------------
 // Generate Forecast — calls Python ML service
@@ -38,7 +35,7 @@ export async function generateForecast(userId: string, weekStartDate: string) {
   try {
     const forecastRes = await fetch(`${FORECAST_SERVICE_URL}/forecast`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: FORECAST_HEADERS,
       body: JSON.stringify({ week_start_date: weekStartDate }),
       signal: AbortSignal.timeout(30000),
     });
@@ -53,7 +50,7 @@ export async function generateForecast(userId: string, weekStartDate: string) {
     // Auto-save to DB
     await fetch(`${FORECAST_SERVICE_URL}/forecast/save`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: FORECAST_HEADERS,
       body: JSON.stringify(forecastData),
       signal: AbortSignal.timeout(30000),
     }).catch(() => {
@@ -202,7 +199,7 @@ export async function updateActualUsage(
   try {
     const res = await fetch(`${FORECAST_SERVICE_URL}/forecast/actual`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: FORECAST_HEADERS,
       body: JSON.stringify({
         week_start_date: weekStartDate,
         ingredient_id: ingredientId,
@@ -247,37 +244,36 @@ export async function fulfillPO(
     return { error: `Purchase Order dengan ID ${poId} tidak ditemukan.`, status: 404 };
   }
 
-  if (po.status === 'FULFILLED') {
-    return { error: 'Purchase Order ini sudah berstatus FULFILLED.', status: 400 };
+  if (po.status === 'FULFILLED' || po.status === 'CANCELLED') {
+    return { error: `Purchase Order ini sudah berstatus ${po.status}.`, status: 400 };
   }
 
-  const receivedQty = actualReceivedQtyKg !== undefined && !isNaN(actualReceivedQtyKg) && actualReceivedQtyKg > 0
+  const receivedQty = actualReceivedQtyKg !== undefined && Number.isFinite(actualReceivedQtyKg) && actualReceivedQtyKg > 0
     ? actualReceivedQtyKg
     : Number(po.orderedQtyKg);
 
-  const stockBefore = po.ingredient.stockKg || 0;
-  const stockAfter = stockBefore + receivedQty;
-
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  const randomSuffix = crypto.randomUUID().slice(0, 8).toUpperCase(); // unique code column: 4 random digits collided
   const ledgerCode = `#BB-PO-${String(randomSuffix).padStart(4, '0')}`;
   const refCode = `PO/${po.farmer.name.replace(/\s+/g, '-').toUpperCase()}/${randomSuffix}`;
 
-  const [updatedPO, updatedIngredient, createdLedger] = await prisma.$transaction([
-    prisma.farmerPurchaseOrder.update({
-      where: { id: poId },
+  const result = await prisma.$transaction(async (tx) => {
+    // Conditional update: a second concurrent fulfill matches 0 rows and adds no stock.
+    const claimed = await tx.farmerPurchaseOrder.updateMany({
+      where: { id: poId, status: { in: ['DRAFT', 'CONFIRMED'] } },
       data: {
         status: 'FULFILLED',
         orderedQtyKg: receivedQty,
         totalPrice: receivedQty * Number(po.pricePerKg),
       },
-    }),
-    prisma.ingredient.update({
+    });
+    if (claimed.count === 0) return null;
+
+    const updatedIngredient = await tx.ingredient.update({
       where: { id: po.ingredientId },
-      data: {
-        stockKg: stockAfter,
-      },
-    }),
-    prisma.ingredientLedger.create({
+      data: { stockKg: { increment: receivedQty } },
+    });
+    const updatedPO = await tx.farmerPurchaseOrder.findUnique({ where: { id: poId } });
+    const createdLedger = await tx.ingredientLedger.create({
       data: {
         ingredientId: po.ingredientId,
         sourceType: 'PO_FULFILLMENT',
@@ -287,12 +283,18 @@ export async function fulfillPO(
         purchaseOrderId: poId,
         adminUserId: userId,
         qtyChangeKg: receivedQty,
-        stockBeforeKg: stockBefore,
-        stockAfterKg: stockAfter,
+        stockBeforeKg: updatedIngredient.stockKg - receivedQty,
+        stockAfterKg: updatedIngredient.stockKg,
         notes: `Penerimaan panen dari ${po.farmer.name} (PO: ${poId.slice(-6)})`,
       },
-    }),
-  ]);
+    });
+    return { updatedPO, updatedIngredient, createdLedger };
+  });
+
+  if (!result) {
+    return { error: 'Purchase Order ini sudah diproses.', status: 409 };
+  }
+  const { updatedPO, updatedIngredient, createdLedger } = result;
 
   return {
     data: {

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { BrainCircuit, LoaderCircle } from 'lucide-react';
 import { ForecastHeader } from './ForecastHeader';
 import { SummaryCards } from './SummaryCards';
 import { FarmerGroup } from './FarmerGroup';
-import { BrainCircuit } from 'lucide-react';
+import { FulfillModal } from './FulfillModal';
+import styles from '../operations/role-portal-screen.module.css';
 
 export function ForecastingPage() {
   const getMonday = (d: Date) => {
@@ -16,18 +18,19 @@ export function ForecastingPage() {
   const [data, setData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  
+  const [toast, setToast] = useState<string | null>(null);
+  const [fulfillItem, setFulfillItem] = useState<any | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const showToast = (msg: string) => {
-    const el = document.createElement('div');
-    el.className = 'fixed bottom-6 right-6 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 transform translate-y-0 opacity-100 font-medium text-sm flex items-center gap-2 border border-gray-700';
-    el.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> <span>${msg}</span>`;
-    document.body.appendChild(el);
-    setTimeout(() => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(10px)';
-      setTimeout(() => el.remove(), 300);
-    }, 3000);
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -38,7 +41,6 @@ export function ForecastingPage() {
       setData(json.data || json);
     } catch (err: any) {
       console.error(err);
-      // Fail silently if endpoint is not fully wired up yet in Next.js, just for preview
     } finally {
       setIsLoading(false);
     }
@@ -56,11 +58,11 @@ export function ForecastingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weekStartDate: selectedWeek })
       });
-      if (!res.ok) throw new Error('Gagal melakukan generate prediksi AI');
-      showToast('Berhasil men-generate prediksi');
+      if (!res.ok) throw new Error('Gagal membuat prediksi AI');
+      showToast('Prediksi berhasil dibuat');
       await fetchData();
     } catch (err: any) {
-      showToast(err.message || 'Gagal generate');
+      showToast(err.message || 'Gagal membuat prediksi');
     } finally {
       setIsGenerating(false);
     }
@@ -74,10 +76,10 @@ export function ForecastingPage() {
         body: JSON.stringify({ orderedQtyKg })
       });
       if (!res.ok) throw new Error('Gagal mengkonfirmasi PO');
-      showToast('PO Terkonfirmasi');
+      showToast('PO dikonfirmasi');
       fetchData();
     } catch (err: any) {
-      showToast(err.message || 'Error confirm');
+      showToast(err.message || 'Gagal konfirmasi');
     }
   };
 
@@ -89,10 +91,10 @@ export function ForecastingPage() {
         body: JSON.stringify({ weekStartDate: selectedWeek })
       });
       if (!res.ok) throw new Error('Gagal mengkonfirmasi semua PO');
-      showToast('Semua PO berhasil dikonfirmasi');
+      showToast('Semua PO dikonfirmasi');
       fetchData();
     } catch (err: any) {
-      showToast(err.message || 'Error confirm all');
+      showToast(err.message || 'Gagal konfirmasi semua');
     }
   };
 
@@ -101,79 +103,79 @@ export function ForecastingPage() {
       const res = await fetch(`/api/admin/forecast/${poId}/cancel`, {
         method: 'PATCH'
       });
-      if (!res.ok) throw new Error('Gagal cancel PO');
-      showToast('PO Dibatalkan');
+      if (!res.ok) throw new Error('Gagal membatalkan PO');
+      showToast('PO dibatalkan');
       fetchData();
     } catch (err: any) {
-      showToast(err.message || 'Error cancel');
+      showToast(err.message || 'Gagal membatalkan');
     }
+  };
+
+  const handleFulfillConfirm = async (actualQtyKg: number) => {
+    if (!fulfillItem) return;
+    const res = await fetch(`/api/admin/forecast/${fulfillItem.id}/fulfill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actualReceivedQtyKg: actualQtyKg }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Gagal memproses penerimaan panen');
+    showToast(`Panen diterima, +${actualQtyKg.toFixed(1)} kg masuk gudang`);
+    fetchData();
   };
 
   const hasData = data && data.length > 0;
 
   return (
-    <div className="w-full bg-slate-50/50 min-h-screen rounded-2xl">
-      <ForecastHeader 
-        selectedWeek={selectedWeek} 
-        setSelectedWeek={setSelectedWeek} 
-        isGenerating={isGenerating} 
-        onGenerate={handleGenerate} 
+    <div>
+      <ForecastHeader
+        selectedWeek={selectedWeek}
+        setSelectedWeek={setSelectedWeek}
+        isGenerating={isGenerating}
+        onGenerate={handleGenerate}
         onConfirmAll={handleConfirmAll}
         data={data}
       />
 
       {isLoading ? (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-             {[1,2,3,4].map(i => <div key={i} className="h-28 bg-gray-200/50 rounded-xl animate-pulse"></div>)}
+        <div aria-busy="true">
+          <div className={styles.kpiGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+            {[1, 2, 3, 4].map((i) => <div key={i} className={styles.skeleton} style={{ height: 96 }} />)}
           </div>
-          <div className="h-64 bg-gray-200/50 rounded-xl animate-pulse"></div>
+          <div className={styles.skeleton} style={{ height: 240 }} />
         </div>
       ) : hasData ? (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <>
           <SummaryCards data={data} />
-          <div className="space-y-6">
-            {data.map((group: any, idx: number) => (
-              <FarmerGroup 
-                key={group.farmer?.id || idx} 
-                farmerData={group} 
-                onConfirm={handleConfirm}
-                onCancel={handleCancel}
-              />
-            ))}
-          </div>
-        </div>
+          {data.map((group: any, idx: number) => (
+            <FarmerGroup
+              key={group.farmer?.id || idx}
+              farmerData={group}
+              onConfirm={handleConfirm}
+              onCancel={handleCancel}
+              onOpenFulfill={setFulfillItem}
+            />
+          ))}
+        </>
       ) : (
-        <div className="flex flex-col items-center justify-center p-16 bg-white border border-gray-200 rounded-2xl shadow-sm text-center animate-in fade-in duration-500">
-          <div className="bg-blue-50 p-5 rounded-full mb-6 border border-blue-100">
-            <BrainCircuit className="w-12 h-12 text-blue-600" strokeWidth={1.5} />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum Ada Data Prediksi</h3>
-          <p className="text-gray-500 max-w-md mx-auto mb-8 text-base">
-            Belum ada prediksi kebutuhan bahan baku untuk minggu <span className="font-semibold text-gray-700">{selectedWeek}</span>. Klik tombol di bawah untuk meminta AI memproses prediksi berdasarkan histori dan meal plan.
+        <div className={styles.emptyCard}>
+          <BrainCircuit aria-hidden="true" strokeWidth={1.5} />
+          <h2>Belum ada prediksi</h2>
+          <p>
+            Belum ada prediksi kebutuhan bahan baku untuk minggu {selectedWeek}. AI menghitung kebutuhan dari pesanan yang sudah terkunci, lalu dikurangi stok gudang.
           </p>
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-3.5 rounded-xl font-semibold shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none"
-          >
-            {isGenerating ? (
-              <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Sedang Menghitung Model...
-              </>
-            ) : (
-              <>
-                <BrainCircuit size={20} />
-                Generate Prediksi AI Sekarang
-              </>
-            )}
+          <button type="button" className={styles.actionCard} onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? <LoaderCircle className={styles.spin} aria-hidden="true" /> : <BrainCircuit aria-hidden="true" />}
+            {isGenerating ? 'Menghitung...' : 'Buat Prediksi'}
           </button>
         </div>
       )}
+
+      {fulfillItem && (
+        <FulfillModal item={fulfillItem} onClose={() => setFulfillItem(null)} onConfirm={handleFulfillConfirm} />
+      )}
+
+      {toast && <div className={styles.toast} role="status">{toast}</div>}
     </div>
   );
 }

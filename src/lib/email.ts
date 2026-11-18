@@ -24,11 +24,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     `,
   });
 
-  console.log('==========================================');
-  console.log('RESET LINK:', resetLink);
   if (error) console.error('Resend API Error:', error);
-  else console.log('Resend Success:', data);
-  console.log('==========================================');
 
   return { data, error };
 }

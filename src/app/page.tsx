@@ -5,18 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { ArrowRight, Check, ChevronDown, UserRound } from "lucide-react";
 
 type Feature = {
-  title: string;
-  description: string;
-  icon: "leaf" | "chef" | "clock" | "truck" | "heart" | "award";
+  stat: string;
+  label: string;
 };
 
 type Step = {
   number: string;
   title: string;
   description: string;
-  tone: string;
 };
 
 type Testimonial = {
@@ -24,13 +23,13 @@ type Testimonial = {
   role: string;
   quote: string;
   initial: string;
-  tilt: string;
 };
 
 type PricingPlan = {
   name: string;
   price: string;
   period: string;
+  perWeek?: string;
   description: string;
   benefits: string[];
   popular?: boolean;
@@ -65,90 +64,46 @@ const selectPlanHref = "/subscription/select-plan";
 const dashboardHref = "/dashboard";
 
 const features: Feature[] = [
-  {
-    title: "100% Fresh",
-    description: "Bahan organik pilihan setiap hari",
-    icon: "leaf",
-  },
-  {
-    title: "Chef Berpengalaman",
-    description: "Diracik oleh chef profesional",
-    icon: "chef",
-  },
-  {
-    title: "Hemat Waktu",
-    description: "Siap masak dalam 15 menit",
-    icon: "clock",
-  },
-  {
-    title: "Gratis Ongkir",
-    description: "Diantar langsung ke rumah Anda",
-    icon: "truck",
-  },
-  {
-    title: "Nutrisi Seimbang",
-    description: "Dirancang ahli gizi profesional",
-    icon: "heart",
-  },
-  {
-    title: "Kualitas Terjamin",
-    description: "Sertifikasi BPOM & Halal",
-    icon: "award",
-  },
+  { stat: "7", label: "nilai gizi tercatat di tiap menu" },
+  { stat: "1-6", label: "porsi, bahan sudah ditimbang" },
+  { stat: "2x", label: "antar sehari, siang dan malam" },
+  { stat: "0", label: "kontrak, berhenti kapan saja" },
 ];
 
 const steps: Step[] = [
   {
-    number: "1",
-    title: "Pilih Plan",
-    description: "Sesuaikan dengan kebutuhan Anda",
-    tone: "bg-[#d2f5df]",
+    number: "01",
+    title: "Pilih Paket",
+    description: "Tentukan durasi langganan, jumlah porsi, dan target kesehatanmu.",
   },
   {
-    number: "2",
+    number: "02",
     title: "Atur Menu",
-    description: "Pilih menu favorit setiap minggu",
-    tone: "bg-[#ffe0dc]",
+    description: "Pilih menu makan siang dan malam tiap minggu dari racikan ahli gizi.",
   },
   {
-    number: "3",
+    number: "03",
     title: "Terima Paket",
-    description: "Diantar fresh ke rumah Anda",
-    tone: "bg-[#dceefe]",
+    description: "Bahan segar yang sudah diporsi diantar langsung ke alamatmu.",
   },
   {
-    number: "4",
+    number: "04",
     title: "Masak & Nikmati",
-    description: "Siap dalam 15 menit!",
-    tone: "bg-[#fff1ce]",
+    description: "Ikuti resep praktis, hidangan sehat siap dalam sekitar 15 menit.",
   },
 ];
 
 const testimonials: Testimonial[] = [
-  {
-    name: "Sarah Wijaya",
-    role: "Ibu Rumah Tangga",
-    quote:
-      "FromFram benar-benar membantu saya! Sekarang saya punya lebih banyak waktu untuk keluarga tanpa khawatir soal menu makan sehat.",
-    initial: "S",
-    tilt: "lg:-rotate-1",
-  },
-  {
-    name: "Ahmad Rizki",
-    role: "Fitness Enthusiast",
-    quote:
-      "Menu fitness-nya perfect untuk program gym saya. High protein, rendah karbo, dan rasanya enak banget!",
-    initial: "A",
-    tilt: "lg:rotate-1",
-  },
-  {
-    name: "Linda Kusuma",
-    role: "Profesional",
-    quote:
-      "Sebagai working mom, FromFram jadi penyelamat. Gak perlu mikir menu lagi, tinggal masak 15 menit langsung siap.",
-    initial: "L",
-    tilt: "lg:-rotate-1",
-  },
+  { name: "Sarah Wijaya", role: "Ibu rumah tangga", initial: "S", quote: "Sekarang saya punya lebih banyak waktu untuk keluarga tanpa pusing soal menu sehat." },
+  { name: "Ahmad Rizki", role: "Rutin gym", initial: "A", quote: "Menu bulking-nya pas untuk program latihan saya. Protein tinggi dan rasanya enak." },
+  { name: "Linda Kusuma", role: "Ibu bekerja", initial: "L", quote: "Gak perlu mikir menu lagi. Tinggal masak 15 menit, makan malam langsung siap." },
+  { name: "Dimas Pratama", role: "Mahasiswa", initial: "D", quote: "Bahannya sudah ditimbang, jadi gak ada sisa sayur busuk di kulkas lagi." },
+  { name: "Nadia Putri", role: "Desainer", initial: "N", quote: "Label gizinya lengkap. Saya jadi tahu persis berapa kalori yang saya makan." },
+  { name: "Rudi Hartono", role: "Karyawan swasta", initial: "R", quote: "Kirim ke kantor siang, ke rumah malam. Alamatnya bisa diatur per hari." },
+  { name: "Maya Anggraini", role: "Program diet", initial: "M", quote: "Turun 4 kg dalam dua bulan tanpa merasa kelaparan. Porsinya pas." },
+  { name: "Fajar Nugroho", role: "Ayah dua anak", initial: "F", quote: "Satu paket cukup untuk empat orang. Anak-anak juga suka menunya." },
+  { name: "Citra Lestari", role: "Pekerja remote", initial: "C", quote: "Minggu depan liburan? Tinggal skip, tanpa ribet hubungi CS." },
+  { name: "Yoga Saputra", role: "Pelari", initial: "Y", quote: "Menunya ganti tiap minggu, jadi gak bosan. Selalu ada yang baru dicoba." },
 ];
 
 const pricingPlans: PricingPlan[] = [
@@ -163,16 +118,18 @@ const pricingPlans: PricingPlan[] = [
     name: "Bulanan",
     price: "Rp 1.200.000",
     period: "/bln",
-    description: "Hemat 14% dari plan mingguan",
-    benefits: ["28 hari meal kit", "Gratis ongkir", "Priority support", "Discount 14%"],
+    perWeek: "Rp 300.000 / minggu",
+    description: "Hemat 14% dibanding paket mingguan",
+    benefits: ["28 hari meal kit", "Gratis ongkir", "Layanan prioritas", "Hemat 14%"],
     popular: true,
   },
   {
     name: "Tahunan",
     price: "Rp 12.000.000",
     period: "/thn",
-    description: "Hemat 29% dari plan mingguan",
-    benefits: ["365 hari meal kit", "Gratis ongkir", "Priority support", "1 minggu gratis"],
+    perWeek: "± Rp 231.000 / minggu",
+    description: "Hemat 34% dibanding paket mingguan",
+    benefits: ["365 hari meal kit", "Gratis ongkir", "Layanan prioritas", "1 minggu gratis"],
   },
 ];
 
@@ -183,34 +140,59 @@ const faqItems: FaqItem[] = [
       "Ya, semua bahan sudah ditimbang dan diporsi sesuai resep, sehingga Anda tinggal memasaknya.",
   },
   {
-    question: "Apakah bisa memilih menu mingguan?",
+    question: "Bagaimana cara memilih menu mingguan?",
     answer:
-      "Bisa. Anda dapat memilih menu favorit setiap minggu sebelum paket diproses dan dikirim.",
+      "Setiap minggu ahli gizi kami menyiapkan daftar menu. Pilih menu makan siang dan makan malam untuk tiap hari dari halaman dashboard.",
+  },
+  {
+    question: "Kapan batas waktu memilih menu?",
+    answer:
+      "Pilihan menu untuk minggu berikutnya ditutup setiap hari Minggu pukul 18.00 WIB. Setelah itu menu dikunci dan pesanan mulai disiapkan.",
+  },
+  {
+    question: "Jam berapa paket diantar?",
+    answer:
+      "Makan siang diantar sekitar pukul 11.30 WIB dan makan malam sekitar pukul 17.30 WIB, setiap hari sesuai jadwal langganan Anda.",
+  },
+  {
+    question: "Bisakah alamat pengiriman berbeda untuk tiap hari?",
+    answer:
+      "Bisa. Simpan beberapa alamat, misalnya rumah dan kantor, lalu atur alamat mana yang dipakai untuk tiap hari dan waktu makan.",
+  },
+  {
+    question: "Untuk berapa orang satu paket?",
+    answer:
+      "Anda bisa memilih 1 sampai 6 porsi per waktu makan saat berlangganan, sesuai jumlah anggota keluarga.",
   },
   {
     question: "Apakah tersedia paket diet atau fitness?",
     answer:
-      "Tersedia paket diet seimbang dan fitness meal dengan komposisi nutrisi yang lebih terukur.",
+      "Ya. Pilih target kesehatan seperti penurunan berat badan, menjaga berat badan, atau bulking, dan menu yang ditampilkan akan disesuaikan. Target bisa diganti kapan saja.",
   },
   {
-    question: "Berapa lama proses memasaknya?",
+    question: "Apakah informasi gizi dan alergen tersedia?",
     answer:
-      "Sebagian besar menu dirancang siap dalam sekitar 15 menit dengan langkah masak yang praktis.",
-  },
-];
-
-const footerGroups = [
-  {
-    title: "Produk",
-    links: ["Menu", "Harga", "Kategori"],
+      "Setiap resep mencantumkan kalori, protein, karbohidrat, lemak, serat, gula, dan natrium per porsi. Bahan yang mengandung alergen ditandai oleh tim kami.",
   },
   {
-    title: "Perusahaan",
-    links: ["Tentang Kami", "Blog", "Karir"],
+    question: "Bagaimana jika saya sedang tidak di rumah satu minggu?",
+    answer:
+      "Lewati (skip) pengiriman minggu tersebut sebelum batas pemilihan menu, atau jeda langganan sampai tanggal yang Anda tentukan.",
   },
   {
-    title: "Bantuan",
-    links: ["FAQ", "Kontak", "Syarat & Ketentuan"],
+    question: "Bisakah saya membatalkan langganan?",
+    answer:
+      "Bisa kapan saja. Langganan tetap aktif sampai akhir periode yang sudah dibayar, lalu berhenti otomatis tanpa tagihan berikutnya.",
+  },
+  {
+    question: "Bisakah saya mengganti paket atau jumlah porsi?",
+    answer:
+      "Paket dan jumlah porsi bisa diubah sebelum pembayaran. Setelah lunas, perubahan berlaku untuk periode langganan berikutnya.",
+  },
+  {
+    question: "Metode pembayaran apa saja yang tersedia?",
+    answer:
+      "Pembayaran diproses aman melalui Midtrans dengan QRIS (semua e-wallet dan mobile banking) atau transfer bank virtual account.",
   },
 ];
 
@@ -232,80 +214,57 @@ function BrandMark() {
   );
 }
 
-function FeatureIcon({ icon }: { icon: Feature["icon"] }) {
-  const iconClassName = "h-5 w-5";
-
-  if (icon === "leaf") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path d="M20 4S13 3 8.5 7.5C5 11 5 16 5 16s5 0 8.5-3.5C18 8 20 4 20 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4 20c1.5-2.5 3.4-4.4 5.8-5.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (icon === "chef") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path d="M7 10h10a3 3 0 0 1 3 3v4H4v-4a3 3 0 0 1 3-3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 10V9a4 4 0 1 1 8 0v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (icon === "clock") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 8v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (icon === "truck") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path d="M3 7h11v8H3z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M14 10h3l3 3v2h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="7.5" cy="18" r="1.5" fill="currentColor" />
-        <circle cx="17.5" cy="18" r="1.5" fill="currentColor" />
-      </svg>
-    );
-  }
-
-  if (icon === "heart") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-        <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
+/** Soft background ornaments: blurred blobs plus a faded dot grid. Pure CSS. */
+function SectionDecor({ tone = "mint", flip = false }: { tone?: "mint" | "sand"; flip?: boolean }) {
+  const blob = tone === "mint" ? "bg-[#13b987]/15" : "bg-[#f5c56b]/20";
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={iconClassName}>
-      <path d="M12 4 6.5 6v5c0 4 2.5 7.2 5.5 9 3-1.8 5.5-5 5.5-9V6L12 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="m9.5 12 2 2 3-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-0 overflow-hidden">
+      <div className={`absolute h-80 w-80 rounded-full blur-3xl ${blob} ${flip ? "-left-24 -top-24" : "-right-24 -top-24"}`} />
+      <div className={`absolute h-72 w-72 rounded-full bg-[#13b987]/10 blur-3xl ${flip ? "-bottom-32 -right-16" : "-bottom-32 -left-16"}`} />
+      <div
+        className={`absolute top-10 h-56 w-56 opacity-60 [background-image:radial-gradient(rgba(8,123,88,0.22)_1.5px,transparent_1.5px)] [background-size:18px_18px] [mask-image:radial-gradient(circle,black,transparent_70%)] ${flip ? "right-6" : "left-6"}`}
+      />
+    </div>
   );
 }
 
-function ProfileIcon() {
+const testimonialTones = [
+  "bg-white text-neutral-800",
+  "bg-[#087b58] text-white",
+  "bg-[#fff1ce] text-neutral-800",
+  "bg-[#d8f5e7] text-neutral-800",
+];
+
+function TestimonialCard({ item, index }: { item: Testimonial; index: number }) {
+  const tone = testimonialTones[index % testimonialTones.length];
+  const dark = tone.includes("text-white");
   return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="2" />
-    </svg>
+    <figure className={`flex h-full w-[300px] shrink-0 flex-col justify-between rounded-3xl p-6 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:w-[360px] sm:p-7 ${tone}`}>
+      <blockquote className="text-[1.05rem] font-medium leading-7">&ldquo;{item.quote}&rdquo;</blockquote>
+      <figcaption className="mt-5 flex items-center gap-3">
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${dark ? "bg-white text-[#087b58]" : "bg-[#087b58] text-white"}`}>
+          {item.initial}
+        </span>
+        <span>
+          <span className="block text-sm font-bold">{item.name}</span>
+          <span className={`block text-xs ${dark ? "text-white/70" : "text-neutral-500"}`}>{item.role}</span>
+        </span>
+      </figcaption>
+    </figure>
   );
 }
 
-function StarRow() {
+/** Endless horizontal scroll (@keyframes marquee in globals.css). The list is rendered twice and shifted by half its width. */
+function TestimonialMarquee({ items }: { items: Testimonial[] }) {
   return (
-    <div className="flex items-center gap-1 text-[#ffbf1f]">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <svg key={index} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" className="h-4 w-4">
-          <path d="m10 1.7 2.1 4.7 5.1.5-3.8 3.4 1.1 5-4.5-2.6-4.5 2.6 1.1-5-3.8-3.4 5.1-.5L10 1.7Z" />
-        </svg>
-      ))}
+    <div className="group relative overflow-hidden py-2 [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
+      <div className="flex w-max items-stretch animate-[marquee_60s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {[...items, ...items].map((item, i) => (
+          <div key={`${item.name}-${i}`} aria-hidden={i >= items.length} className="flex pr-5">
+            <TestimonialCard item={item} index={i % items.length} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -350,20 +309,6 @@ function SectionHeading({
   );
 }
 
-function CheckIcon({ active = false }: { active?: boolean }) {
-  return (
-    <span
-      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-[#1db788]/40 text-[11px] font-black ${
-        active ? "bg-[#13b987] text-white" : "bg-black text-white"
-      }`}
-    >
-      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="h-3 w-3">
-        <path d="M2.2 6.1 4.8 8.7 9.8 3.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
-  );
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -381,7 +326,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<AuthMeResponse["user"] | null>(null);
   const [isCheckingCta, setIsCheckingCta] = useState(false);
-  const [openFaq, setOpenFaq] = useState(-1);
+  const [openFaq, setOpenFaq] = useState<Set<number>>(() => new Set());
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
 
@@ -526,7 +471,7 @@ export default function Home() {
                 {user?.avatarUrl ? (
                   <Image src={user.avatarUrl} alt="Profile" width={40} height={40} className="h-full w-full object-cover" />
                 ) : (
-                  <ProfileIcon />
+                  <UserRound aria-hidden="true" className="h-5 w-5" />
                 )}
               </Link>
             </div>
@@ -550,23 +495,16 @@ export default function Home() {
         <HeroFoodDecorations />
 
         <div className="relative z-10 mx-auto max-w-5xl px-4 py-20 text-center sm:px-6 sm:py-24 lg:px-8 lg:py-28">
-          <motion.span 
-            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-            className="inline-flex items-center rounded-full border-2 border-[#1db788]/40 bg-white px-4 py-2 text-xs font-black text-[#13b987] shadow-sm sm:text-sm"
-          >
-            ✨ Fresh & Healthy Meal Subscription
-          </motion.span>
-
           <motion.h1 
             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.1, type: "spring" }}
-            className="mx-auto mt-8 max-w-4xl text-5xl font-black leading-[0.98] tracking-tight text-[#087b58] sm:text-7xl lg:text-8xl"
+            className="mx-auto max-w-5xl text-5xl font-black leading-[1.02] tracking-tight text-balance text-[#087b58] sm:text-6xl lg:text-7xl xl:text-[5rem]"
           >
-            Makanan Sehat, <br/><span className="text-[#13b987]">Diantar Setiap Hari.</span>
+            Makanan Sehat, <br className="hidden sm:block" /><span className="text-[#13b987]">Diantar Setiap Hari.</span>
           </motion.h1>
 
           <motion.p 
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-            className="mx-auto mt-6 max-w-2xl text-base font-semibold leading-7 text-neutral-700 sm:text-lg"
+            className="mx-auto mt-6 max-w-xl text-base leading-7 text-neutral-600 text-pretty sm:text-lg sm:leading-8"
           >
             Meal kit segar dengan resep praktis yang dirancang ahli gizi. Hemat waktu, tetap sehat, dan nikmati setiap hidangannya!
           </motion.p>
@@ -579,15 +517,15 @@ export default function Home() {
               type="button"
               onClick={handleSubscriptionCtaClick}
               disabled={isCheckingCta}
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-[#13b987] px-7 py-3 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto cursor-pointer"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#13b987] px-7 py-3.5 text-[0.95rem] font-bold text-white shadow-[0_10px_24px_rgba(19,185,135,0.28)] transition hover:-translate-y-0.5 hover:bg-[#0f996f] disabled:opacity-70 sm:w-auto cursor-pointer"
             >
-              Mulai Berlangganan
-              <span aria-hidden="true" className="ml-2">-&gt;</span>
+              {isCheckingCta ? "Memeriksa..." : "Mulai Berlangganan"}
+              <ArrowRight aria-hidden="true" className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </button>
             <a
               href="#features"
               onClick={(e) => scrollToSection(e, 'features')}
-              className="inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-white px-7 py-3 text-sm font-black text-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] sm:w-auto cursor-pointer"
+              className="inline-flex w-full items-center justify-center rounded-full border border-neutral-300 bg-white/80 px-7 py-3.5 text-[0.95rem] font-semibold text-neutral-800 transition hover:border-neutral-400 hover:bg-white sm:w-auto cursor-pointer"
             >
               Pelajari Lebih Lanjut
             </a>
@@ -595,204 +533,160 @@ export default function Home() {
 
           <motion.div 
             initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.7 }}
-            className="mx-auto mt-14 grid max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3"
+            className="mx-auto mt-14 grid max-w-2xl grid-cols-3 divide-x divide-neutral-200 rounded-2xl border border-neutral-200 bg-white/90 py-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur"
           >
             {[
-              ["10K+", "Member Aktif"],
-              ["50+", "Menu Variatif"],
-              ["4.9", "Rating Pengguna"],
-            ].map(([value, label], idx) => (
-              <div key={label} className="rounded-[18px] border-2 border-[#1db788]/40 bg-white px-4 py-5 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:scale-105">
-                <p className="text-4xl font-black tracking-tight text-[#13b987]">{value}</p>
-                <p className="mt-1 text-sm font-bold text-neutral-600">{label}</p>
+              ["10K+", "Member aktif"],
+              ["50+", "Menu variatif"],
+              ["4.9", "Rating pengguna"],
+            ].map(([value, label]) => (
+              <div key={label} className="px-2 sm:px-4">
+                <p className="text-2xl font-black tracking-tight text-[#0f8f69] sm:text-4xl">{value}</p>
+                <p className="mt-1 text-xs font-medium text-neutral-500 sm:text-sm">{label}</p>
               </div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      <section id="features" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
-            <SectionHeading
-              align="left"
-              title="Kenapa Pilih FromFram?"
-              subtitle="Kami berkomitmen memberikan pengalaman terbaik untuk gaya hidup sehat Anda."
-            />
+      <section id="features" className="relative isolate scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
+        <SectionDecor tone="sand" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Makan sehat, tanpa harus mikir." />
           </motion.div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <dl className="mx-auto mt-14 grid max-w-5xl grid-cols-2 gap-y-10 lg:grid-cols-4 lg:divide-x lg:divide-neutral-200">
             {features.map((feature, idx) => (
-              <motion.article
-                key={feature.title}
-                initial={{ opacity: 0, y: 50 }}
+              <motion.div
+                key={feature.label}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
-                className="rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-2 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
+                transition={{ duration: 0.5, delay: idx * 0.08 }}
+                className="flex flex-col items-center px-4 text-center"
               >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-[12px] border-2 border-[#1db788]/40 bg-[#13b987] text-white">
-                  <FeatureIcon icon={feature.icon} />
-                </div>
-                <h3 className="mt-5 text-xl font-black tracking-tight">{feature.title}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-neutral-600">{feature.description}</p>
-              </motion.article>
+                <dt className="order-2 mt-3 max-w-[12rem] text-[0.95rem] leading-6 text-neutral-600">{feature.label}</dt>
+                <dd className="order-1 bg-gradient-to-br from-[#13b987] to-[#087b58] bg-clip-text text-6xl font-black leading-none tracking-tighter text-transparent sm:text-7xl">
+                  {feature.stat}
+                </dd>
+              </motion.div>
             ))}
-          </div>
+          </dl>
         </div>
       </section>
 
-      <section id="menu" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f2faf5] py-18 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
-            <SectionHeading title="Eksplorasi Menu Kami" subtitle="Menu spesial kami yang selalu diperbarui, siap untuk dinikmati." />
+      <section id="menu" className="relative isolate scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#f2faf5] py-18 sm:py-24">
+        <SectionDecor flip />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Menu baru setiap minggu" subtitle="Tinggal pilih yang kamu suka, sisanya kami yang siapkan." />
           </motion.div>
 
           {isLoadingRecipes ? (
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse flex flex-col rounded-[16px] border-2 border-neutral-200 bg-white p-4">
-                  <div className="h-48 rounded-xl bg-neutral-200 mb-4" />
-                  <div className="h-6 w-2/3 bg-neutral-200 rounded mb-2" />
-                  <div className="h-4 w-full bg-neutral-200 rounded mb-4" />
-                  <div className="flex gap-2 mt-auto">
-                    <div className="h-6 w-16 bg-neutral-200 rounded-full" />
-                    <div className="h-6 w-16 bg-neutral-200 rounded-full" />
-                  </div>
-                </div>
+            <div className="mt-12 grid auto-rows-[220px] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className={`animate-pulse rounded-3xl bg-neutral-200/70 ${i === 0 ? "sm:col-span-2 sm:row-span-2" : ""}`} />
               ))}
             </div>
+          ) : recipes.length === 0 ? (
+            <p className="mt-10 text-center text-neutral-500">Menu minggu ini sedang disiapkan ahli gizi kami.</p>
           ) : (
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {recipes.slice(0, 6).map((recipe, idx) => (
-                <motion.article
-                  key={recipe.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="flex flex-col rounded-[16px] border-2 border-[#1db788]/40 bg-white overflow-hidden shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-2 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
-                >
-                  <div className="relative h-48 w-full bg-neutral-100">
+            <div className="mt-12 grid auto-rows-[220px] gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {recipes.slice(0, 5).map((recipe, idx) => {
+                const featured = idx === 0;
+                return (
+                  <motion.article
+                    key={recipe.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.5, delay: idx * 0.08 }}
+                    className={`group relative overflow-hidden rounded-3xl bg-[#087b58] ${featured ? "sm:col-span-2 sm:row-span-2" : ""}`}
+                  >
                     {recipe.imageUrl ? (
-                      <Image src={recipe.imageUrl} alt={recipe.name} fill className="object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-neutral-400 font-bold">No Image</div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
-                    <h3 className="text-lg font-black tracking-tight text-neutral-900">{recipe.name}</h3>
-                    <p className="mt-2 text-sm text-neutral-600 line-clamp-2">{recipe.description}</p>
-                    <div className="mt-auto pt-4 flex items-center gap-2">
-                      <span className="inline-flex rounded-full bg-[#e5f8ed] px-2.5 py-0.5 text-xs font-extrabold text-[#087b58]">
-                        {recipe.calories} kcal
-                      </span>
-                      <span className="inline-flex rounded-full bg-[#e5f8ed] px-2.5 py-0.5 text-xs font-extrabold text-[#087b58]">
-                        {recipe.protein}g protein
-                      </span>
+                      <Image
+                        src={recipe.imageUrl}
+                        alt={recipe.name}
+                        fill
+                        sizes={featured ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 25vw, 50vw"}
+                        className="object-cover transition duration-700 group-hover:scale-105"
+                      />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+                      <h3 className={`font-bold leading-tight tracking-tight ${featured ? "text-2xl sm:text-3xl" : "text-lg"}`}>
+                        {recipe.name}
+                      </h3>
+                      {featured && recipe.description ? (
+                        <p className="mt-2 line-clamp-2 max-w-md text-sm leading-6 text-white/80">{recipe.description}</p>
+                      ) : null}
+                      <p className="mt-2 text-sm font-medium text-white/85">
+                        {recipe.calories} kcal &middot; {recipe.protein} g protein
+                      </p>
                     </div>
-                  </div>
-                </motion.article>
-              ))}
+                  </motion.article>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f0ece4] py-18 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="relative isolate scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#f0ece4] py-18 sm:py-24">
+        <SectionDecor tone="sand" flip />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: -30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
-            <SectionHeading title="Cara Kerjanya" subtitle="Mudah dan praktis, hanya 4 langkah." />
+            <SectionHeading title="Cara Kerjanya" subtitle="Atur sekali di awal, setiap minggu tinggal pilih menu." />
           </motion.div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {steps.map((step, idx) => (
-              <motion.article
+              <motion.li
                 key={step.number}
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: idx * 0.1, type: "spring" }}
-                className={`rounded-[14px] border-2 border-[#1db788]/40 p-6 shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:scale-105 ${step.tone}`}
+                transition={{ duration: 0.5, delay: idx * 0.12 }}
+                className="group flex flex-col rounded-3xl border border-black/5 bg-white p-7 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(15,23,42,0.10)]"
               >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black text-sm font-black text-white">
+                <span
+                  aria-hidden="true"
+                  className="block bg-gradient-to-br from-[#13b987] to-[#087b58] bg-clip-text text-[5.5rem] font-black leading-[0.85] tracking-tighter text-transparent sm:text-[6.5rem]"
+                >
                   {step.number}
                 </span>
-                <h3 className="mt-7 text-lg font-black tracking-tight">{step.title}</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-neutral-700">{step.description}</p>
-              </motion.article>
+                <span className="mt-6 h-1 w-10 rounded-full bg-[#13b987]/30 transition-all group-hover:w-16 group-hover:bg-[#13b987]" />
+                <h3 className="mt-5 text-xl font-black tracking-tight text-neutral-900">
+                  <span className="sr-only">Langkah {Number(step.number)}: </span>
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-[0.95rem] leading-6 text-neutral-600">{step.description}</p>
+              </motion.li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
-      <section id="testimonials" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
+      <section id="testimonials" className="scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
             <SectionHeading
               title="Kata Mereka Tentang FromFram"
-              subtitle="Ribuan pelanggan puas dengan layanan kami."
+              subtitle="Dari mereka yang sudah berlangganan."
             />
           </motion.div>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {testimonials.map((testimonial, idx) => (
-              <motion.article
-                key={testimonial.name}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.6, delay: idx * 0.15 }}
-                className={`rounded-[14px] border-2 border-[#1db788]/40 bg-white p-6 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:shadow-xl ${testimonial.tilt}`}
-              >
-                <StarRow />
-                <p className="mt-5 text-base font-bold leading-7 text-neutral-800">
-                  &quot;{testimonial.quote}&quot;
-                </p>
-                <div className="mt-7 flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#1db788]/40 bg-[#13b987] text-sm font-black text-white">
-                    {testimonial.initial}
-                  </span>
-                  <div>
-                    <p className="font-black tracking-tight">{testimonial.name}</p>
-                    <p className="text-xs font-semibold text-neutral-500">{testimonial.role}</p>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
+        </div>
+
+        <div className="mt-12">
+          <TestimonialMarquee items={testimonials} />
         </div>
       </section>
 
-      <section id="tentang-kami" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-gradient-to-b from-[#fffdf7] to-[#f2faf5] py-18 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: -30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
-            <SectionHeading title="Tentang Kami" subtitle="Para kreator di balik FromFram yang berdedikasi membangun platform sehat ini." />
-          </motion.div>
-
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {contributors.map((member, idx) => (
-              <motion.div 
-                key={member.name}
-                initial={{ opacity: 0, scale: 0.9, y: 30 }}
-                whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: idx * 0.1, type: "spring" }}
-                className="group flex flex-col items-center text-center"
-              >
-                <div className="relative h-40 w-40 overflow-hidden rounded-full border-4 border-[#1db788]/40 shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:border-[#13b987]">
-                  <Image src={member.image} alt={member.name} fill className="object-cover" />
-                </div>
-                <h3 className="mt-6 text-xl font-black text-neutral-900 transition-colors group-hover:text-[#13b987]">{member.name}</h3>
-                <p className="mt-1 text-sm font-bold text-neutral-500">{member.role}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <section id="pricing" className="relative isolate scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#fffdf7] py-18 sm:py-24">
+        <SectionDecor />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
             <SectionHeading
               title="Pilih Paket Sehatmu"
@@ -800,35 +694,45 @@ export default function Home() {
             />
           </motion.div>
 
-          <div className="mt-12 grid items-stretch gap-6 lg:grid-cols-3">
+          <div className="mx-auto mt-14 grid max-w-md items-stretch gap-6 lg:max-w-none lg:grid-cols-3">
             {pricingPlans.map((plan, idx) => (
               <motion.article
                 key={plan.name}
-                initial={{ opacity: 0, y: 60 }}
+                initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.6, delay: idx * 0.2 }}
-                className={`relative flex flex-col rounded-[18px] border-2 border-[#1db788]/40 p-7 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition hover:-translate-y-2 hover:shadow-2xl ${
-                  plan.popular ? "bg-[#cdf5dd] lg:-translate-y-4" : "bg-white"
+                transition={{ duration: 0.5, delay: idx * 0.12 }}
+                className={`relative flex flex-col rounded-3xl bg-white p-7 transition hover:-translate-y-1 sm:p-8 ${
+                  plan.popular
+                    ? "border-2 border-[#13b987] shadow-[0_20px_40px_rgba(19,185,135,0.18)]"
+                    : "border border-neutral-200 shadow-[0_10px_24px_rgba(15,23,42,0.06)]"
                 }`}
               >
-                {plan.popular ? (
-                  <span className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full border-2 border-[#1db788]/40 bg-[#13b987] px-4 py-1 text-xs font-black text-white">
-                    TERPOPULER
-                  </span>
-                ) : null}
-
-                <h3 className="text-xl font-black">{plan.name}</h3>
-                <div className="mt-3 flex items-end gap-1">
-                  <p className="text-4xl font-black leading-none tracking-tight">{plan.price}</p>
-                  <span className="pb-1 text-sm font-black text-neutral-700">{plan.period}</span>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-bold text-neutral-900">{plan.name}</h3>
+                  {plan.popular ? (
+                    <span className="rounded-full bg-[#13b987] px-3 py-1 text-xs font-semibold text-white">
+                      Terpopuler
+                    </span>
+                  ) : null}
                 </div>
-                <p className="mt-4 min-h-12 text-sm font-bold leading-6 text-[#07845e]">{plan.description}</p>
 
-                <ul className="mt-8 space-y-4">
+                <div className="mt-5 flex items-baseline gap-1.5">
+                  <p className="text-[2.15rem] font-black leading-none tracking-tight text-neutral-900">{plan.price}</p>
+                  <span className="text-sm font-medium text-neutral-500">{plan.period}</span>
+                </div>
+                <p className="mt-2 h-5 text-sm text-neutral-500">{plan.perWeek ?? ""}</p>
+
+                <p className="mt-5 rounded-xl bg-[#effaf5] px-3.5 py-2.5 text-sm font-semibold text-[#07845e]">
+                  {plan.description}
+                </p>
+
+                <ul className="mt-6 flex-1 space-y-3.5 border-t border-neutral-100 pt-6">
                   {plan.benefits.map((benefit) => (
-                    <li key={benefit} className="flex items-center gap-3 text-sm font-bold">
-                      <CheckIcon active={plan.popular && benefit.includes("Discount")} />
+                    <li key={benefit} className="flex items-start gap-3 text-[0.95rem] text-neutral-700">
+                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#d8f5e7] text-[#0f8f69]">
+                        <Check aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={3} />
+                      </span>
                       {benefit}
                     </li>
                   ))}
@@ -838,11 +742,13 @@ export default function Home() {
                   type="button"
                   onClick={handleSubscriptionCtaClick}
                   disabled={isCheckingCta}
-                  className={`mt-auto inline-flex w-full items-center justify-center rounded-full border-2 border-[#1db788]/40 px-6 py-3 text-sm font-black shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.12)] cursor-pointer ${
-                    plan.popular ? "bg-[#13b987] text-white hover:bg-[#0f9f73]" : "bg-white text-black hover:bg-neutral-50"
+                  className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-6 py-3.5 text-[0.95rem] font-bold transition cursor-pointer disabled:opacity-70 ${
+                    plan.popular
+                      ? "bg-[#13b987] text-white shadow-[0_10px_24px_rgba(19,185,135,0.28)] hover:bg-[#0f996f]"
+                      : "border border-neutral-300 bg-white text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50"
                   }`}
                 >
-                  Pilih Paket
+                  Pilih {plan.name}
                 </button>
               </motion.article>
             ))}
@@ -850,33 +756,47 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="faq" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-[#f8f5ee] py-18 sm:py-24">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      <section id="faq" className="relative isolate scroll-mt-24 overflow-hidden border-b-2 border-[#1db788]/30 bg-[#f8f5ee] py-18 sm:py-24">
+        <SectionDecor tone="sand" flip />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
-            <SectionHeading title="Pertanyaan yang Sering Diajukan" />
+            <SectionHeading
+              title="Pertanyaan yang Sering Diajukan"
+              subtitle="Semua yang perlu kamu tahu soal menu, pengiriman, dan langganan."
+            />
           </motion.div>
 
-          <div className="mt-10 space-y-4">
+          <div className="mt-12 grid items-start gap-3 lg:grid-cols-2 lg:gap-4">
             {faqItems.map((item, index) => {
-              const isOpen = openFaq === index;
+              const isOpen = openFaq.has(index);
 
               return (
                 <motion.div 
                   key={item.question} 
-                  initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="rounded-[14px] border-2 border-[#1db788]/40 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.08)] transition-all"
+                  initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ duration: 0.35, delay: (index % 2) * 0.05 }}
+                  className={`rounded-2xl border bg-white transition-colors ${isOpen ? "border-[#13b987]/60 shadow-[0_10px_24px_rgba(15,23,42,0.06)]" : "border-neutral-200 hover:border-neutral-300"}`}
                 >
                   <button
                     type="button"
-                    onClick={() => setOpenFaq(isOpen ? -1 : index)}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-black sm:text-base cursor-pointer"
+                    onClick={() =>
+                      setOpenFaq((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(index)) next.delete(index);
+                        else next.add(index);
+                        return next;
+                      })
+                    }
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-[0.95rem] font-semibold text-neutral-900 cursor-pointer"
                     aria-expanded={isOpen}
                   >
                     {item.question}
-                    <span className="text-xl leading-none">{isOpen ? "-" : "+"}</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`h-5 w-5 shrink-0 text-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180 text-[#13b987]" : ""}`}
+                    />
                   </button>
                   {isOpen ? (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="border-t-2 border-[#1db788]/30 px-5 py-4 text-sm font-semibold leading-6 text-neutral-600">
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="px-5 pb-5 text-sm leading-6 text-neutral-600">
                       {item.answer}
                     </motion.div>
                   ) : null}
@@ -907,38 +827,33 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-[#fffdf7]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr] lg:px-8">
-          <div>
-            <BrandMark />
-            <p className="mt-5 max-w-sm text-sm font-semibold leading-6 text-neutral-600">
-              Fresh meals, delivered daily. Makan sehat jadi lebih mudah tanpa repot.
-            </p>
+      <section id="tentang-kami" className="scroll-mt-24 border-b-2 border-[#1db788]/30 bg-gradient-to-b from-[#fffdf7] to-[#f2faf5] py-18 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <motion.div initial={{ opacity: 0, y: -30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.6 }}>
+            <SectionHeading title="Tentang Kami" subtitle="Para kreator di balik FromFram yang berdedikasi membangun platform sehat ini." />
+          </motion.div>
+
+          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {contributors.map((member, idx) => (
+              <motion.div 
+                key={member.name}
+                initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                whileInView={{ opacity: 1, scale: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: idx * 0.1, type: "spring" }}
+                className="group flex flex-col items-center text-center"
+              >
+                <div className="relative h-40 w-40 overflow-hidden rounded-full border-4 border-[#1db788]/40 shadow-lg transition-transform duration-300 group-hover:scale-105 group-hover:border-[#13b987]">
+                  <Image src={member.image} alt={member.name} fill className="object-cover" />
+                </div>
+                <h3 className="mt-6 text-xl font-black text-neutral-900 transition-colors group-hover:text-[#13b987]">{member.name}</h3>
+                <p className="mt-1 text-sm font-bold text-neutral-500">{member.role}</p>
+              </motion.div>
+            ))}
           </div>
-
-          {footerGroups.map((group) => (
-            <div key={group.title}>
-              <h3 className="font-black">{group.title}</h3>
-              <div className="mt-5 space-y-3">
-                {group.links.map((label) => (
-                  <a
-                    key={label}
-                    href="#"
-                    onClick={(event) => event.preventDefault()}
-                    className="block text-sm font-semibold text-neutral-600 hover:text-[#13b987]"
-                  >
-                    {label}
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
+      </section>
 
-        <div className="mx-auto max-w-7xl border-t-2 border-[#1db788]/30 px-4 py-7 text-sm font-semibold text-neutral-600 sm:px-6 lg:px-8">
-          &copy; 2026 FromFram. All rights reserved.
-        </div>
-      </footer>
     </main>
   );
 }

@@ -1,57 +1,90 @@
 import prisma from '@/lib/prisma';
 import crypto from 'crypto';
-import { CreateTransactionInput } from '@/schemas/transaction';
+import { TransactionStatus } from '@prisma/client';
+import { lockCurrentWeeklyBox } from '@/controllers/weeklyBoxController';
 
-export async function createTransaction(userId: string, input: CreateTransactionInput) {
-  try {
-    let basePrice = 0;
-    switch (input.planType) {
-      case 'MINGGUAN': basePrice = 350000; break;
-      case 'BULANAN': basePrice = 1200000; break;
-      case 'TAHUNAN': basePrice = 12000000; break;
-      default: return { error: 'Tipe langganan tidak valid', status: 400 };
-    }
+/**
+ * Map Midtrans transaction_status + fraud_status ke TransactionStatus enum Prisma.
+ * Return null jika tidak perlu update (status tidak dikenal).
+ */
+export function resolveTransactionStatus(
+  transactionStatus: string,
+  fraudStatus?: string,
+): TransactionStatus | null {
+  switch (transactionStatus) {
+    case 'capture':
+      return fraudStatus === 'accept' ? TransactionStatus.COMPLETED : TransactionStatus.PENDING;
+    case 'settlement':
+      return TransactionStatus.COMPLETED;
+    case 'pending':
+      return TransactionStatus.PENDING;
+    case 'cancel':
+    case 'deny':
+    case 'expire':
+      return TransactionStatus.FAILED;
+    default:
+      return null;
+  }
+}
 
-    const finalAmount = basePrice * input.servings;
+/**
+ * Satu-satunya jalur untuk menerapkan status Midtrans: update transaksi,
+ * sinkron TransactionLedger, dan aktifkan subscription jika lunas.
+ * Dipakai oleh webhook dan polling status.
+ */
+export async function applyTransactionStatus(transactionId: string, status: TransactionStatus, paymentMethod?: string) {
+  const transaction = await prisma.transaction.update({
+    where: { id: transactionId },
+    data: {
+      status,
+      ...(status === TransactionStatus.COMPLETED && { paidAt: new Date() }),
+    },
+  });
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId,
-        amount: finalAmount,
-        status: 'PENDING',
-        qrisCode: `QRIS-SIM-${userId}-${Date.now()}`
-      }
-    });
+  const ledgerUpdate = await prisma.transactionLedger.updateMany({
+    where: { transactionId },
+    data: { status },
+  }).catch(err => {
+    console.warn('[UPDATE TRANSACTION LEDGER STATUS WARNING]', err);
+    return null;
+  });
 
-    // Otomatis catat di TransactionLedger (Read-Only)
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const code = `#TRX-2026-${String(randomSuffix).padStart(4, '0')}`;
-    const refCode = `INV/FF/260${String(randomSuffix).slice(-3)}`;
-
+  // Snap payments never wrote a ledger row; create it on first status change so admin Pencatatan sees them.
+  if (ledgerUpdate && ledgerUpdate.count === 0) {
+    const subscription = await prisma.subscription
+      .findUnique({ where: { userId: transaction.userId }, select: { planType: true, servings: true } })
+      .catch(() => null);
     await prisma.transactionLedger.create({
       data: {
-        transactionId: transaction.id,
-        userId,
-        amount: finalAmount,
-        status: 'PENDING',
-        paymentMethod: 'QRIS Midtrans',
-        code,
-        referenceCode: refCode,
-        metadata: {
-          planType: input.planType,
-          servings: input.servings,
-          category: 'Langganan Meal Kit Organik'
-        }
-      }
-    }).catch(ledgerErr => {
-      console.warn('[TRANSACTION LEDGER CREATE WARNING]', ledgerErr);
-    });
-
-    return { data: transaction, status: 201 };
-  } catch (error) {
-    console.error('[Transaction Error]', error);
-    return { error: 'Gagal memproses transaksi', status: 500 };
+        transactionId,
+        userId: transaction.userId,
+        amount: transaction.amount,
+        status,
+        paymentMethod: (paymentMethod ?? 'MIDTRANS').toUpperCase(),
+        code: `TRX-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+        referenceCode: `INV/FF/${transactionId.split('-').pop()?.toUpperCase() ?? transactionId}`,
+        metadata: subscription ? { planType: subscription.planType, servings: subscription.servings } : undefined,
+      },
+    }).catch(err => console.warn('[CREATE TRANSACTION LEDGER WARNING]', err));
   }
+
+  if (status === TransactionStatus.COMPLETED) {
+    const activated = await prisma.subscription.updateMany({
+      where: { userId: transaction.userId, status: 'UNPAID' },
+      data: { status: 'ACTIVE', startDate: new Date() },
+    });
+    if (activated.count > 0) {
+      console.info('[PAYMENT] Subscription activated for user:', transaction.userId);
+    }
+
+    // Lock the box server-side so deliveries exist even if the user closed the payment tab.
+    const locked = await lockCurrentWeeklyBox(transaction.userId).catch((err) => ({ error: String(err), status: 500 }));
+    if ('error' in locked) {
+      console.warn('[PAYMENT] Auto-lock weekly box skipped:', transaction.userId, locked.error);
+    }
+  }
+
+  return transaction;
 }
 
 export async function getAllTransactions(userId: string) {
@@ -97,57 +130,11 @@ export async function getTransactionStatus(userId: string, transactionId: string
 
           if (midtransRes.ok) {
             const midtransData = await midtransRes.json();
-            const transactionStatus = midtransData.transaction_status;
-            const fraudStatus = midtransData.fraud_status;
+            const dbStatus = resolveTransactionStatus(midtransData.transaction_status, midtransData.fraud_status);
+            const paidAmountOk = Number(midtransData.gross_amount) === transaction.amount;
 
-            let dbStatus: 'PENDING' | 'COMPLETED' | 'FAILED' | null = null;
-            switch (transactionStatus) {
-              case 'capture':
-                if (fraudStatus === 'challenge') dbStatus = 'PENDING';
-                if (fraudStatus === 'accept') dbStatus = 'COMPLETED';
-                break;
-              case 'settlement':
-                dbStatus = 'COMPLETED';
-                break;
-              case 'pending':
-                dbStatus = 'PENDING';
-                break;
-              case 'cancel':
-              case 'deny':
-              case 'expire':
-                dbStatus = 'FAILED';
-                break;
-            }
-
-            if (dbStatus && dbStatus !== 'PENDING') {
-              // Update status transaksi di database
-              transaction = await prisma.transaction.update({
-                where: { id: transactionId },
-                data: {
-                  status: dbStatus,
-                  ...(dbStatus === 'COMPLETED' && { paidAt: new Date() }),
-                },
-              });
-
-              // Sinkronkan status di TransactionLedger (Read-Only)
-              await prisma.transactionLedger.updateMany({
-                where: { transactionId },
-                data: { status: dbStatus }
-              }).catch(err => console.warn('[UPDATE TRANSACTION LEDGER STATUS WARNING]', err));
-
-              // Jika pembayaran selesai, aktifkan juga subscription di database
-              if (dbStatus === 'COMPLETED') {
-                const subscription = await prisma.subscription.findUnique({
-                  where: { userId },
-                });
-                if (subscription && subscription.status === 'UNPAID') {
-                  await prisma.subscription.update({
-                    where: { id: subscription.id },
-                    data: { status: 'ACTIVE', startDate: new Date() },
-                  });
-                  console.info('[Direct Polling] Subscription activated for user:', userId);
-                }
-              }
+            if (dbStatus && dbStatus !== 'PENDING' && (dbStatus !== 'COMPLETED' || paidAmountOk)) {
+              transaction = await applyTransactionStatus(transactionId, dbStatus);
             }
           }
         } catch (fetchError) {
@@ -170,7 +157,10 @@ export function verifyMidtransSignature(
   signatureKey: string
 ): boolean {
   const serverKey = process.env.MIDTRANS_SERVER_KEY ?? '';
+  // Tanpa server key, signature bisa dibuat siapa saja.
+  if (!serverKey) return false;
   const payload = `${orderId}${statusCode}${grossAmount}${serverKey}`;
-  const hashed = crypto.createHash('sha512').update(payload).digest('hex');
-  return hashed === signatureKey;
+  const hashed = Buffer.from(crypto.createHash('sha512').update(payload).digest('hex'));
+  const given = Buffer.from(signatureKey);
+  return hashed.length === given.length && crypto.timingSafeEqual(hashed, given);
 }

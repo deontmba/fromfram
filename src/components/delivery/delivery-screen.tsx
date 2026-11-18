@@ -1,12 +1,20 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  CalendarDays as CalendarIcon,
+  Check as CheckIcon,
+  Clock as ClockIcon,
+  History as HistoryIcon,
+  Info as InfoIcon,
+  MapPin as PinIcon,
+} from "lucide-react";
+import { CustomerPage } from "@/components/ui/customer-page";
 import type {
   ActiveDelivery,
   DeliveryStatusTone,
   DeliverySummaryItem,
   DeliveryTimelineStep,
   DeliveryTrackingViewModel,
-} from "./delivery-mock-data";
+} from "./delivery-types";
 
 const statusBadgeStyles: Record<DeliveryStatusTone, string> = {
   active: "border-[#bdebd9] bg-[#e8f8f0] text-[#0f8f6d]",
@@ -25,10 +33,8 @@ export function DeliveryScreen({ delivery }: { delivery: DeliveryTrackingViewMod
   );
 
   return (
-    <main className="min-h-screen bg-[#f7f8f7] text-neutral-950">
-      <DeliveryHeader periodLabel={delivery.periodLabel} />
-
-      <div className="mx-auto w-full max-w-[660px] px-4 py-6 sm:px-6">
+    <CustomerPage title="Lacak pengiriman" subtitle={delivery.periodLabel}>
+      <div>
         {delivery.errorMessage ? <DeliveryNotice message={delivery.errorMessage} /> : null}
 
         {hasDeliveryData ? (
@@ -52,14 +58,14 @@ export function DeliveryScreen({ delivery }: { delivery: DeliveryTrackingViewMod
             <div className="mt-6 space-y-6">
               <DeliveryListSection
                 id="upcoming-deliveries-title"
-                title="Pengiriman Berikutnya"
+                title="Pengiriman berikutnya"
                 icon={<CalendarIcon className="h-4 w-4" />}
                 deliveries={delivery.upcomingDeliveries}
                 emptyMessage="Belum ada pengiriman berikutnya."
               />
               <DeliveryListSection
                 id="recent-deliveries-title"
-                title="Riwayat Terbaru"
+                title="Riwayat"
                 icon={<HistoryIcon className="h-4 w-4" />}
                 deliveries={delivery.recentDeliveries}
                 emptyMessage="Belum ada riwayat pengiriman."
@@ -78,7 +84,7 @@ export function DeliveryScreen({ delivery }: { delivery: DeliveryTrackingViewMod
           </div>
         )}
       </div>
-    </main>
+    </CustomerPage>
   );
 }
 
@@ -112,38 +118,6 @@ function EmptyDeliveryCard({
         {description}
       </p>
     </section>
-  );
-}
-
-function DeliveryHeader({ periodLabel }: { periodLabel: string }) {
-  return (
-    <header className="border-b border-black/5 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
-      <div className="mx-auto flex w-full max-w-[660px] items-start gap-3 px-4 py-4 sm:px-6 sm:py-5">
-        <span className="mt-[34px] hidden h-10 w-10 shrink-0 rounded-lg bg-[#e0f5ec] text-[#0fa878] sm:grid sm:place-items-center">
-          <PinIcon className="h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-500 transition hover:text-[#0f8f6d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79d9bc]"
-          >
-            <ArrowLeftIcon className="h-3.5 w-3.5" />
-            Kembali ke Dashboard
-          </Link>
-          <div className="mt-2 flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#e0f5ec] text-[#0fa878] sm:hidden">
-              <PinIcon className="h-5 w-5" />
-            </span>
-            <div>
-              <h1 className="text-[1.35rem] font-bold leading-tight tracking-[-0.01em] text-neutral-950">
-                Tracking Pengiriman
-              </h1>
-              <p className="mt-1 text-xs font-medium text-neutral-500">{periodLabel}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -185,40 +159,13 @@ function FeaturedDeliveryCard({ delivery }: { delivery: ActiveDelivery }) {
         <StatusBadge label={delivery.statusLabel} tone={delivery.statusTone} />
       </div>
 
-      <div className="mt-4">
-        <RouteMock />
-      </div>
-
       <EtaCard title={delivery.etaTitle} window={delivery.etaWindow} />
 
       <div className="mt-7">
-        <h4 className="text-xs font-bold text-neutral-900">Detail Status</h4>
+        <h4 className="text-xs font-bold text-neutral-900">Status</h4>
         <StatusTimeline steps={delivery.timeline} />
       </div>
     </article>
-  );
-}
-
-function RouteMock() {
-  return (
-    <div className="relative h-[132px] overflow-hidden rounded-lg border border-neutral-200 bg-[#f3f6f6] sm:h-[150px]">
-      <div className="absolute inset-0 bg-[linear-gradient(#e8eeee_1px,transparent_1px),linear-gradient(90deg,#e8eeee_1px,transparent_1px)] bg-[size:44px_44px]" />
-      <div className="absolute left-[13%] top-[21%] h-3 w-3 rounded-full border-2 border-white bg-[#c7d0d4] shadow-[0_0_0_3px_rgba(199,208,212,0.35)]" />
-      <div className="absolute left-[14%] top-[34%] h-[2px] w-[34%] bg-[#24c293]" />
-      <div className="absolute left-[48%] top-[34%] h-[47%] w-[2px] bg-[#24c293]" />
-      <div className="absolute left-[48%] top-[79%] h-[2px] w-[28%] bg-[#24c293]" />
-      <div className="absolute left-[76%] top-[79%] h-[2px] w-[12%] border-t-2 border-dashed border-[#24c293]" />
-      <div className="absolute left-[13%] top-[31%] rounded bg-white px-2 py-1 text-[0.58rem] font-bold text-neutral-500 shadow-sm">
-        Dapur
-      </div>
-      <div className="absolute right-[8%] top-[69%] h-5 w-5 rounded-full border-2 border-white bg-[#c7d0d4] shadow-[0_0_0_4px_rgba(199,208,212,0.32)]" />
-      <div className="absolute right-[6%] top-[84%] rounded bg-white px-2 py-1 text-[0.58rem] font-bold text-neutral-500 shadow-sm">
-        Rumah
-      </div>
-      <div className="absolute left-[60%] top-[69%] grid h-9 w-9 place-items-center rounded-full border-4 border-[#d4f6e8] bg-white text-[#12b886] shadow-[0_10px_22px_rgba(18,184,134,0.22)]">
-        <CourierIcon className="h-4 w-4" />
-      </div>
-    </div>
   );
 }
 
@@ -289,6 +236,7 @@ function DeliveryListSection({
   deliveries: DeliverySummaryItem[];
   emptyMessage: string;
 }) {
+  // One delivery row exists per portion, so collapse them into "meal: recipe xN" lines per day.
   const groupedDeliveries = deliveries.reduce((acc, current) => {
     const key = `${current.dayLabel}, ${current.dateLabel}`;
     if (!acc[key]) {
@@ -298,14 +246,14 @@ function DeliveryListSection({
         dateLabel: current.dateLabel,
         statusLabel: current.statusLabel,
         statusTone: current.statusTone,
-        menus: [],
+        meals: {},
       };
     }
-    if (current.menuName) {
-      acc[key].menus.push(current.menuName);
-    }
+    const meal = current.mealType === "DINNER" ? "Makan malam" : "Makan siang";
+    const line = `${meal}: ${current.menuName}`;
+    acc[key].meals[line] = (acc[key].meals[line] ?? 0) + 1;
     return acc;
-  }, {} as Record<string, { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] }>);
+  }, {} as Record<string, { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; meals: Record<string, number> }>);
 
   const groupedArray = Object.values(groupedDeliveries);
 
@@ -330,7 +278,7 @@ function DeliveryListSection({
 function GroupedDeliveryCard({
   group,
 }: {
-  group: { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; menus: string[] };
+  group: { key: string; dayLabel: string; dateLabel: string; statusLabel: string; statusTone: DeliveryStatusTone; meals: Record<string, number> };
 }) {
   return (
     <article className="flex min-h-[62px] items-start justify-between gap-4 rounded-lg border border-neutral-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
@@ -339,11 +287,14 @@ function GroupedDeliveryCard({
           {group.dayLabel}, {group.dateLabel}
         </h3>
         <div className="mt-1 flex flex-col gap-1">
-          {group.menus.map((menu, idx) => (
-            <p key={idx} className="truncate text-xs font-medium text-neutral-500">
-              {menu}
-            </p>
-          ))}
+          {Object.entries(group.meals)
+            .sort(([a], [b]) => (a.startsWith("Makan siang") ? -1 : b.startsWith("Makan siang") ? 1 : 0))
+            .map(([line, count]) => (
+              <p key={line} className="truncate text-sm text-neutral-600">
+                {line}
+                {count > 1 ? <span className="ml-1 text-neutral-400">x{count} porsi</span> : null}
+              </p>
+            ))}
         </div>
       </div>
       <div className="mt-0.5 shrink-0">
@@ -387,111 +338,5 @@ function StatusBadge({ label, tone }: { label: string; tone: DeliveryStatusTone 
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {label}
     </span>
-  );
-}
-
-function ArrowLeftIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M15 18 9 12l6-6"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="m6 12 4 4 8-8"
-        stroke="currentColor"
-        strokeWidth="2.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ClockIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M12 7v5l3 2"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CourierIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M5 17h14M7 17l2-8h5l3 8M9 9l1.5-3H14l1 3"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="18" r="1.5" fill="currentColor" />
-      <circle cx="17" cy="18" r="1.5" fill="currentColor" />
-    </svg>
-  );
-}
-
-function HistoryIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M4 4v6h6M5 13a7 7 0 1 0 2-7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function InfoIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 11v6M12 7h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PinIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className}>
-      <path
-        d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="12" cy="10" r="2" stroke="currentColor" strokeWidth="2" />
-    </svg>
   );
 }

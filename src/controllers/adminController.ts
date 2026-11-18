@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { verifyRole } from '@/lib/auth';
 import { formatRelativeTime } from '@/lib/format';
+import { addDays, atJakartaTime, jakartaDayOfWeek } from '@/lib/week';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -8,12 +9,10 @@ import { formatRelativeTime } from '@/lib/format';
 
 const verifyAdmin = (userId: string) => verifyRole(userId, 'ADMIN');
 
+// "Today" is the Jakarta calendar day, not the server's (UTC on Vercel).
 function getTodayRange() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date();
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+  const start = atJakartaTime(new Date(), 0);
+  return { start, end: new Date(addDays(start, 1).getTime() - 1) };
 }
 
 
@@ -304,66 +303,6 @@ export async function getAdminDeliveries(
   const authError = await verifyAdmin(userId);
   if (authError) return authError;
 
-  // Backfill deliveries for locked/completed weekly boxes that have none (e.g. from seed or old locks)
-  try {
-    const lockedBoxes = await prisma.weeklyBox.findMany({
-      where: { status: { in: ['LOCKED', 'COMPLETED'] } },
-      include: {
-        mealSelections: true,
-      },
-    });
-
-    for (const box of lockedBoxes) {
-      const deliveryCount = await prisma.delivery.count({
-        where: { weeklyBoxId: box.id },
-      });
-
-      if (deliveryCount === 0 && box.mealSelections.length > 0) {
-        const address = await prisma.address.findFirst({
-          where: { userId: box.userId, isDefault: true },
-        }) ?? await prisma.address.findFirst({
-          where: { userId: box.userId },
-        });
-
-        if (address) {
-          const dayOffsets: Record<string, number> = {
-            SENIN: 0,
-            SELASA: 1,
-            RABU: 2,
-            KAMIS: 3,
-            JUMAT: 4,
-            SABTU: 5,
-            MINGGU: 6,
-          };
-
-          const deliveryData = box.mealSelections.map((sel) => {
-            const offset = dayOffsets[sel.dayOfWeek] ?? 0;
-            const localDateStr = box.weekStartDate.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta' });
-            const deliveryDate = new Date(localDateStr);
-            deliveryDate.setDate(deliveryDate.getDate() + offset);
-            const isLunch = sel.mealType === 'LUNCH';
-            deliveryDate.setHours(isLunch ? 11 : 17, 30, 0, 0);
-
-            return {
-              userId: box.userId,
-              weeklyBoxId: box.id,
-              addressId: address.id,
-              deliveryDate,
-              mealType: sel.mealType,
-              status: 'PREPARING' as const,
-            };
-          });
-
-          await prisma.delivery.createMany({
-            data: deliveryData,
-          });
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[ADMIN DELIVERIES BACKFILL ERROR]', err);
-  }
-
   const {
     status: statusFilter,
     area: areaFilter,
@@ -441,19 +380,8 @@ export async function getAdminDeliveries(
     prisma.delivery.count({ where }),
   ]);
 
-  const enToId: Record<string, string> = {
-    'MONDAY': 'SENIN',
-    'TUESDAY': 'SELASA',
-    'WEDNESDAY': 'RABU',
-    'THURSDAY': 'KAMIS',
-    'FRIDAY': 'JUMAT',
-    'SATURDAY': 'SABTU',
-    'SUNDAY': 'MINGGU',
-  };
-
   const data = deliveries.map((d) => {
-    const dayNameEn = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(new Date(d.deliveryDate)).toUpperCase();
-    const dayEnum = enToId[dayNameEn];
+    const dayEnum = jakartaDayOfWeek(new Date(d.deliveryDate));
 
     // Match selection by dayOfWeek DAN mealType sekaligus
     const matchedSelection = d.weeklyBox?.mealSelections.find(
@@ -559,6 +487,8 @@ export async function advanceDelivery(userId: string, deliveryId: string) {
   };
 }
 
+const DELIVERY_STATUSES = ['PREPARING', 'SHIPPED', 'DELIVERED'];
+
 export async function createAdminDelivery(
   adminId: string,
   input: {
@@ -574,6 +504,10 @@ export async function createAdminDelivery(
   if (authError) return authError;
 
   const { userId, menu, address: addressText, deliveryDate: dateStr, status, mealType = 'LUNCH' } = input;
+
+  if (!DELIVERY_STATUSES.includes(status)) {
+    return { error: 'Status pengiriman tidak valid.', status: 400 };
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -608,16 +542,19 @@ export async function createAdminDelivery(
       },
     });
   } else if (addressText && addressText !== `${address.city}, ${address.province}` && addressText !== address.street) {
+    // New row for this delivery only — never overwrite the customer's saved address.
     const parts = addressText.split(',').map((s) => s.trim());
-    const city = parts[0] || address.city;
-    const province = parts[1] || address.province;
-
-    address = await prisma.address.update({
-      where: { id: address.id },
+    address = await prisma.address.create({
       data: {
+        userId,
+        recipientName: address.recipientName ?? user.name,
+        phoneNumber: address.phoneNumber,
+        label: 'Manual Admin',
         street: addressText,
-        city,
-        province,
+        city: parts[0] || address.city,
+        province: parts[1] || address.province,
+        postalCode: address.postalCode,
+        isDefault: false,
       },
     });
   }
@@ -677,7 +614,7 @@ export async function createAdminDelivery(
 
   if (menu && menu !== 'Menu tidak tersedia') {
     let recipe = await prisma.recipe.findFirst({
-      where: { name: { contains: menu, mode: 'insensitive' } },
+      where: { name: { equals: menu, mode: 'insensitive' } },
     });
 
     if (!recipe) {
@@ -694,21 +631,13 @@ export async function createAdminDelivery(
       });
     }
 
-    const jsToEnum: Record<number, string> = {
-      0: 'MINGGU',
-      1: 'SENIN',
-      2: 'SELASA',
-      3: 'RABU',
-      4: 'KAMIS',
-      5: 'JUMAT',
-      6: 'SABTU',
-    };
-    const dayEnum = jsToEnum[deliveryDate.getDay()] as 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
+    const dayEnum = jakartaDayOfWeek(deliveryDate);
 
     const selection = await prisma.mealSelection.findFirst({
       where: {
         weeklyBoxId: weeklyBox.id,
         dayOfWeek: dayEnum,
+        mealType: delivery.mealType,
       },
     });
 
@@ -723,7 +652,7 @@ export async function createAdminDelivery(
           weeklyBoxId: weeklyBox.id,
           recipeId: recipe.id,
           dayOfWeek: dayEnum,
-          mealType: 'LUNCH',
+          mealType: delivery.mealType,
           serving: 1,
         },
       });
@@ -757,6 +686,10 @@ export async function updateAdminDelivery(
 
   const { menu, address: addressText, deliveryDate: dateStr, status } = input;
 
+  if (status && !DELIVERY_STATUSES.includes(status)) {
+    return { error: 'Status pengiriman tidak valid.', status: 400 };
+  }
+
   const updateData: any = {};
   if (status) {
     updateData.status = status as 'PREPARING' | 'SHIPPED' | 'DELIVERED';
@@ -768,23 +701,28 @@ export async function updateAdminDelivery(
   }
 
   if (addressText) {
+    // New row for this delivery only — the old address belongs to the customer and other deliveries.
+    const current = await prisma.address.findUnique({ where: { id: delivery.addressId } });
     const parts = addressText.split(',').map((s) => s.trim());
-    const city = parts[0] || 'Jakarta';
-    const province = parts[1] || 'DKI Jakarta';
-
-    await prisma.address.update({
-      where: { id: delivery.addressId },
+    const newAddress = await prisma.address.create({
       data: {
+        userId: delivery.userId,
+        recipientName: current?.recipientName ?? null,
+        phoneNumber: current?.phoneNumber ?? null,
+        label: 'Manual Admin',
         street: addressText,
-        city,
-        province,
+        city: parts[0] || current?.city || 'Jakarta',
+        province: parts[1] || current?.province || 'DKI Jakarta',
+        postalCode: current?.postalCode ?? '12345',
+        isDefault: false,
       },
     });
+    updateData.addressId = newAddress.id;
   }
 
   if (menu && menu !== 'Menu tidak tersedia') {
     let recipe = await prisma.recipe.findFirst({
-      where: { name: { contains: menu, mode: 'insensitive' } },
+      where: { name: { equals: menu, mode: 'insensitive' } },
     });
 
     if (!recipe) {
@@ -802,22 +740,13 @@ export async function updateAdminDelivery(
     }
 
     const targetDate = dateStr ? new Date(dateStr) : delivery.deliveryDate;
-    const enToId: Record<string, string> = {
-      'MONDAY': 'SENIN',
-      'TUESDAY': 'SELASA',
-      'WEDNESDAY': 'RABU',
-      'THURSDAY': 'KAMIS',
-      'FRIDAY': 'JUMAT',
-      'SATURDAY': 'SABTU',
-      'SUNDAY': 'MINGGU',
-    };
-    const dayNameEn = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Asia/Jakarta' }).format(targetDate).toUpperCase();
-    const dayEnum = enToId[dayNameEn] as 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
+    const dayEnum = jakartaDayOfWeek(targetDate);
 
     const selection = await prisma.mealSelection.findFirst({
       where: {
         weeklyBoxId: delivery.weeklyBoxId,
         dayOfWeek: dayEnum,
+        mealType: delivery.mealType,
       },
     });
 
@@ -832,7 +761,7 @@ export async function updateAdminDelivery(
           weeklyBoxId: delivery.weeklyBoxId,
           recipeId: recipe.id,
           dayOfWeek: dayEnum,
-          mealType: 'LUNCH',
+          mealType: delivery.mealType,
           serving: 1,
         },
       });
@@ -882,10 +811,7 @@ export async function getAdminDashboardStats(adminId: string) {
   const authError = await verifyAdmin(adminId);
   if (authError) return authError;
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const { start: todayStart, end: todayEnd } = getTodayRange();
 
   const [totalUsers, activeSubscriptions, todayDeliveriesCount, recentUsers, recentDeliveries, recentTransactions] = await Promise.all([
     prisma.user.count({ where: { role: 'USER' } }),
@@ -926,7 +852,7 @@ export async function getAdminDashboardStats(adminId: string) {
       text: `Pengguna Baru: ${u.name} (${u.email}) bergabung ke platform.`,
       time: formatTimeAgo(u.createdAt),
       timestamp: u.createdAt,
-      icon: "👤",
+      icon: "user",
     });
   });
 
@@ -935,7 +861,7 @@ export async function getAdminDashboardStats(adminId: string) {
       text: `Pengiriman: Order untuk ${d.user.name} berstatus ${d.status === 'PREPARING' ? 'Disiapkan' : d.status === 'SHIPPED' ? 'Dikirim' : 'Selesai'}.`,
       time: formatTimeAgo(d.shippedAt || d.deliveredAt || d.deliveryDate),
       timestamp: d.shippedAt || d.deliveredAt || d.deliveryDate,
-      icon: "🚚",
+      icon: "delivery",
     });
   });
 
@@ -944,7 +870,7 @@ export async function getAdminDashboardStats(adminId: string) {
       text: `Transaksi ${t.status === 'COMPLETED' ? 'Lunas' : t.status === 'PENDING' ? 'Pending' : 'Gagal'}: Rp ${t.amount.toLocaleString('id-ID')} oleh ${t.user.name}.`,
       time: formatTimeAgo(t.createdAt),
       timestamp: t.createdAt,
-      icon: "💳",
+      icon: "payment",
     });
   });
 

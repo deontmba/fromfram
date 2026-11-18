@@ -1,10 +1,11 @@
 import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import * as crypto from 'crypto';
-import { createJwtToken, setAuthCookie } from '@/lib/jwt';      
-import { hashPassword, verifyPassword } from '@/lib/hash';      
-import { sendPasswordResetEmail } from '@/lib/email';           
+import { createJwtToken, setAuthCookie } from '@/lib/jwt';
+import { hashPassword, verifyPassword } from '@/lib/hash';
+import { sendPasswordResetEmail } from '@/lib/email';
+
+const hashResetToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
 
 export const register = async (name: string, email: string, password: string) => {
   try {
@@ -64,7 +65,7 @@ export const login = async (email: string, password: string) => {
   }
 };
 
-export const getGoogleAuthUrl = () => {
+export const getGoogleAuthUrl = (state: string) => {
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI!;
 
@@ -75,6 +76,7 @@ export const getGoogleAuthUrl = () => {
     scope: 'openid email profile',
     access_type: 'offline',
     prompt: 'select_account',
+    state,
   });
 
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
@@ -111,7 +113,7 @@ export const handleGoogleCallback = async (code: string) => {
     });
 
     const googleUser = await userInfoResponse.json();
-    if (!googleUser.email) {
+    if (!googleUser.email || googleUser.email_verified !== true) {
       return NextResponse.redirect(`${BASE_URL}/login?error=google_no_email`);
     }
 
@@ -133,7 +135,13 @@ export const handleGoogleCallback = async (code: string) => {
     } else if (!user.googleId) {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { googleId: googleUser.sub, avatarUrl: googleUser.picture ?? null, isVerified: true },
+        data: {
+          googleId: googleUser.sub,
+          avatarUrl: googleUser.picture ?? null,
+          isVerified: true,
+          // Register never verified this email, so whoever set that password may not own it.
+          ...(!user.isVerified && { password: null }),
+        },
       });
     }
 
@@ -176,8 +184,9 @@ export const forgotPassword = async (email: string) => {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 3600000);
 
+    // Only the hash is stored, so a DB leak does not leak usable reset links.
     await prisma.passwordResetToken.create({
-      data: { userId: user.id, token, expiresAt },
+      data: { userId: user.id, token: hashResetToken(token), expiresAt },
     });
 
     await sendPasswordResetEmail(email, token); 
@@ -195,13 +204,14 @@ export const resetPassword = async (token: string, newPassword: string) => {
       return NextResponse.json({ error: 'Token and new password are required.' }, { status: 400 });
     }
 
-    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
+    const tokenHash = hashResetToken(token);
+    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token: tokenHash } });
     if (!resetToken) {
       return NextResponse.json({ error: 'Token reset password tidak valid.' }, { status: 400 });
     }
 
     if (resetToken.expiresAt < new Date()) {
-      await prisma.passwordResetToken.delete({ where: { token } });
+      await prisma.passwordResetToken.delete({ where: { token: tokenHash } });
       return NextResponse.json({ error: 'Token reset password sudah kadaluarsa.' }, { status: 400 });
     }
 

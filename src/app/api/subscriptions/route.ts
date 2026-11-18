@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUserId, getAuthErrorResponse } from '@/lib/session';
 import { getAllSubscriptions, createSubscription } from '@/controllers/subscriptionController';
 import { validate } from '@/lib/validate';
+import { verifyRole } from '@/lib/auth';
 import { createSubscriptionSchema } from '@/schemas';
 
 
@@ -10,7 +11,8 @@ export async function GET(req: NextRequest) {
   if ('error' in session) return getAuthErrorResponse(session.error);
 
   try {
-    const result = await getAllSubscriptions();
+    const isAdmin = !(await verifyRole(session.userId, 'ADMIN'));
+    const result = await getAllSubscriptions(isAdmin);
     return NextResponse.json(result.data, { status: result.status });
   } catch (error) {
     console.error('[SUBSCRIPTIONS GET ERROR]', error);
