@@ -3,15 +3,59 @@ import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { IngredientRow } from './IngredientRow';
 import styles from '../operations/role-portal-screen.module.css';
 
-export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, expandOverride }: any) {
+type POStatus = 'DRAFT' | 'CONFIRMED' | 'FULFILLED';
+
+interface PurchaseOrder {
+  id: string | number;
+  status: POStatus;
+  totalPrice: number;
+  [key: string]: any; // field lain (nama bahan, harga/kg, dll.) tetap diizinkan
+}
+
+interface Farmer {
+  name: string;
+  [key: string]: any;
+}
+
+interface FarmerGroupData {
+  farmer: Farmer;
+  purchaseOrders: PurchaseOrder[];
+  regionName?: string;
+}
+
+interface FarmerGroupProps {
+  farmerData: FarmerGroupData;
+  onConfirm: (item: any) => void;
+  onCancel: (item: any) => void;
+  onOpenFulfill?: (item: any) => void;
+  expandOverride?: boolean | null;
+}
+
+const formatCurrency = (val: number): string =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(val);
+
+export function FarmerGroup({
+  farmerData,
+  onConfirm,
+  onCancel,
+  onOpenFulfill,
+  expandOverride,
+}: FarmerGroupProps) {
   const { farmer, purchaseOrders, regionName } = farmerData;
-  const isAllFulfilled = purchaseOrders.every((po: any) => po.status === 'FULFILLED');
-  const isAllConfirmed = purchaseOrders.every((po: any) => po.status === 'CONFIRMED' || po.status === 'FULFILLED');
-  const hasDraft = purchaseOrders.some((po: any) => po.status === 'DRAFT');
-  const subtotal = purchaseOrders.reduce((sum: number, po: any) => sum + po.totalPrice, 0);
+
+  const isAllFulfilled = purchaseOrders.every((po) => po.status === 'FULFILLED');
+  const isAllConfirmed = purchaseOrders.every(
+    (po) => po.status === 'CONFIRMED' || po.status === 'FULFILLED'
+  );
+  const hasDraft = purchaseOrders.some((po) => po.status === 'DRAFT');
+  const subtotal = purchaseOrders.reduce((sum, po) => sum + po.totalPrice, 0);
 
   // DRAFT terbuka otomatis, CONFIRMED/FULFILLED bisa dilipat
-  const [open, setOpen] = useState(hasDraft);
+  const [open, setOpen] = useState<boolean>(hasDraft);
 
   // Ikuti perintah "Buka Semua / Tutup Semua" dari parent
   useEffect(() => {
@@ -20,11 +64,17 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
     }
   }, [expandOverride]);
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+  const statusTag = isAllFulfilled
+    ? styles.tagGreen
+    : isAllConfirmed
+      ? styles.tagBlue
+      : styles.tagAmber;
 
-  const statusTag = isAllFulfilled ? styles.tagGreen : isAllConfirmed ? styles.tagBlue : styles.tagAmber;
-  const statusLabel = isAllFulfilled ? 'Semua panen diterima' : isAllConfirmed ? 'Terkonfirmasi' : 'Belum dikonfirmasi';
+  const statusLabel = isAllFulfilled
+    ? 'Semua panen diterima'
+    : isAllConfirmed
+      ? 'Terkonfirmasi'
+      : 'Belum dikonfirmasi';
 
   const titleText = regionName || farmer.name;
 
@@ -36,7 +86,14 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
         className={styles.groupHead}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+        style={{
+          width: '100%',
+          textAlign: 'left',
+          cursor: 'pointer',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+        }}
       >
         <span className={styles.groupTitle}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -51,13 +108,21 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
 
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className={`${styles.tag} ${statusTag}`}>{statusLabel}</span>
-          <span style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+          <span
+            style={{
+              fontWeight: 600,
+              fontSize: '0.88rem',
+              color: 'var(--text)',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {formatCurrency(subtotal)}
           </span>
-          {open
-            ? <ChevronUp size={16} aria-hidden="true" style={{ color: 'var(--muted)', flexShrink: 0 }} />
-            : <ChevronDown size={16} aria-hidden="true" style={{ color: 'var(--muted)', flexShrink: 0 }} />
-          }
+          {open ? (
+            <ChevronUp size={16} aria-hidden="true" style={{ color: 'var(--muted)', flexShrink: 0 }} />
+          ) : (
+            <ChevronDown size={16} aria-hidden="true" style={{ color: 'var(--muted)', flexShrink: 0 }} />
+          )}
         </span>
       </button>
 
@@ -89,7 +154,7 @@ export function FarmerGroup({ farmerData, onConfirm, onCancel, onOpenFulfill, ex
                 </tr>
               </thead>
               <tbody>
-                {purchaseOrders.map((po: any) => (
+                {purchaseOrders.map((po) => (
                   <IngredientRow
                     key={po.id}
                     item={po}
