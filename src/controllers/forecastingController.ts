@@ -11,12 +11,10 @@ const getForecastServiceUrl = () => {
   return 'http://localhost:8001';
 };
 
-const FORECAST_SERVICE_URL = getForecastServiceUrl();
-// Shared secret so only this app can call the Python service.
-const FORECAST_HEADERS = {
+const getForecastHeaders = () => ({
   'Content-Type': 'application/json',
   'X-Internal-Key': process.env.FORECAST_INTERNAL_KEY ?? '',
-};
+});
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -32,10 +30,13 @@ export async function generateForecast(userId: string, weekStartDate: string) {
   const authError = await verifyAdmin(userId);
   if (authError) return authError;
 
+  const serviceUrl = getForecastServiceUrl();
+  const headers = getForecastHeaders();
+
   try {
-    const forecastRes = await fetch(`${FORECAST_SERVICE_URL}/forecast`, {
+    const forecastRes = await fetch(`${serviceUrl}/forecast`, {
       method: 'POST',
-      headers: FORECAST_HEADERS,
+      headers,
       body: JSON.stringify({ week_start_date: weekStartDate }),
       signal: AbortSignal.timeout(30000),
     });
@@ -48,9 +49,9 @@ export async function generateForecast(userId: string, weekStartDate: string) {
     const forecastData = await forecastRes.json();
 
     // Auto-save to DB
-    await fetch(`${FORECAST_SERVICE_URL}/forecast/save`, {
+    await fetch(`${serviceUrl}/forecast/save`, {
       method: 'POST',
-      headers: FORECAST_HEADERS,
+      headers,
       body: JSON.stringify(forecastData),
       signal: AbortSignal.timeout(30000),
     }).catch(() => {

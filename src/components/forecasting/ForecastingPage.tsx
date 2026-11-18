@@ -58,7 +58,10 @@ export function ForecastingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weekStartDate: selectedWeek })
       });
-      if (!res.ok) throw new Error('Gagal membuat prediksi AI');
+      const resJson = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(resJson.error || 'Gagal membuat prediksi AI');
+      }
       showToast('Prediksi berhasil dibuat');
       await fetchData();
     } catch (err: any) {
