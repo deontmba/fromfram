@@ -222,10 +222,13 @@ export async function updateActualUsage(
   const authError = await verifyAdmin(userId);
   if (authError) return authError;
 
+  const serviceUrl = getForecastServiceUrl();
+  const headers = getForecastHeaders();
+
   try {
-    const res = await fetch(`${FORECAST_SERVICE_URL}/forecast/actual`, {
+    const res = await fetch(`${serviceUrl}/forecast/actual`, {
       method: 'PATCH',
-      headers: FORECAST_HEADERS,
+      headers,
       body: JSON.stringify({
         week_start_date: weekStartDate,
         ingredient_id: ingredientId,
