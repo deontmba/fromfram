@@ -48,16 +48,115 @@ export async function generateForecast(userId: string, weekStartDate: string) {
 
     const forecastData = await forecastRes.json();
 
-    // Auto-save to DB
-    await fetch(`${serviceUrl}/forecast/save`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(forecastData),
-      signal: AbortSignal.timeout(30000),
-    }).catch(() => {
-      // Non-fatal: log saja jika save gagal
-      console.warn('[FORECAST] Auto-save to DB failed, continuing...');
-    });
+    // Auto-save to DB langsung via Prisma (Next.js server-side)
+    // agar tidak tergantung pada background call Python yang bisa gagal/timeout diam-diam di Vercel
+    if (forecastData && Array.isArray(forecastData.forecasts)) {
+      const parsedWeek = new Date(weekStartDate);
+      const activeUsers = Number(forecastData.active_user_count || 0);
+
+      for (const f of forecastData.forecasts) {
+        try {
+          const farmerId = f.farmer_id || f.ingredient_id;
+          const farmerName = f.farmer_name || 'Mitra Mandiri';
+          const farmerRegion = f.farmer_region || 'Jawa Barat';
+
+          // 1. Pastikan Farmer ada
+          await (prisma as any).farmer.upsert({
+            where: { id: farmerId },
+            update: {
+              name: farmerName,
+              region: farmerRegion,
+            },
+            create: {
+              id: farmerId,
+              name: farmerName,
+              region: farmerRegion,
+              commodityType: 'Bahan Baku Mitra',
+              isActive: true,
+            },
+          });
+
+          // 2. Upsert DemandForecastLog
+          const existingLog = await (prisma as any).demandForecastLog.findFirst({
+            where: {
+              ingredientId: f.ingredient_id,
+              weekStartDate: parsedWeek,
+            },
+          });
+
+          if (existingLog) {
+            await (prisma as any).demandForecastLog.update({
+              where: { id: existingLog.id },
+              data: {
+                activeUserCount: activeUsers,
+                predictedQtyKg: Number(f.predicted_qty_kg || 0),
+                confidenceScore: Number(f.confidence_score || 0.6),
+                modelVersion: 'linear_v1',
+              },
+            });
+          } else {
+            await (prisma as any).demandForecastLog.create({
+              data: {
+                ingredientId: f.ingredient_id,
+                weekStartDate: parsedWeek,
+                activeUserCount: activeUsers,
+                predictedQtyKg: Number(f.predicted_qty_kg || 0),
+                confidenceScore: Number(f.confidence_score || 0.6),
+                modelVersion: 'linear_v1',
+              },
+            });
+          }
+
+          // 3. Upsert FarmerPurchaseOrder
+          const existingPO = await (prisma as any).farmerPurchaseOrder.findFirst({
+            where: {
+              farmerId,
+              ingredientId: f.ingredient_id,
+              weekStartDate: parsedWeek,
+            },
+          });
+
+          const predictedQty = Number(f.predicted_qty_kg || 0);
+          const pricePerKg = Number(f.price_per_kg || 0);
+          const grossForecast = Number(f.gross_demand_kg ?? predictedQty);
+          const currentStock = Number(f.current_stock_kg ?? 0);
+          const confScore = Number(f.confidence_score || 0.6);
+
+          if (existingPO) {
+            await (prisma as any).farmerPurchaseOrder.update({
+              where: { id: existingPO.id },
+              data: {
+                forecastedQtyKg: predictedQty,
+                orderedQtyKg: predictedQty,
+                pricePerKg,
+                totalPrice: predictedQty * pricePerKg,
+                grossForecastKg: grossForecast,
+                currentStockKg: currentStock,
+                confidenceScore: confScore,
+              },
+            });
+          } else {
+            await (prisma as any).farmerPurchaseOrder.create({
+              data: {
+                farmerId,
+                ingredientId: f.ingredient_id,
+                weekStartDate: parsedWeek,
+                forecastedQtyKg: predictedQty,
+                orderedQtyKg: predictedQty,
+                pricePerKg,
+                totalPrice: predictedQty * pricePerKg,
+                grossForecastKg: grossForecast,
+                currentStockKg: currentStock,
+                status: 'DRAFT',
+                confidenceScore: confScore,
+              },
+            });
+          }
+        } catch (itemErr) {
+          console.error(`[FORECAST] Error saving PO for ingredient ${f.ingredient_id}:`, itemErr);
+        }
+      }
+    }
 
     return { data: forecastData, status: 200 };
   } catch (err: unknown) {
