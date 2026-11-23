@@ -9,11 +9,11 @@ const getForecastServiceUrl = (reqHost?: string | null) => {
     const protocol = reqHost.includes('localhost') ? 'http' : 'https';
     return `${protocol}://${reqHost}/_forecasting`;
   }
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/_forecasting`;
-  }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}/_forecasting`;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/_forecasting`;
   }
   return 'http://localhost:8001';
 };
