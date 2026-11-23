@@ -2,12 +2,12 @@ import prisma from '@/lib/prisma';
 import { verifyRole } from '@/lib/auth';
 
 const getForecastServiceUrl = (reqHost?: string | null) => {
-  if (process.env.FORECAST_SERVICE_URL) {
-    return process.env.FORECAST_SERVICE_URL;
-  }
   if (reqHost) {
     const protocol = reqHost.includes('localhost') ? 'http' : 'https';
     return `${protocol}://${reqHost}/_forecasting`;
+  }
+  if (process.env.FORECAST_SERVICE_URL) {
+    return process.env.FORECAST_SERVICE_URL;
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}/_forecasting`;
