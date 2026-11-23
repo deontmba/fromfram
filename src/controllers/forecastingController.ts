@@ -57,7 +57,7 @@ export async function generateForecast(
       method: 'POST',
       headers,
       body: JSON.stringify({ week_start_date: weekStartDate }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(60000),
     });
 
     if (!forecastRes.ok) {
