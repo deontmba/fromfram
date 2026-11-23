@@ -1,9 +1,16 @@
 import prisma from '@/lib/prisma';
 import { verifyRole } from '@/lib/auth';
 
-const getForecastServiceUrl = () => {
+const getForecastServiceUrl = (reqHost?: string | null) => {
   if (process.env.FORECAST_SERVICE_URL) {
     return process.env.FORECAST_SERVICE_URL;
+  }
+  if (reqHost) {
+    const protocol = reqHost.includes('localhost') ? 'http' : 'https';
+    return `${protocol}://${reqHost}/_forecasting`;
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/_forecasting`;
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}/_forecasting`;
@@ -26,11 +33,11 @@ const verifyAdmin = (userId: string) => verifyRole(userId, 'ADMIN');
 // Generate Forecast — calls Python ML service
 // ---------------------------------------------------------------------------
 
-export async function generateForecast(userId: string, weekStartDate: string) {
+export async function generateForecast(userId: string, weekStartDate: string, reqHost?: string | null) {
   const authError = await verifyAdmin(userId);
   if (authError) return authError;
 
-  const serviceUrl = getForecastServiceUrl();
+  const serviceUrl = getForecastServiceUrl(reqHost);
   const headers = getForecastHeaders();
 
   try {
