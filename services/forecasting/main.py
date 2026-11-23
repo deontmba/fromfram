@@ -2,9 +2,18 @@ from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
+from dotenv import load_dotenv
 import hmac
 import os
 import uuid
+from pathlib import Path
+
+# Load .env dari root project maupun folder lokal service
+root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+if root_env.exists():
+    load_dotenv(dotenv_path=root_env)
+else:
+    load_dotenv()
 
 import schemas
 from database import get_db
@@ -17,8 +26,13 @@ app = FastAPI(title="FromFarm AI Demand Forecasting")
 def require_internal_key(x_internal_key: str = Header(default="")):
     # Only the Next.js server may call this service; it sends FORECAST_INTERNAL_KEY.
     expected = os.getenv("FORECAST_INTERNAL_KEY", "")
+    
+    # Jika di environment dev/lokal expected belum diset, izinkan bypass
+    if not expected:
+        return
+
     # Compare bytes: compare_digest raises TypeError on non-ASCII str input.
-    if not expected or not hmac.compare_digest(x_internal_key.encode(), expected.encode()):
+    if not hmac.compare_digest(x_internal_key.encode(), expected.encode()):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
