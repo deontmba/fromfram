@@ -14,7 +14,14 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const reqHost = req.headers.get('host') || req.headers.get('x-forwarded-host');
-    const result = await generateForecast(session.userId, body.weekStartDate, reqHost);
+
+    const passthroughHeaders: Record<string, string> = {};
+    const cookie = req.headers.get('cookie');
+    if (cookie) passthroughHeaders['Cookie'] = cookie;
+    const bypass = req.headers.get('x-vercel-protection-bypass');
+    if (bypass) passthroughHeaders['x-vercel-protection-bypass'] = bypass;
+
+    const result = await generateForecast(session.userId, body.weekStartDate, reqHost, passthroughHeaders);
     if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json(result.data, { status: result.status });
   } catch (err) {

@@ -18,10 +18,17 @@ const getForecastServiceUrl = (reqHost?: string | null) => {
   return 'http://localhost:8001';
 };
 
-const getForecastHeaders = () => ({
-  'Content-Type': 'application/json',
-  'X-Internal-Key': process.env.FORECAST_INTERNAL_KEY ?? '',
-});
+const getForecastHeaders = (extraHeaders?: Record<string, string>) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Internal-Key': process.env.FORECAST_INTERNAL_KEY ?? '',
+    ...extraHeaders,
+  };
+  if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+    headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  }
+  return headers;
+};
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -33,12 +40,17 @@ const verifyAdmin = (userId: string) => verifyRole(userId, 'ADMIN');
 // Generate Forecast — calls Python ML service
 // ---------------------------------------------------------------------------
 
-export async function generateForecast(userId: string, weekStartDate: string, reqHost?: string | null) {
+export async function generateForecast(
+  userId: string,
+  weekStartDate: string,
+  reqHost?: string | null,
+  passthroughHeaders?: Record<string, string>
+) {
   const authError = await verifyAdmin(userId);
   if (authError) return authError;
 
   const serviceUrl = getForecastServiceUrl(reqHost);
-  const headers = getForecastHeaders();
+  const headers = getForecastHeaders(passthroughHeaders);
 
   try {
     const forecastRes = await fetch(`${serviceUrl}/forecast`, {
