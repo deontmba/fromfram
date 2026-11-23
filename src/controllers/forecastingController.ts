@@ -175,7 +175,7 @@ export async function generateForecast(userId: string, weekStartDate: string, re
 
     if (e?.name === 'TimeoutError' || isConnRefused) {
       return {
-        error: 'Python Forecasting Service tidak dapat dihubungi. Pastikan service Python sudah dijalankan (port 8001).',
+        error: `Python Forecasting Service tidak dapat dihubungi di ${serviceUrl}. Detail: ${e?.message || 'Connection refused'}`,
         status: 503,
       };
     }
